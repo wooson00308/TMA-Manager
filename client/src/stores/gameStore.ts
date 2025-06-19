@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import { type GameScene, type Pilot, type Mech, type Team, type Formation } from '@shared/schema';
 
+interface GameFlowState {
+  banPickCompleted: boolean;
+  formationCompleted: boolean;
+  battleCompleted: boolean;
+  selectedMechs: Mech[];
+  bannedMechs: Mech[];
+}
+
 interface GameState {
   currentScene: GameScene;
   currentSeason: number;
@@ -10,6 +18,7 @@ interface GameState {
   mechs: Mech[];
   activeFormation: Formation | null;
   enemyTeams: Team[];
+  gameFlow: GameFlowState;
   
   // Actions
   setScene: (scene: GameScene) => void;
@@ -19,6 +28,13 @@ interface GameState {
   setActiveFormation: (formation: Formation | null) => void;
   setEnemyTeams: (teams: Team[]) => void;
   initializePlayerTeam: () => Promise<void>;
+  
+  // Game flow actions
+  completeBanPick: (selectedMechs: Mech[], bannedMechs: Mech[]) => void;
+  completeFormation: () => void;
+  completeBattle: () => void;
+  resetGameFlow: () => void;
+  canAccessScene: (scene: GameScene) => boolean;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
