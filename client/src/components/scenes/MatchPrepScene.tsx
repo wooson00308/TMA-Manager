@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
@@ -68,15 +68,6 @@ export function MatchPrepScene() {
     }
   }, [teams, matchState.enemyTeam]);
 
-  // 밴픽 단계 시작 시 첫 적군 턴 자동 실행
-  useEffect(() => {
-    if (matchState.currentStep === 'banpick' && banPickPhase === 'ban_enemy_1' && availableMechs.length > 0) {
-      setTimeout(() => {
-        handleEnemyBanPick('ban_enemy_1');
-      }, 1500);
-    }
-  }, [matchState.currentStep, banPickPhase, availableMechs]);
-
   const stepTitles = {
     roster: 'Step 1: 로스터 선택',
     banpick: 'Step 2: 밴픽 단계',
@@ -107,59 +98,9 @@ export function MatchPrepScene() {
     }));
   };
 
-  const handleMechAction = (mech: Mech) => {
-    const isBanPhase = banPickPhase.includes('ban');
-    const isPlayerTurn = banPickPhase.includes('player');
-
-    if (isBanPhase) {
-      if (!matchState.bannedMechs.some(m => m.id === mech.id)) {
-        setMatchState(prev => ({
-          ...prev,
-          bannedMechs: [...prev.bannedMechs, mech]
-        }));
-        advanceBanPickPhase();
-      }
-    } else {
-      if (isPlayerTurn) {
-        if (matchState.pickedMechs.player.length < 3) {
-          setMatchState(prev => ({
-            ...prev,
-            pickedMechs: {
-              ...prev.pickedMechs,
-              player: [...prev.pickedMechs.player, mech]
-            }
-          }));
-          advanceBanPickPhase();
-        }
-      }
-    }
-  };
-
-  const advanceBanPickPhase = () => {
-    const phaseOrder: BanPickPhase[] = [
-      'ban_enemy_1', 'ban_player_1', 'ban_player_2', 'ban_enemy_2',
-      'pick_player_1', 'pick_enemy_1', 'pick_enemy_2', 'pick_player_2',
-      'pick_player_3', 'pick_enemy_3', 'complete'
-    ];
+  const handleEnemyBanPick = useCallback((phase: BanPickPhase) => {
+    if (!Array.isArray(availableMechs) || availableMechs.length === 0) return;
     
-    const currentIndex = phaseOrder.indexOf(banPickPhase);
-    if (currentIndex < phaseOrder.length - 1) {
-      const nextPhase = phaseOrder[currentIndex + 1];
-      setBanPickPhase(nextPhase);
-      
-      if (nextPhase.includes('enemy')) {
-        setTimeout(() => {
-          handleEnemyBanPick(nextPhase);
-        }, 1000);
-      }
-      
-      if (nextPhase === 'complete') {
-        goToStep('swap');
-      }
-    }
-  };
-
-  const handleEnemyBanPick = (phase: BanPickPhase) => {
     const availableForAction = (availableMechs as Mech[]).filter(mech => 
       !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
       !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
@@ -188,7 +129,70 @@ export function MatchPrepScene() {
         advanceBanPickPhase();
       }, 800);
     }
+  }, [availableMechs, matchState.bannedMechs, matchState.pickedMechs]);
+
+  const advanceBanPickPhase = useCallback(() => {
+    const phaseOrder: BanPickPhase[] = [
+      'ban_enemy_1', 'ban_player_1', 'ban_player_2', 'ban_enemy_2',
+      'pick_player_1', 'pick_enemy_1', 'pick_enemy_2', 'pick_player_2',
+      'pick_player_3', 'pick_enemy_3', 'complete'
+    ];
+    
+    const currentIndex = phaseOrder.indexOf(banPickPhase);
+    if (currentIndex < phaseOrder.length - 1) {
+      const nextPhase = phaseOrder[currentIndex + 1];
+      setBanPickPhase(nextPhase);
+      
+      if (nextPhase.includes('enemy')) {
+        setTimeout(() => {
+          handleEnemyBanPick(nextPhase);
+        }, 1000);
+      }
+      
+      if (nextPhase === 'complete') {
+        setMatchState(prev => ({ ...prev, currentStep: 'swap' }));
+      }
+    }
+  }, [banPickPhase, handleEnemyBanPick]);
+
+  const handleMechAction = (mech: Mech) => {
+    const isBanPhase = banPickPhase.includes('ban');
+    const isPlayerTurn = banPickPhase.includes('player');
+
+    if (isBanPhase) {
+      if (!matchState.bannedMechs.some(m => m.id === mech.id)) {
+        setMatchState(prev => ({
+          ...prev,
+          bannedMechs: [...prev.bannedMechs, mech]
+        }));
+        advanceBanPickPhase();
+      }
+    } else {
+      if (isPlayerTurn) {
+        if (matchState.pickedMechs.player.length < 3) {
+          setMatchState(prev => ({
+            ...prev,
+            pickedMechs: {
+              ...prev.pickedMechs,
+              player: [...prev.pickedMechs.player, mech]
+            }
+          }));
+          advanceBanPickPhase();
+        }
+      }
+    }
   };
+
+  // 밴픽 단계 시작 시 첫 적군 턴 자동 실행
+  useEffect(() => {
+    if (matchState.currentStep === 'banpick' && banPickPhase === 'ban_enemy_1' && Array.isArray(availableMechs) && availableMechs.length > 0) {
+      const timer = setTimeout(() => {
+        handleEnemyBanPick('ban_enemy_1');
+      }, 1500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [matchState.currentStep, banPickPhase, availableMechs, handleEnemyBanPick]);
 
   const handleAssignMech = (pilotId: number, mech: Mech) => {
     setMatchState(prev => ({
@@ -200,17 +204,14 @@ export function MatchPrepScene() {
     }));
   };
 
-  const goToStep = (step: MatchStep) => {
+  const goToStep = useCallback((step: MatchStep) => {
     setMatchState(prev => ({ ...prev, currentStep: step }));
     
     // 밴픽 단계로 이동할 때 첫 적군 턴 자동 시작
     if (step === 'banpick') {
       setBanPickPhase('ban_enemy_1');
-      setTimeout(() => {
-        handleEnemyBanPick('ban_enemy_1');
-      }, 1000);
     }
-  };
+  }, []);
 
   const handleStartBattle = () => {
     const formation = {
