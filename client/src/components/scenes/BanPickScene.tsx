@@ -39,8 +39,6 @@ const phaseNames = {
 
 export function BanPickScene() {
   const { setScene, mechs } = useGameStore();
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 12;
   
   const [banPickState, setBanPickState] = useState<BanPickState>({
     phase: 'ban_enemy_1',
@@ -108,59 +106,6 @@ export function BanPickScene() {
       !banPickState.bannedMechs.some(banned => banned.id === mech.id) &&
       !banPickState.selectedMechs.player.some(selected => selected.id === mech.id) &&
       !banPickState.selectedMechs.enemy.some(selected => selected.id === mech.id)
-    );
-  };
-
-  const getPaginatedMechs = (mechList: any[]) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return mechList.slice(startIndex, startIndex + itemsPerPage);
-  };
-
-  const getTotalPages = (total: number) => Math.ceil(total / itemsPerPage);
-
-  const PaginationControls = ({ currentPage, totalPages, onPageChange }: {
-    currentPage: number;
-    totalPages: number;
-    onPageChange: (page: number) => void;
-  }) => {
-    if (totalPages <= 1) return null;
-
-    return (
-      <div className="flex justify-center items-center space-x-2 mt-4">
-        <CyberButton
-          variant="secondary"
-          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-          disabled={currentPage === 1}
-          className="px-3 py-1 text-sm"
-        >
-          이전
-        </CyberButton>
-        
-        <div className="flex space-x-1">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => onPageChange(page)}
-              className={`px-3 py-1 text-sm rounded transition-all ${
-                page === currentPage
-                  ? 'bg-green-600 text-white'
-                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-        </div>
-
-        <CyberButton
-          variant="secondary"
-          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage === totalPages}
-          className="px-3 py-1 text-sm"
-        >
-          다음
-        </CyberButton>
-      </div>
     );
   };
 
@@ -293,9 +238,9 @@ export function BanPickScene() {
           <h3 className="text-pink-400 font-semibold mb-3">
             {isBanPhase ? '밴할 기체 선택' : '픽할 기체 선택'}
           </h3>
-          <div className="space-y-4">
+          <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {getPaginatedMechs(getAvailableMechs()).map((mech) => (
+              {getAvailableMechs().map((mech) => (
               <button
                 key={mech.id}
                 onClick={() => handleMechAction(mech)}
@@ -317,12 +262,6 @@ export function BanPickScene() {
               </button>
               ))}
             </div>
-            
-            <PaginationControls
-              currentPage={currentPage}
-              totalPages={getTotalPages(getAvailableMechs().length)}
-              onPageChange={setCurrentPage}
-            />
           </div>
         </div>
       )}
