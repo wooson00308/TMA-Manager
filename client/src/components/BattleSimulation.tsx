@@ -32,13 +32,27 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const { addBattleLog, setBattle } = useBattleStore();
 
   const pilots = [
-    { id: 1, name: "사샤", callsign: "볼코프" },
-    { id: 2, name: "멘테", callsign: "스톰" },
-    { id: 3, name: "아즈마", callsign: "레이븐" },
-    { id: 101, name: "적기Alpha", callsign: "타겟-α" },
-    { id: 102, name: "적기Beta", callsign: "타겟-β" },
-    { id: 103, name: "적기Gamma", callsign: "타겟-γ" },
+    { id: 1, name: "사샤", callsign: "볼코프", team: "ally" },
+    { id: 2, name: "멘테", callsign: "스톰", team: "ally" },
+    { id: 3, name: "아즈마", callsign: "레이븐", team: "ally" },
+    { id: 101, name: "적기Alpha", callsign: "타겟-α", team: "enemy" },
+    { id: 102, name: "적기Beta", callsign: "타겟-β", team: "enemy" },
+    { id: 103, name: "적기Gamma", callsign: "타겟-γ", team: "enemy" },
   ];
+
+  // 아군 파일럿 ID 목록 동적 생성
+  const getAllyPilotIds = () => {
+    if (!battle?.participants) return [];
+    // 전장 좌측(x <= 10)에 배치된 유닛을 아군으로 판단
+    const allyIds = battle.participants
+      .filter(p => p.position.x <= 10)
+      .map(p => p.pilotId);
+    
+    console.log('Battle participants:', battle.participants);
+    console.log('Ally pilot IDs (x <= 10):', allyIds);
+    
+    return allyIds;
+  };
 
   const getPilotName = (pilotId: number) => {
     return pilots.find(p => p.id === pilotId)?.name || `파일럿-${pilotId}`;
@@ -216,19 +230,24 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           let symbol = '░';
           if (participant.status === 'destroyed') {
             symbol = '💥';
-          } else if (participant.pilotId < 100) {
-            // 아군: 나이트, 리버, 아비터 스타일로 구분
-            const mechType = participant.mechId % 3;
-            if (participant.hp > 70) {
-              symbol = mechType === 0 ? '🛡️' : mechType === 1 ? '⚡' : '🎯';
-            } else if (participant.hp > 30) {
-              symbol = '🟨';
-            } else {
-              symbol = '🟧';
-            }
           } else {
-            // 적군
-            symbol = participant.hp > 70 ? '🔴' : participant.hp > 30 ? '🟪' : '⬛';
+            const allyPilotIds = getAllyPilotIds();
+            const isAlly = allyPilotIds.includes(participant.pilotId);
+            
+            if (isAlly) {
+              // 아군: 나이트, 리버, 아비터 스타일로 구분
+              const mechType = participant.mechId % 3;
+              if (participant.hp > 70) {
+                symbol = mechType === 0 ? '🛡️' : mechType === 1 ? '⚡' : '🎯';
+              } else if (participant.hp > 30) {
+                symbol = '🟨';
+              } else {
+                symbol = '🟧';
+              }
+            } else {
+              // 적군
+              symbol = participant.hp > 70 ? '🔴' : participant.hp > 30 ? '🟪' : '⬛';
+            }
           }
           field[y][x] = symbol;
         }

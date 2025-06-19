@@ -11,16 +11,39 @@ export class BattleEngine {
   async initializeBattle(formation1: any, formation2: any): Promise<BattleState> {
     const battleId = `battle_${Date.now()}`;
     
-    const participants = [
-      // Team 1
-      { pilotId: formation1.pilot1Id, mechId: formation1.mech1Id, position: { x: 2, y: 2 }, hp: 100, status: "active" as const },
-      { pilotId: formation1.pilot2Id, mechId: formation1.mech2Id, position: { x: 2, y: 4 }, hp: 100, status: "active" as const },
-      { pilotId: formation1.pilot3Id, mechId: formation1.mech3Id, position: { x: 2, y: 6 }, hp: 100, status: "active" as const },
-      // Team 2 (enemy)
-      { pilotId: 101, mechId: 101, position: { x: 12, y: 2 }, hp: 100, status: "active" as const },
-      { pilotId: 102, mechId: 102, position: { x: 12, y: 4 }, hp: 100, status: "active" as const },
-      { pilotId: 103, mechId: 103, position: { x: 12, y: 6 }, hp: 100, status: "active" as const },
-    ];
+    const participants: Array<{
+      pilotId: number;
+      mechId: number;
+      position: { x: number; y: number };
+      hp: number;
+      status: "active" | "damaged" | "destroyed";
+    }> = [];
+    
+    // Team 1 (아군) - formation1.pilots 배열 사용
+    if (formation1.pilots && Array.isArray(formation1.pilots)) {
+      formation1.pilots.forEach((pilot: any, index: number) => {
+        participants.push({
+          pilotId: pilot.pilotId,
+          mechId: pilot.mechId,
+          position: { x: 2, y: 2 + (index * 2) },
+          hp: 100,
+          status: "active" as const
+        });
+      });
+    }
+    
+    // Team 2 (적군) - formation2.pilots 배열 사용
+    if (formation2.pilots && Array.isArray(formation2.pilots)) {
+      formation2.pilots.forEach((pilot: any, index: number) => {
+        participants.push({
+          pilotId: pilot.pilotId,
+          mechId: pilot.mechId,
+          position: { x: 17, y: 2 + (index * 2) },
+          hp: 100,
+          status: "active" as const
+        });
+      });
+    }
 
     return {
       id: battleId,
