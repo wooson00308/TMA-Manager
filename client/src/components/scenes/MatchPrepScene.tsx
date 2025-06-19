@@ -41,7 +41,7 @@ export function MatchPrepScene() {
     enemyTeam: null
   });
 
-  const [banPickPhase, setBanPickPhase] = useState<BanPickPhase>('ban_enemy_1');
+  const [banPickPhase, setBanPickPhase] = useState<BanPickPhase>('ban_player_1');
 
   // 사용 가능한 파일럿 조회
   const { data: availablePilots = [] } = useQuery({
@@ -56,7 +56,7 @@ export function MatchPrepScene() {
   });
 
   // 팀 데이터 조회
-  const { data: teams = [] } = useQuery({
+  const { data: teams = [] } = useQuery<Team[]>({
     queryKey: ['/api/teams'],
     enabled: true
   });
@@ -98,44 +98,20 @@ export function MatchPrepScene() {
     }));
   };
 
-  const handleEnemyBanPick = useCallback((phase: BanPickPhase) => {
-    if (!Array.isArray(availableMechs) || availableMechs.length === 0) return;
-    
-    const availableForAction = (availableMechs as Mech[]).filter(mech => 
-      !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
-      !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
-      !matchState.pickedMechs.enemy.some(picked => picked.id === mech.id)
-    );
-
-    if (availableForAction.length > 0) {
-      const randomMech = availableForAction[Math.floor(Math.random() * availableForAction.length)];
-      
-      if (phase.includes('ban')) {
-        setMatchState(prev => ({
-          ...prev,
-          bannedMechs: [...prev.bannedMechs, randomMech]
-        }));
-      } else {
-        setMatchState(prev => ({
-          ...prev,
-          pickedMechs: {
-            ...prev.pickedMechs,
-            enemy: [...prev.pickedMechs.enemy, randomMech]
-          }
-        }));
-      }
-      
-      setTimeout(() => {
-        advanceBanPickPhase();
-      }, 800);
-    }
-  }, [availableMechs, matchState.bannedMechs, matchState.pickedMechs]);
-
   const advanceBanPickPhase = useCallback(() => {
+    // TFM 스타일 정확한 스네이크 밴픽 순서
     const phaseOrder: BanPickPhase[] = [
-      'ban_enemy_1', 'ban_player_1', 'ban_player_2', 'ban_enemy_2',
-      'pick_player_1', 'pick_enemy_1', 'pick_enemy_2', 'pick_player_2',
-      'pick_player_3', 'pick_enemy_3', 'complete'
+      'ban_player_1',    // A팀 1밴
+      'ban_enemy_1',     // B팀 1밴  
+      'ban_enemy_2',     // B팀 2밴
+      'ban_player_2',    // A팀 2밴
+      'pick_player_1',   // A팀 1픽
+      'pick_enemy_1',    // B팀 1픽
+      'pick_enemy_2',    // B팀 2픽
+      'pick_player_2',   // A팀 2픽
+      'pick_player_3',   // A팀 3픽
+      'pick_enemy_3',    // B팀 3픽
+      'complete'
     ];
     
     const currentIndex = phaseOrder.indexOf(banPickPhase);
@@ -143,56 +119,99 @@ export function MatchPrepScene() {
       const nextPhase = phaseOrder[currentIndex + 1];
       setBanPickPhase(nextPhase);
       
-      if (nextPhase.includes('enemy')) {
-        setTimeout(() => {
-          handleEnemyBanPick(nextPhase);
-        }, 1000);
-      }
-      
       if (nextPhase === 'complete') {
         setMatchState(prev => ({ ...prev, currentStep: 'swap' }));
       }
     }
-  }, [banPickPhase, handleEnemyBanPick]);
+  }, [banPickPhase]);
+
+
 
   const handleMechAction = (mech: Mech) => {
     const isBanPhase = banPickPhase.includes('ban');
     const isPlayerTurn = banPickPhase.includes('player');
 
+    // 플레이어 턴이 아니면 아무것도 하지 않음
+    if (!isPlayerTurn || banPickPhase === 'complete') return;
+
+    // 이미 밴/픽된 메크는 선택 불가
+    const isAlreadyBanned = matchState.bannedMechs.some(m => m.id === mech.id);
+    const isAlreadyPicked = matchState.pickedMechs.player.some(m => m.id === mech.id) || 
+                            matchState.pickedMechs.enemy.some(m => m.id === mech.id);
+    
+    if (isAlreadyBanned || isAlreadyPicked) return;
+
     if (isBanPhase) {
-      if (!matchState.bannedMechs.some(m => m.id === mech.id)) {
-        setMatchState(prev => ({
-          ...prev,
-          bannedMechs: [...prev.bannedMechs, mech]
-        }));
-        advanceBanPickPhase();
-      }
+      // 밴 한도 체크 (총 4개까지)
+      if (matchState.bannedMechs.length >= 4) return;
+      
+      setMatchState(prev => ({
+        ...prev,
+        bannedMechs: [...prev.bannedMechs, mech]
+      }));
+      advanceBanPickPhase();
     } else {
-      if (isPlayerTurn) {
-        if (matchState.pickedMechs.player.length < 3) {
-          setMatchState(prev => ({
-            ...prev,
-            pickedMechs: {
-              ...prev.pickedMechs,
-              player: [...prev.pickedMechs.player, mech]
-            }
-          }));
-          advanceBanPickPhase();
+      // 픽 단계
+      if (matchState.pickedMechs.player.length >= 3) return;
+      
+      setMatchState(prev => ({
+        ...prev,
+        pickedMechs: {
+          ...prev.pickedMechs,
+          player: [...prev.pickedMechs.player, mech]
         }
-      }
+      }));
+      advanceBanPickPhase();
     }
   };
 
-  // 밴픽 단계 시작 시 첫 적군 턴 자동 실행
+  // 밴픽 단계에서 적군 턴일 때 자동 실행
   useEffect(() => {
-    if (matchState.currentStep === 'banpick' && banPickPhase === 'ban_enemy_1' && Array.isArray(availableMechs) && availableMechs.length > 0) {
+    if (matchState.currentStep === 'banpick' && banPickPhase.includes('enemy') && banPickPhase !== 'complete' && Array.isArray(availableMechs) && availableMechs.length > 0) {
       const timer = setTimeout(() => {
-        handleEnemyBanPick('ban_enemy_1');
+        if (!Array.isArray(availableMechs) || availableMechs.length === 0) return;
+        
+        const availableForAction = (availableMechs as Mech[]).filter(mech => 
+          !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
+          !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
+          !matchState.pickedMechs.enemy.some(picked => picked.id === mech.id)
+        );
+
+        if (availableForAction.length > 0) {
+          const randomMech = availableForAction[Math.floor(Math.random() * availableForAction.length)];
+          
+          if (banPickPhase.includes('ban')) {
+            if (matchState.bannedMechs.length < 4) {
+              setMatchState(prev => ({
+                ...prev,
+                bannedMechs: [...prev.bannedMechs, randomMech]
+              }));
+              
+              setTimeout(() => {
+                advanceBanPickPhase();
+              }, 500);
+            }
+          } else {
+            if (matchState.pickedMechs.enemy.length < 3) {
+              setMatchState(prev => ({
+                ...prev,
+                pickedMechs: {
+                  ...prev.pickedMechs,
+                  enemy: [...prev.pickedMechs.enemy, randomMech]
+                }
+              }));
+              
+              setTimeout(() => {
+                advanceBanPickPhase();
+              }, 500);
+            }
+          }
+        }
       }, 1500);
       
       return () => clearTimeout(timer);
     }
-  }, [matchState.currentStep, banPickPhase, availableMechs, handleEnemyBanPick]);
+  }, [matchState.currentStep, banPickPhase, availableMechs, matchState.bannedMechs, matchState.pickedMechs, advanceBanPickPhase]);
 
   const handleAssignMech = (pilotId: number, mech: Mech) => {
     setMatchState(prev => ({
@@ -207,9 +226,9 @@ export function MatchPrepScene() {
   const goToStep = useCallback((step: MatchStep) => {
     setMatchState(prev => ({ ...prev, currentStep: step }));
     
-    // 밴픽 단계로 이동할 때 첫 적군 턴 자동 시작
+    // 밴픽 단계로 이동할 때 플레이어부터 시작
     if (step === 'banpick') {
-      setBanPickPhase('ban_enemy_1');
+      setBanPickPhase('ban_player_1');
     }
   }, []);
 
@@ -361,6 +380,9 @@ export function MatchPrepScene() {
                 <div className="text-center">
                   <div className="text-cyan-300 font-bold">
                     현재: {banPickPhase.includes('ban') ? '밴' : '픽'} 단계 - {banPickPhase.includes('player') ? '플레이어' : '적팀'} 턴
+                  </div>
+                  <div className="text-sm text-gray-300 mt-1">
+                    진행도: 밴 {matchState.bannedMechs.length}/4, 픽 {matchState.pickedMechs.player.length + matchState.pickedMechs.enemy.length}/6
                   </div>
                   {!banPickPhase.includes('player') && banPickPhase !== 'complete' && (
                     <div className="flex items-center justify-center mt-2 space-x-2">

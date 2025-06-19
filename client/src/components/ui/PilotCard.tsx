@@ -4,9 +4,10 @@ interface PilotCardProps {
   pilot: Pilot;
   onClick?: () => void;
   selected?: boolean;
+  disabled?: boolean;
 }
 
-export function PilotCard({ pilot, onClick, selected }: PilotCardProps) {
+export function PilotCard({ pilot, onClick, selected, disabled }: PilotCardProps) {
   const getTraitColor = (trait: string) => {
     switch (trait.toLowerCase()) {
       case 'aggressive': return 'trait-aggressive';
@@ -24,10 +25,12 @@ export function PilotCard({ pilot, onClick, selected }: PilotCardProps) {
 
   return (
     <div 
-      className={`cyber-border p-4 transition-colors cursor-pointer ${
+      className={`cyber-border p-4 transition-colors ${
+        disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'
+      } ${
         selected ? 'bg-blue-900' : 'bg-slate-800 hover:bg-blue-900'
       }`}
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
     >
       <div className="flex items-start justify-between mb-3">
         <div>
