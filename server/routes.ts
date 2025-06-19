@@ -698,5 +698,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Battle API endpoints
+  app.post("/api/battle/start", async (req, res) => {
+    try {
+      const { formation1, formation2 } = req.body;
+      
+      if (!formation1 || !formation2) {
+        return res.status(400).json({ error: "Both formations are required" });
+      }
+
+      // Create battle record in storage
+      const battleData = {
+        season: 3,
+        week: 8,
+        teamAId: formation1.teamId || 1,
+        teamBId: formation2.teamId || 2,
+        status: 'active',
+        winnerId: null,
+        battleData: {
+          formation1,
+          formation2,
+          startTime: new Date().toISOString()
+        }
+      };
+
+      const battle = await storage.createBattle(battleData);
+      
+      // Initialize battle state
+      const battleState = await battleEngine.initializeBattle(formation1, formation2);
+      activeBattles.set(battle.id.toString(), battleState);
+
+      res.json({
+        success: true,
+        battleId: battle.id,
+        message: "Battle started successfully",
+        battleState
+      });
+
+    } catch (error) {
+      console.error('Error starting battle:', error);
+      res.status(500).json({ error: "Failed to start battle" });
+    }
+  });
+
+  app.get("/api/battle/:id", async (req, res) => {
+    try {
+      const battleId = parseInt(req.params.id);
+      const battle = await storage.getBattle(battleId);
+      
+      if (!battle) {
+        return res.status(404).json({ error: "Battle not found" });
+      }
+
+      const battleState = activeBattles.get(battleId.toString());
+      
+      res.json({
+        battle,
+        state: battleState || null,
+        isActive: battleState ? battleState.phase !== 'completed' : false
+      });
+
+    } catch (error) {
+      console.error('Error fetching battle:', error);
+      res.status(500).json({ error: "Failed to fetch battle" });
+    }
+  });
+
+  app.get("/api/battles/team/:teamId", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const battles = await storage.getTeamBattles(teamId);
+      res.json(battles);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch team battles" });
+    }
+  });
+
   return httpServer;
 }

@@ -232,24 +232,84 @@ export function MatchPrepScene() {
     }
   }, []);
 
-  const handleStartBattle = () => {
-    const formation = {
-      pilots: matchState.selectedRoster.map(pilot => ({
-        pilot,
-        mech: matchState.pilotMechAssignments[pilot.id] || matchState.pickedMechs.player[0]
-      }))
-    };
-    
-    const enemyFormation = {
-      pilots: matchState.pickedMechs.enemy.slice(0, 3).map((mech, index) => ({
-        pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
-        mech
-      }))
-    };
+  const handleStartBattle = async () => {
+    try {
+      const formation1 = {
+        teamId: 1,
+        pilots: matchState.selectedRoster.map(pilot => ({
+          pilotId: pilot.id,
+          mechId: matchState.pilotMechAssignments[pilot.id]?.id || matchState.pickedMechs.player[0]?.id,
+          pilot,
+          mech: matchState.pilotMechAssignments[pilot.id] || matchState.pickedMechs.player[0]
+        }))
+      };
+      
+      const formation2 = {
+        teamId: 2,
+        pilots: matchState.pickedMechs.enemy.slice(0, 3).map((mech, index) => ({
+          pilotId: 100 + index,
+          mechId: mech.id,
+          pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
+          mech
+        }))
+      };
 
-    setTimeout(() => {
-      wsManager.startBattle(formation, enemyFormation);
-    }, 100);
+      // Start battle via REST API
+      const response = await fetch('/api/battle/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ formation1, formation2 }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Battle started:', result);
+
+      // Set up battle state for UI
+      setBattle({
+        id: result.battleId.toString(),
+        phase: 'active',
+        turn: 1,
+        participants: [
+          ...formation1.pilots.map((p, i) => ({
+            pilotId: p.pilot.id,
+            mechId: p.mech.id,
+            position: { x: 2 + i * 2, y: 6 },
+            hp: 100,
+            status: 'active' as const
+          })),
+          ...formation2.pilots.map((p, i) => ({
+            pilotId: p.pilot.id,
+            mechId: p.mech.id,
+            position: { x: 10 + i * 2, y: 6 },
+            hp: 100,
+            status: 'active' as const
+          }))
+        ],
+        log: [{
+          timestamp: Date.now(),
+          type: 'system',
+          message: '전투 시스템 초기화 완료. 전투가 시작됩니다!',
+        }]
+      });
+
+      // Also start via WebSocket for real-time updates
+      setTimeout(() => {
+        wsManager.startBattle(formation1, formation2);
+      }, 500);
+
+      // Navigate to simulation step
+      setMatchState(prev => ({ ...prev, currentStep: 'simulation' }));
+
+    } catch (error) {
+      console.error('Failed to start battle:', error);
+      alert('전투 시작에 실패했습니다. 다시 시도해 주세요.');
+    }
   };
 
   return (
