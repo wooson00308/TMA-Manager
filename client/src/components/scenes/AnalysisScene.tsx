@@ -350,7 +350,7 @@ export function AnalysisScene() {
                             Battle #{battle.id}
                           </div>
                           <div className="text-xs text-gray-400">
-                            Season {battle.season}, Week {battle.week}
+                            시즌 {battle.season}, 주차 {battle.week}
                           </div>
                         </div>
                         <div className={`font-semibold ${
@@ -400,31 +400,13 @@ export function AnalysisScene() {
       </div>
 
       {/* Action Buttons */}
-      <div className="mt-6 grid grid-cols-3 gap-4">
+      <div className="mt-6 flex justify-center">
         <CyberButton onClick={() => setScene('hub')}>
           <div className="text-center">
             <div className="text-pink-400 font-semibold mb-1">
-              <i className="fas fa-home mr-2"></i>RETURN TO HUB
+              <i className="fas fa-home mr-2"></i>사령부로 돌아가기
             </div>
-            <div className="text-xs text-gray-400">Command center</div>
-          </div>
-        </CyberButton>
-
-        <CyberButton onClick={() => setScene('formation')}>
-          <div className="text-center">
-            <div className="text-pink-400 font-semibold mb-1">
-              <i className="fas fa-cogs mr-2"></i>ADJUST FORMATION
-            </div>
-            <div className="text-xs text-gray-400">Optimize setup</div>
-          </div>
-        </CyberButton>
-
-        <CyberButton onClick={() => setScene('battle')}>
-          <div className="text-center">
-            <div className="text-pink-400 font-semibold mb-1">
-              <i className="fas fa-redo mr-2"></i>NEW BATTLE
-            </div>
-            <div className="text-xs text-gray-400">Deploy again</div>
+            <div className="text-xs text-gray-400">명령 센터</div>
           </div>
         </CyberButton>
       </div>

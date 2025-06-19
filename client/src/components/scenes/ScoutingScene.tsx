@@ -41,7 +41,7 @@ interface TeamWithCredits {
 
 export function ScoutingScene() {
   const { setScene } = useGameStore();
-  const [activeTab, setActiveTab] = useState<'current' | 'training'>('current');
+  const [activeTab, setActiveTab] = useState<'current' | 'training' | 'recruit'>('current');
   const [trainingCountdowns, setTrainingCountdowns] = useState<{[key: number]: number}>({});
   const queryClient = useQueryClient();
 
@@ -53,6 +53,11 @@ export function ScoutingScene() {
   // Fetch teams for credits display
   const { data: teams = [], isLoading: teamsLoading } = useQuery({
     queryKey: ['/api/teams'],
+  });
+
+  // Fetch recruitable pilots
+  const { data: recruitablePilots = [], isLoading: recruitLoading } = useQuery({
+    queryKey: ['/api/pilots/recruitable'],
   });
 
   // Training mutation
@@ -70,6 +75,17 @@ export function ScoutingScene() {
       apiRequest(`/api/pilots/${pilotId}/complete-training`, 'POST'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
+    },
+  });
+
+  // Recruitment mutation
+  const recruitMutation = useMutation({
+    mutationFn: (pilotId: number) =>
+      apiRequest(`/api/pilots/${pilotId}/recruit`, 'POST'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pilots/recruitable'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/teams'] });
     },
   });
 
@@ -101,6 +117,10 @@ export function ScoutingScene() {
 
   const handleStartTraining = (pilotId: number, trainingType: string) => {
     startTrainingMutation.mutate({ pilotId, trainingType });
+  };
+
+  const handleRecruit = (pilotId: number) => {
+    recruitMutation.mutate(pilotId);
   };
 
   const formatTime = (ms: number) => {
@@ -172,6 +192,12 @@ export function ScoutingScene() {
           onClick={() => setActiveTab('training')}
         >
           훈련 시설
+        </CyberButton>
+        <CyberButton
+          variant={activeTab === 'recruit' ? 'primary' : 'secondary'}
+          onClick={() => setActiveTab('recruit')}
+        >
+          신규 영입
         </CyberButton>
       </div>
 
@@ -313,6 +339,60 @@ export function ScoutingScene() {
                   
                   <div className="text-xs text-gray-500">
                     훈련 시간: 30초 | 비용: 무료 | 효과: +1~3 능력치
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Recruitment Tab */}
+      {activeTab === 'recruit' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {(recruitablePilots as any[]).map((pilot: any) => (
+            <Card key={pilot.id} className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-cyan-400">{pilot.name}</CardTitle>
+                    <p className="text-gray-400">"{pilot.callsign}"</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-yellow-400">{pilot.rating}</div>
+                    <div className="text-xs text-gray-400">평점</div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="text-sm text-gray-300">{pilot.background}</div>
+                  
+                  <div className="flex flex-wrap gap-1">
+                    {pilot.traits?.map((trait: string) => (
+                      <Badge key={trait} variant="secondary" className="text-xs">
+                        {trait}
+                      </Badge>
+                    ))}
+                  </div>
+
+                  <div className="bg-blue-900/30 p-2 rounded">
+                    <div className="text-sm font-semibold text-blue-400 mb-1">특수 능력</div>
+                    <div className="text-xs text-gray-300">{pilot.specialAbility}</div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Coins className="w-4 h-4 text-yellow-400" />
+                      <span className="text-yellow-400 font-bold">{pilot.cost?.toLocaleString()}</span>
+                    </div>
+                    <CyberButton
+                      onClick={() => handleRecruit(pilot.id)}
+                      disabled={credits < pilot.cost || recruitMutation.isPending}
+                      className="text-xs px-2 py-1"
+                    >
+                      영입
+                    </CyberButton>
                   </div>
                 </div>
               </CardContent>

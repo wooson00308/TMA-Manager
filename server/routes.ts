@@ -88,6 +88,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/pilots/recruitable", async (req, res) => {
     try {
+      const allPilots = await storage.getAllPilots();
+      const recruitablePilots = allPilots.filter(pilot => !pilot.isActive).map(pilot => ({
+        ...pilot,
+        cost: Math.floor(pilot.rating * 100) + 1000,
+        background: `${pilot.dormitory} 기숙사 출신의 실력자`,
+        specialAbility: pilot.traits.includes('ACE') ? '에이스 파일럿 특성' : 
+                      pilot.traits.includes('VETERAN') ? '베테랑 경험' :
+                      pilot.traits.includes('GENIUS') ? '천재적 재능' :
+                      '균형잡힌 능력'
+      }));
+      res.json(recruitablePilots);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch recruitable pilots" });
+    }
+  });
+
+  app.get("/api/pilots/recruitable", async (req, res) => {
+    try {
       const recruitablePilots = [
         {
           id: 101,
@@ -335,6 +353,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(team);
     } catch (error) {
       res.status(500).json({ error: "Failed to spend credits" });
+    }
+  });
+
+  app.post("/api/pilots/:pilotId/recruit", async (req, res) => {
+    try {
+      const pilotId = parseInt(req.params.pilotId);
+      
+      // For now, just activate the pilot (simplified recruitment)
+      const pilot = await storage.updatePilot(pilotId, { isActive: true });
+      if (!pilot) {
+        return res.status(404).json({ error: "Pilot not found" });
+      }
+
+      res.json(pilot);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to recruit pilot" });
     }
   });
 
