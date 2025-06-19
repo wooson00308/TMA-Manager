@@ -30,6 +30,9 @@ interface BattleSimulationProps {
 export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element {
   const [currentTurn, setCurrentTurn] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [explosions, setExplosions] = useState<{id: string, x: number, y: number}[]>([]);
+  const [laserEffects, setLaserEffects] = useState<{id: string, from: {x: number, y: number}, to: {x: number, y: number}}[]>([]);
+  const battlefieldRef = useRef<HTMLDivElement>(null);
   const { addBattleLog, setBattle } = useBattleStore();
 
   const pilots = [
@@ -44,10 +47,27 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   // 아군 파일럿 ID 목록 동적 생성
   const getAllyPilotIds = () => {
     if (!battle?.participants) return [];
-    // 전장 좌측(x <= 10)에 배치된 유닛을 아군으로 판단
     return battle.participants
       .filter(p => p.position.x <= 10)
       .map(p => p.pilotId);
+  };
+
+  // 폭발 효과 생성
+  const createExplosion = (x: number, y: number) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setExplosions(prev => [...prev, { id, x, y }]);
+    setTimeout(() => {
+      setExplosions(prev => prev.filter(exp => exp.id !== id));
+    }, 1000);
+  };
+
+  // 레이저 효과 생성
+  const createLaserEffect = (from: {x: number, y: number}, to: {x: number, y: number}) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setLaserEffects(prev => [...prev, { id, from, to }]);
+    setTimeout(() => {
+      setLaserEffects(prev => prev.filter(laser => laser.id !== id));
+    }, 300);
   };
 
   const getPilotName = (pilotId: number) => {
