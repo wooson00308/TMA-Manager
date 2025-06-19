@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useBattleStore } from '@/stores/battleStore';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface BattleParticipant {
   pilotId: number;
