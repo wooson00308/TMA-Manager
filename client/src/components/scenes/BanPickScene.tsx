@@ -327,7 +327,7 @@ export function BanPickScene() {
         </CyberButton>
         
         {isComplete && (
-          <CyberButton onClick={() => handleStartBattle()}>
+          <CyberButton onClick={() => setScene('battle')}>
             전투 시작
           </CyberButton>
         )}

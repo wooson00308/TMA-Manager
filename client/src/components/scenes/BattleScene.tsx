@@ -13,6 +13,24 @@ export function BattleScene() {
   const [winner, setWinner] = useState<string | null>(null);
 
   useEffect(() => {
+    // Auto-start battle when entering scene if no current battle
+    if (!currentBattle && battleStatus === 'preparing') {
+      const autoStartBattle = () => {
+        const mockFormation1 = {
+          pilot1Id: 1, pilot2Id: 2, pilot3Id: 3,
+          mech1Id: 12, mech2Id: 13, mech3Id: 14
+        };
+        const mockFormation2 = {
+          pilot1Id: 101, pilot2Id: 102, pilot3Id: 103,
+          mech1Id: 15, mech2Id: 16, mech3Id: 17
+        };
+        
+        wsManager.startBattle(mockFormation1, mockFormation2);
+      };
+      
+      setTimeout(autoStartBattle, 1000);
+    }
+
     // Set up WebSocket listeners for battle updates
     const handleBattleStarted = (data: any) => {
       setBattle(data.state);
