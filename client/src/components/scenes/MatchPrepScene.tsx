@@ -4,6 +4,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
 import { CyberButton } from '@/components/ui/CyberButton';
 import { PilotCard } from '@/components/ui/PilotCard';
+import { BattleSimulation } from '@/components/BattleSimulation';
 import { Pilot, Mech, Team } from '@shared/schema';
 import { wsManager } from '@/lib/websocket';
 
@@ -645,16 +646,9 @@ function SimulationDisplay({
         </div>
       </div>
 
-      {/* 전투 상태 */}
+      {/* 실시간 전투 시뮬레이션 */}
       {currentBattle ? (
-        <div className="bg-gray-800 p-4 rounded border border-gray-600">
-          <h4 className="text-lg font-bold mb-3">전투 진행 상황</h4>
-          <div className="text-sm text-gray-300">
-            <div>페이즈: {currentBattle.phase}</div>
-            <div>턴: {currentBattle.turn}</div>
-            <div>참가자: {currentBattle.participants.length}명</div>
-          </div>
-        </div>
+        <BattleSimulation battle={currentBattle} />
       ) : (
         <div className="text-center py-8">
           <div className="animate-pulse">
