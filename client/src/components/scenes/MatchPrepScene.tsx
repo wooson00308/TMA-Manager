@@ -49,88 +49,46 @@ export function MatchPrepScene() {
     enabled: true
   });
 
-  // 사용 가능한 메카 조회
+  // 사용 가능한 메크 조회
   const { data: availableMechs = [] } = useQuery({
     queryKey: ['/api/mechs/available'],
     enabled: true
   });
 
+  // 팀 데이터 조회
+  const { data: teams = [] } = useQuery({
+    queryKey: ['/api/teams'],
+    enabled: true
+  });
+
   useEffect(() => {
-    // 랜덤 적팀 선택
-    if (enemyTeams.length > 0 && !matchState.enemyTeam) {
-      const randomEnemy = enemyTeams[Math.floor(Math.random() * enemyTeams.length)];
-      setMatchState(prev => ({ ...prev, enemyTeam: randomEnemy }));
+    if (teams.length > 0 && !matchState.enemyTeam) {
+      const randomEnemyTeam = teams[Math.floor(Math.random() * teams.length)];
+      setMatchState(prev => ({ ...prev, enemyTeam: randomEnemyTeam }));
     }
-  }, [enemyTeams, matchState.enemyTeam]);
-
-  // WebSocket 연결 및 이벤트 리스너 설정
-  useEffect(() => {
-    const setupWebSocket = async () => {
-      try {
-        await wsManager.connect();
-        setConnected(true);
-        
-        // 전투 상태 업데이트 리스너
-        const handleBattleUpdate = (data: any) => {
-          console.log('Battle update received:', data);
-          if (data.update && data.update.battleState) {
-            console.log('Setting battle state from update:', data.update.battleState);
-            setBattle(data.update.battleState);
-          } else if (data.battleState) {
-            console.log('Setting battle state directly:', data.battleState);
-            setBattle(data.battleState);
-          }
-        };
-
-        // 전투 시작 리스너
-        const handleBattleStart = (data: any) => {
-          console.log('Battle started:', data);
-          console.log('Start keys:', Object.keys(data));
-          if (data.state) {
-            console.log('Setting battle state from start:', data.state);
-            setBattle(data.state);
-          }
-        };
-
-        wsManager.on('BATTLE_UPDATE', handleBattleUpdate);
-        wsManager.on('BATTLE_STARTED', handleBattleStart);
-
-        return () => {
-          wsManager.off('BATTLE_UPDATE', handleBattleUpdate);
-          wsManager.off('BATTLE_STARTED', handleBattleStart);
-        };
-      } catch (error) {
-        console.error('WebSocket connection failed:', error);
-        setConnected(false);
-      }
-    };
-
-    setupWebSocket();
-  }, [setBattle, setConnected]);
+  }, [teams, matchState.enemyTeam]);
 
   const stepTitles = {
-    roster: '1단계: 출전 로스터 선택',
-    banpick: '2단계: 스네이크 밴픽',
-    swap: '3단계: 픽 스왑',
-    strategy: '4단계: 전략 설정',
-    simulation: '5단계: 시뮬레이션'
+    roster: 'Step 1: 로스터 선택',
+    banpick: 'Step 2: 밴픽 단계',
+    swap: 'Step 3: 파일럿 배치',
+    strategy: 'Step 4: 전략 선택',
+    simulation: 'Step 5: 전투 시뮬레이션'
   };
 
   const strategies = [
-    { id: 'aggressive', name: '공격적 전술', description: '화력 +15%, 방어 -10%' },
-    { id: 'defensive', name: '수비적 전술', description: '방어 +20%, 속도 -5%' },
-    { id: 'balanced', name: '균형 전술', description: '모든 능력치 +5%' },
-    { id: 'formation_rush', name: '진형 돌파', description: '속도 +25%, HP -10%' }
+    { id: 'aggressive', name: '공격적 전술', description: '적극적인 공세로 빠른 승부' },
+    { id: 'defensive', name: '방어적 전술', description: '안정적인 수비에서 기회 포착' },
+    { id: 'balanced', name: '균형 전술', description: '상황에 따른 유연한 대응' }
   ];
 
-  // 1단계: 로스터 선택
   const handleSelectPilot = (pilot: Pilot) => {
-    if (matchState.selectedRoster.length >= 3) return;
-    
-    setMatchState(prev => ({
-      ...prev,
-      selectedRoster: [...prev.selectedRoster, pilot]
-    }));
+    if (matchState.selectedRoster.length < 3 && !matchState.selectedRoster.some(p => p.id === pilot.id)) {
+      setMatchState(prev => ({
+        ...prev,
+        selectedRoster: [...prev.selectedRoster, pilot]
+      }));
+    }
   };
 
   const handleRemovePilot = (pilotId: number) => {
@@ -140,69 +98,89 @@ export function MatchPrepScene() {
     }));
   };
 
-  // 2단계: 밴픽 처리
   const handleMechAction = (mech: Mech) => {
     const isBanPhase = banPickPhase.includes('ban');
-    
-    if (isBanPhase) {
-      // 밴 처리
-      setMatchState(prev => ({
-        ...prev,
-        bannedMechs: [...prev.bannedMechs, mech]
-      }));
-    } else {
-      // 픽 처리
-      const isPlayerPick = banPickPhase.includes('player');
-      setMatchState(prev => ({
-        ...prev,
-        pickedMechs: {
-          ...prev.pickedMechs,
-          [isPlayerPick ? 'player' : 'enemy']: [
-            ...prev.pickedMechs[isPlayerPick ? 'player' : 'enemy'],
-            mech
-          ]
-        }
-      }));
-    }
+    const isPlayerTurn = banPickPhase.includes('player');
 
-    // 다음 페이즈로 진행
-    const phases: BanPickPhase[] = [
+    if (isBanPhase) {
+      if (!matchState.bannedMechs.some(m => m.id === mech.id)) {
+        setMatchState(prev => ({
+          ...prev,
+          bannedMechs: [...prev.bannedMechs, mech]
+        }));
+        advanceBanPickPhase();
+      }
+    } else {
+      if (isPlayerTurn) {
+        if (matchState.pickedMechs.player.length < 3) {
+          setMatchState(prev => ({
+            ...prev,
+            pickedMechs: {
+              ...prev.pickedMechs,
+              player: [...prev.pickedMechs.player, mech]
+            }
+          }));
+          advanceBanPickPhase();
+        }
+      }
+    }
+  };
+
+  const advanceBanPickPhase = () => {
+    const phaseOrder: BanPickPhase[] = [
       'ban_enemy_1', 'ban_player_1', 'ban_player_2', 'ban_enemy_2',
       'pick_player_1', 'pick_enemy_1', 'pick_enemy_2', 'pick_player_2',
       'pick_player_3', 'pick_enemy_3', 'complete'
     ];
     
-    const currentIndex = phases.indexOf(banPickPhase);
-    if (currentIndex < phases.length - 1) {
-      setBanPickPhase(phases[currentIndex + 1]);
+    const currentIndex = phaseOrder.indexOf(banPickPhase);
+    if (currentIndex < phaseOrder.length - 1) {
+      const nextPhase = phaseOrder[currentIndex + 1];
+      setBanPickPhase(nextPhase);
+      
+      if (nextPhase.includes('enemy')) {
+        setTimeout(() => {
+          handleEnemyBanPick(nextPhase);
+        }, 1000);
+      }
+      
+      if (nextPhase === 'complete') {
+        goToStep('swap');
+      }
     }
   };
 
-  // AI 적팀 자동 선택
-  useEffect(() => {
-    const isEnemyTurn = banPickPhase.includes('enemy') && banPickPhase !== 'complete';
-    if (isEnemyTurn && Array.isArray(availableMechs) && availableMechs.length > 0) {
-      const selectableMechs = availableMechs.filter((mech: any) => 
-        !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
-        !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
-        !matchState.pickedMechs.enemy.some(picked => picked.id === mech.id)
-      );
+  const handleEnemyBanPick = (phase: BanPickPhase) => {
+    const availableForAction = (availableMechs as Mech[]).filter(mech => 
+      !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
+      !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
+      !matchState.pickedMechs.enemy.some(picked => picked.id === mech.id)
+    );
 
-      if (selectableMechs.length > 0) {
-        // AI 선택 로직: 높은 firepower 우선
-        const selectedMech = selectableMechs.reduce((best, current) => 
-          current.firepower > best.firepower ? current : best
-        );
-
-        // 1초 후 자동 선택
-        setTimeout(() => {
-          handleMechAction(selectedMech);
-        }, 1000);
+    if (availableForAction.length > 0) {
+      const randomMech = availableForAction[Math.floor(Math.random() * availableForAction.length)];
+      
+      if (phase.includes('ban')) {
+        setMatchState(prev => ({
+          ...prev,
+          bannedMechs: [...prev.bannedMechs, randomMech]
+        }));
+      } else {
+        setMatchState(prev => ({
+          ...prev,
+          pickedMechs: {
+            ...prev.pickedMechs,
+            enemy: [...prev.pickedMechs.enemy, randomMech]
+          }
+        }));
       }
+      
+      setTimeout(() => {
+        advanceBanPickPhase();
+      }, 500);
     }
-  }, [banPickPhase, availableMechs, matchState.bannedMechs, matchState.pickedMechs]);
+  };
 
-  // 3단계: 픽 스왑
   const handleAssignMech = (pilotId: number, mech: Mech) => {
     setMatchState(prev => ({
       ...prev,
@@ -213,507 +191,426 @@ export function MatchPrepScene() {
     }));
   };
 
-  // 단계 이동
   const goToStep = (step: MatchStep) => {
     setMatchState(prev => ({ ...prev, currentStep: step }));
   };
 
-  const canProceedToNext = () => {
-    switch (matchState.currentStep) {
-      case 'roster':
-        return matchState.selectedRoster.length === 3;
-      case 'banpick':
-        return banPickPhase === 'complete';
-      case 'swap':
-        return matchState.selectedRoster.every(pilot => 
-          matchState.pilotMechAssignments[pilot.id]
-        );
-      case 'strategy':
-        return matchState.selectedStrategy !== '';
-      default:
-        return false;
-    }
-  };
-
-  const handleStartSimulation = () => {
-    // 포메이션 데이터 구성
+  const handleStartBattle = () => {
     const formation = {
-      pilots: matchState.selectedRoster.map((pilot, index) => ({
-        pilotId: pilot.id,
-        mechId: matchState.pilotMechAssignments[pilot.id]?.id || 0,
-        position: { x: index * 2, y: 0 }
-      })),
-      strategy: matchState.selectedStrategy
+      pilots: matchState.selectedRoster.map(pilot => ({
+        pilot,
+        mech: matchState.pilotMechAssignments[pilot.id] || matchState.pickedMechs.player[0]
+      }))
     };
-
-    // 적팀 포메이션 (픽된 메카 사용)
+    
     const enemyFormation = {
-      pilots: matchState.pickedMechs.enemy.map((mech, index) => ({
-        pilotId: 100 + index, // 임시 적팀 파일럿 ID
-        mechId: mech.id,
-        position: { x: index * 2, y: 5 }
-      })),
-      strategy: 'balanced'
+      pilots: matchState.pickedMechs.enemy.slice(0, 3).map((mech, index) => ({
+        pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
+        mech
+      }))
     };
 
-    console.log('Starting battle with formations:', { formation, enemyFormation });
-    console.log('WebSocket connected:', wsManager.isConnected());
-    
-    // 시뮬레이션 단계로 이동 후 배틀 시작
-    goToStep('simulation');
-    
-    // 약간의 지연 후 배틀 시작 (UI 업데이트 완료 후)
     setTimeout(() => {
       wsManager.startBattle(formation, enemyFormation);
     }, 100);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white p-6">
-      {/* 진행 단계 표시 */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          {Object.entries(stepTitles).map(([step, title], index) => (
-            <div
-              key={step}
-              className={`flex items-center ${
-                matchState.currentStep === step ? 'text-cyan-400' : 'text-gray-500'
-              }`}
-            >
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  matchState.currentStep === step
-                    ? 'bg-cyan-400 text-black'
-                    : 'bg-gray-700'
-                }`}
-              >
-                {index + 1}
-              </div>
-              <span className="ml-2 text-sm">{title}</span>
-              {index < Object.keys(stepTitles).length - 1 && (
-                <div className="w-12 h-0.5 bg-gray-600 mx-4" />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 현재 단계별 컨텐츠 */}
-      <div className="flex-1">
-        {matchState.currentStep === 'roster' && (
-          <RosterSelection
-            availablePilots={availablePilots as Pilot[]}
-            selectedRoster={matchState.selectedRoster}
-            onSelectPilot={handleSelectPilot}
-            onRemovePilot={handleRemovePilot}
-          />
-        )}
-
-        {matchState.currentStep === 'banpick' && (
-          <BanPickPhase
-            availableMechs={availableMechs as Mech[]}
-            bannedMechs={matchState.bannedMechs}
-            pickedMechs={matchState.pickedMechs}
-            currentPhase={banPickPhase}
-            enemyTeam={matchState.enemyTeam}
-            onMechAction={handleMechAction}
-          />
-        )}
-
-        {matchState.currentStep === 'swap' && (
-          <PilotMechSwap
-            selectedRoster={matchState.selectedRoster}
-            pickedMechs={matchState.pickedMechs.player}
-            assignments={matchState.pilotMechAssignments}
-            onAssignMech={handleAssignMech}
-          />
-        )}
-
-        {matchState.currentStep === 'strategy' && (
-          <StrategySelection
-            strategies={strategies}
-            selectedStrategy={matchState.selectedStrategy}
-            onSelectStrategy={(strategy) => 
-              setMatchState(prev => ({ ...prev, selectedStrategy: strategy }))
-            }
-          />
-        )}
-
-        {matchState.currentStep === 'simulation' && (
-          <SimulationDisplay 
-            selectedRoster={matchState.selectedRoster}
-            pilotMechAssignments={matchState.pilotMechAssignments}
-            enemyPicks={matchState.pickedMechs.enemy}
-            strategy={matchState.selectedStrategy}
-          />
-        )}
-      </div>
-
-      {/* 하단 버튼 */}
-      <div className="flex justify-between mt-8">
-        <CyberButton
-          variant="secondary"
-          onClick={() => {
-            const steps: MatchStep[] = ['roster', 'banpick', 'swap', 'strategy', 'simulation'];
-            const currentIndex = steps.indexOf(matchState.currentStep);
-            if (currentIndex > 0) {
-              goToStep(steps[currentIndex - 1]);
-            }
-          }}
-          disabled={matchState.currentStep === 'roster'}
-        >
-          이전 단계
-        </CyberButton>
-
-        {matchState.currentStep !== 'simulation' && (
-          <CyberButton
-            variant="primary"
-            onClick={() => {
-              if (matchState.currentStep === 'strategy') {
-                handleStartSimulation();
-              } else {
-                const steps: MatchStep[] = ['roster', 'banpick', 'swap', 'strategy', 'simulation'];
-                const currentIndex = steps.indexOf(matchState.currentStep);
-                if (currentIndex < steps.length - 1) {
-                  goToStep(steps[currentIndex + 1]);
-                }
-              }
-            }}
-            disabled={!canProceedToNext()}
-          >
-            {matchState.currentStep === 'strategy' ? '시뮬레이션 시작' : '다음 단계'}
-          </CyberButton>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// 개별 단계 컴포넌트들
-function RosterSelection({ 
-  availablePilots, 
-  selectedRoster, 
-  onSelectPilot, 
-  onRemovePilot 
-}: {
-  availablePilots: Pilot[];
-  selectedRoster: Pilot[];
-  onSelectPilot: (pilot: Pilot) => void;
-  onRemovePilot: (pilotId: number) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-xl font-bold mb-4">출전할 파일럿 3명을 선택하세요 ({selectedRoster.length}/3)</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 선택된 로스터 */}
-        <div>
-          <h4 className="text-lg font-semibold mb-3 text-cyan-400">선택된 로스터</h4>
-          <div className="space-y-3">
-            {selectedRoster.map((pilot, index) => (
-              <div key={pilot.id} className="flex items-center justify-between bg-cyan-900/30 p-3 rounded border border-cyan-400/50">
-                <div>
-                  <span className="font-bold text-cyan-300">{index + 1}번</span>
-                  <span className="ml-2">{pilot.name} ({pilot.callsign})</span>
-                </div>
-                <CyberButton
-                  variant="danger"
-                  onClick={() => onRemovePilot(pilot.id)}
-                  className="text-xs px-2 py-1"
-                >
-                  제거
-                </CyberButton>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 사용 가능한 파일럿 */}
-        <div>
-          <h4 className="text-lg font-semibold mb-3">사용 가능한 파일럿</h4>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {availablePilots
-              .filter(pilot => !selectedRoster.some(selected => selected.id === pilot.id))
-              .map(pilot => (
-                <PilotCard
-                  key={pilot.id}
-                  pilot={pilot}
-                  onClick={() => onSelectPilot(pilot)}
-                />
-              ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function BanPickPhase({
-  availableMechs,
-  bannedMechs,
-  pickedMechs,
-  currentPhase,
-  enemyTeam,
-  onMechAction
-}: {
-  availableMechs: Mech[];
-  bannedMechs: Mech[];
-  pickedMechs: { player: Mech[]; enemy: Mech[] };
-  currentPhase: BanPickPhase;
-  enemyTeam: Team | null;
-  onMechAction: (mech: Mech) => void;
-}) {
-  const isBanPhase = currentPhase.includes('ban');
-  const isPlayerTurn = currentPhase.includes('player');
-  
-  const getPhaseText = () => {
-    if (currentPhase === 'complete') return '밴픽 완료!';
-    const action = isBanPhase ? '밴' : '픽';
-    const team = isPlayerTurn ? '우리 팀' : `${enemyTeam?.name || '적팀'}`;
-    return `${team} ${action} 차례`;
-  };
-
-  const selectableMechs = availableMechs.filter(mech => 
-    !bannedMechs.some(banned => banned.id === mech.id) &&
-    !pickedMechs.player.some(picked => picked.id === mech.id) &&
-    !pickedMechs.enemy.some(picked => picked.id === mech.id)
-  );
-
-  return (
-    <div>
-      <h3 className="text-xl font-bold mb-4">{getPhaseText()}</h3>
-      
-      {/* 밴픽 현황 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <div>
-          <h4 className="text-lg font-semibold mb-3 text-red-400">밴된 메카</h4>
-          <div className="space-y-2">
-            {bannedMechs.map(mech => (
-              <div key={mech.id} className="bg-red-900/30 p-2 rounded border border-red-400/50">
-                {mech.name}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-lg font-semibold mb-3 text-cyan-400">우리 팀 픽</h4>
-          <div className="space-y-2">
-            {pickedMechs.player.map(mech => (
-              <div key={mech.id} className="bg-cyan-900/30 p-2 rounded border border-cyan-400/50">
-                {mech.name}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <h4 className="text-lg font-semibold mb-3 text-orange-400">적팀 픽</h4>
-          <div className="space-y-2">
-            {pickedMechs.enemy.map(mech => (
-              <div key={mech.id} className="bg-orange-900/30 p-2 rounded border border-orange-400/50">
-                {mech.name}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 선택 가능한 메카 */}
-      {currentPhase !== 'complete' && isPlayerTurn && (
-        <div>
-          <h4 className="text-lg font-semibold mb-3">
-            {isBanPhase ? '밴할 메카를 선택하세요' : '픽할 메카를 선택하세요'}
-          </h4>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {selectableMechs.map(mech => (
-              <div
-                key={mech.id}
-                onClick={() => onMechAction(mech)}
-                className="bg-gray-800 p-4 rounded border border-gray-600 hover:border-cyan-400 cursor-pointer transition-colors"
-              >
-                <div className="font-bold">{mech.name}</div>
-                <div className="text-sm text-gray-400">{mech.type}</div>
-                <div className="text-xs mt-2">
-                  HP: {mech.hp} | 공격: {mech.firepower}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {!isPlayerTurn && currentPhase !== 'complete' && (
-        <div className="text-center py-8">
-          <div className="text-lg">상대방이 선택 중...</div>
-          <div className="mt-2 text-gray-400">잠시만 기다려주세요</div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PilotMechSwap({
-  selectedRoster,
-  pickedMechs,
-  assignments,
-  onAssignMech
-}: {
-  selectedRoster: Pilot[];
-  pickedMechs: Mech[];
-  assignments: { [pilotId: number]: Mech | null };
-  onAssignMech: (pilotId: number, mech: Mech) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-xl font-bold mb-4">파일럿과 메카를 매칭하세요</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {selectedRoster.map((pilot, index) => (
-          <div key={pilot.id} className="bg-gray-800 p-4 rounded border border-gray-600">
-            <h4 className="font-bold text-cyan-400 mb-3">
-              {index + 1}번: {pilot.name}
-            </h4>
-            
-            <div className="mb-4">
-              <div className="text-sm text-gray-400">현재 배정:</div>
-              <div className="text-white">
-                {assignments[pilot.id]?.name || '미배정'}
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm text-gray-400 mb-2">선택 가능한 메카:</div>
-              <div className="space-y-2">
-                {pickedMechs
-                  .filter(mech => 
-                    !Object.values(assignments).some(assigned => assigned?.id === mech.id) ||
-                    assignments[pilot.id]?.id === mech.id
-                  )
-                  .map(mech => (
-                    <button
-                      key={mech.id}
-                      onClick={() => onAssignMech(pilot.id, mech)}
-                      className={`w-full text-left p-2 rounded border transition-colors ${
-                        assignments[pilot.id]?.id === mech.id
-                          ? 'bg-cyan-900/50 border-cyan-400'
-                          : 'bg-gray-700 border-gray-500 hover:border-gray-400'
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
+      {/* 상단 헤더 - 고정형 진행 표시 */}
+      <div className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur-sm border-b border-cyan-400/30 p-4">
+        <div className="max-w-7xl mx-auto">
+          {/* 단계 진행 바 - 모바일 최적화 */}
+          <div className="flex items-center justify-between mb-2 overflow-x-auto custom-scrollbar">
+            {Object.entries(stepTitles).map(([step, title], index) => {
+              const isCompleted = Object.keys(stepTitles).indexOf(matchState.currentStep) > index;
+              const isCurrent = matchState.currentStep === step;
+              
+              return (
+                <div key={step} className="flex items-center flex-1 min-w-0">
+                  <div className="flex items-center min-w-0">
+                    <div
+                      className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-bold transition-all duration-300 ${
+                        isCurrent
+                          ? 'bg-cyan-400 text-black shadow-lg shadow-cyan-400/50 progress-glow'
+                          : isCompleted
+                          ? 'bg-green-500 text-white'
+                          : 'bg-gray-700 text-gray-400'
                       }`}
                     >
-                      <div className="font-semibold">{mech.name}</div>
-                      <div className="text-xs text-gray-400">
-                        {mech.type} | HP: {mech.hp}
+                      {isCompleted ? '✓' : index + 1}
+                    </div>
+                    <div className="ml-2 md:ml-3 min-w-0">
+                      <div className={`text-xs md:text-sm font-medium truncate ${
+                        isCurrent ? 'text-cyan-400' : isCompleted ? 'text-green-400' : 'text-gray-500'
+                      }`}>
+                        <span className="hidden md:inline">{title.split(': ')[1]}</span>
+                        <span className="md:hidden">{title.split(': ')[1].split(' ')[0]}</span>
                       </div>
-                    </button>
-                  ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function StrategySelection({
-  strategies,
-  selectedStrategy,
-  onSelectStrategy
-}: {
-  strategies: Array<{ id: string; name: string; description: string }>;
-  selectedStrategy: string;
-  onSelectStrategy: (strategy: string) => void;
-}) {
-  return (
-    <div>
-      <h3 className="text-xl font-bold mb-4">전투 전략을 선택하세요</h3>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {strategies.map(strategy => (
-          <div
-            key={strategy.id}
-            onClick={() => onSelectStrategy(strategy.id)}
-            className={`p-6 rounded border cursor-pointer transition-colors ${
-              selectedStrategy === strategy.id
-                ? 'bg-cyan-900/50 border-cyan-400'
-                : 'bg-gray-800 border-gray-600 hover:border-gray-400'
-            }`}
-          >
-            <h4 className="font-bold text-lg mb-2">{strategy.name}</h4>
-            <p className="text-gray-400">{strategy.description}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function SimulationDisplay({
-  selectedRoster,
-  pilotMechAssignments,
-  enemyPicks,
-  strategy
-}: {
-  selectedRoster: Pilot[];
-  pilotMechAssignments: { [pilotId: number]: Mech | null };
-  enemyPicks: Mech[];
-  strategy: string;
-}) {
-  const { currentBattle } = useBattleStore();
-  
-  return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h3 className="text-2xl font-bold mb-4">전투 시뮬레이션</h3>
-        <div className="text-lg text-cyan-400">전략: {strategy}</div>
-      </div>
-
-      {/* 팀 구성 요약 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-cyan-900/30 p-4 rounded border border-cyan-400/50">
-          <h4 className="text-lg font-bold text-cyan-400 mb-3">우리 팀</h4>
-          <div className="space-y-2">
-            {selectedRoster.map((pilot, index) => {
-              const assignedMech = pilotMechAssignments[pilot.id];
-              return (
-                <div key={pilot.id} className="flex justify-between text-sm">
-                  <span>{index + 1}. {pilot.name}</span>
-                  <span className="text-cyan-300">{assignedMech?.name || '미배정'}</span>
+                      <div className="text-xs text-gray-500 hidden md:block">
+                        {isCurrent ? '진행 중' : isCompleted ? '완료' : '대기'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {index < Object.keys(stepTitles).length - 1 && (
+                    <div className="flex-1 mx-2 md:mx-4 min-w-[20px]">
+                      <div className={`h-0.5 md:h-1 rounded-full transition-all duration-500 ${
+                        isCompleted ? 'bg-green-500' : 'bg-gray-700'
+                      }`} />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-        </div>
-
-        <div className="bg-red-900/30 p-4 rounded border border-red-400/50">
-          <h4 className="text-lg font-bold text-red-400 mb-3">적팀</h4>
-          <div className="space-y-2">
-            {enemyPicks.map((mech, index) => (
-              <div key={mech.id} className="flex justify-between text-sm">
-                <span>{index + 1}. AI 파일럿</span>
-                <span className="text-red-300">{mech.name}</span>
-              </div>
-            ))}
+          
+          {/* 현재 단계 설명 */}
+          <div className="text-center">
+            <h2 className="text-xl font-bold text-cyan-400">
+              {stepTitles[matchState.currentStep as keyof typeof stepTitles]}
+            </h2>
           </div>
         </div>
       </div>
-
-      {/* 실시간 전투 시뮬레이션 */}
-      {currentBattle ? (
-        <BattleSimulation battle={currentBattle} />
-      ) : (
-        <div className="text-center py-8">
-          <div className="animate-pulse">
-            <div className="text-lg mb-2">전투 시작 준비 중...</div>
-            <div className="text-gray-400">잠시만 기다려주세요</div>
-            <div className="text-xs text-gray-500 mt-4">
-              Debug: currentBattle = {currentBattle ? 'exists' : 'null'}
-              <br />
-              WebSocket: {wsManager.isConnected() ? 'connected' : 'disconnected'}
+      
+      {/* 메인 컨텐츠 영역 */}
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* 로스터 선택 */}
+        {matchState.currentStep === 'roster' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800/50 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-cyan-400 mb-4">선택된 파일럿 ({matchState.selectedRoster.length}/3)</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {matchState.selectedRoster.map((pilot, index) => (
+                  <div key={pilot.id} className="relative">
+                    <PilotCard 
+                      pilot={pilot} 
+                      onClick={() => {}} 
+                      selected={true}
+                    />
+                    <button
+                      onClick={() => handleRemovePilot(pilot.id)}
+                      className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              <h4 className="text-md font-semibold text-gray-300 mb-3">사용 가능한 파일럿</h4>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                {(availablePilots as Pilot[]).map(pilot => {
+                  const isSelected = matchState.selectedRoster.some(selected => selected.id === pilot.id);
+                  return (
+                    <PilotCard
+                      key={pilot.id}
+                      pilot={pilot}
+                      onClick={() => handleSelectPilot(pilot)}
+                      selected={isSelected}
+                      disabled={isSelected || matchState.selectedRoster.length >= 3}
+                    />
+                  );
+                })}
+              </div>
+              
+              <div className="flex justify-end mt-6">
+                <CyberButton
+                  onClick={() => goToStep('banpick')}
+                  disabled={matchState.selectedRoster.length !== 3}
+                  className="px-8 py-3"
+                >
+                  다음 단계: 밴픽
+                </CyberButton>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* 밴픽 단계 */}
+        {matchState.currentStep === 'banpick' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800/50 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-cyan-400">밴픽 단계</h3>
+                <div className="text-sm text-gray-300">
+                  vs {matchState.enemyTeam?.name || '적팀'}
+                </div>
+              </div>
+              
+              <div className="mb-6 p-4 bg-cyan-900/20 rounded border border-cyan-400/30">
+                <div className="text-center text-cyan-300">
+                  현재: {banPickPhase.includes('ban') ? '밴' : '픽'} 단계 - {banPickPhase.includes('player') ? '플레이어' : '적팀'} 턴
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h4 className="text-md font-semibold text-red-300 mb-3">밴된 메크 ({matchState.bannedMechs.length})</h4>
+                  <div className="grid grid-cols-2 gap-2 min-h-[100px] p-3 bg-red-900/20 rounded border border-red-400/30">
+                    {matchState.bannedMechs.map(mech => (
+                      <div key={mech.id} className="text-xs p-2 bg-red-800/50 rounded text-red-200">
+                        {mech.name}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-md font-semibold text-green-300 mb-3">
+                    선택된 메크 - 플레이어: {matchState.pickedMechs.player.length}/3, 적팀: {matchState.pickedMechs.enemy.length}/3
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="p-3 bg-blue-900/20 rounded border border-blue-400/30">
+                      <div className="text-sm text-blue-300 mb-1">플레이어</div>
+                      <div className="grid grid-cols-1 gap-1">
+                        {matchState.pickedMechs.player.map(mech => (
+                          <div key={mech.id} className="text-xs p-1 bg-blue-800/50 rounded text-blue-200">
+                            {mech.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-red-900/20 rounded border border-red-400/30">
+                      <div className="text-sm text-red-300 mb-1">적팀</div>
+                      <div className="grid grid-cols-1 gap-1">
+                        {matchState.pickedMechs.enemy.map(mech => (
+                          <div key={mech.id} className="text-xs p-1 bg-red-800/50 rounded text-red-200">
+                            {mech.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {banPickPhase.includes('player') && banPickPhase !== 'complete' && (
+                <div>
+                  <h4 className="text-md font-semibold text-gray-300 mb-3">
+                    {banPickPhase.includes('ban') ? '밴할' : '선택할'} 메크를 클릭하세요
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {(availableMechs as Mech[]).filter(mech => 
+                      !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
+                      !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
+                      !matchState.pickedMechs.enemy.some(picked => picked.id === mech.id)
+                    ).map(mech => (
+                      <button
+                        key={mech.id}
+                        onClick={() => handleMechAction(mech)}
+                        className="p-3 bg-gray-700 hover:bg-gray-600 rounded border border-gray-500 text-left transition-colors"
+                      >
+                        <div className="font-semibold text-sm">{mech.name}</div>
+                        <div className="text-xs text-gray-400">{mech.type}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {!banPickPhase.includes('player') && banPickPhase !== 'complete' && (
+                <div className="text-center py-8">
+                  <div className="text-cyan-300">적팀이 선택 중...</div>
+                  <div className="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mt-2"></div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 파일럿 배치 */}
+        {matchState.currentStep === 'swap' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800/50 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-cyan-400 mb-4">파일럿-메크 배치</h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-md font-semibold text-gray-300 mb-3">선택된 파일럿</h4>
+                  <div className="space-y-3">
+                    {matchState.selectedRoster.map((pilot, index) => (
+                      <div key={pilot.id} className="p-3 bg-gray-700 rounded border border-gray-500">
+                        <div className="font-semibold">{pilot.name}</div>
+                        <div className="text-sm text-gray-400">{pilot.callsign}</div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          배치된 메크: {matchState.pilotMechAssignments[pilot.id]?.name || '미배치'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-md font-semibold text-gray-300 mb-3">사용 가능한 메크</h4>
+                  <div className="space-y-2">
+                    {matchState.pickedMechs.player.map(mech => {
+                      const isAssigned = Object.values(matchState.pilotMechAssignments).some(assigned => assigned?.id === mech.id);
+                      const assignedPilot = Object.entries(matchState.pilotMechAssignments).find(([pilotId, assignedMech]) => assignedMech?.id === mech.id);
+                      
+                      return (
+                        <div key={mech.id} className="p-3 bg-gray-700 rounded border border-gray-500">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-semibold">{mech.name}</div>
+                              <div className="text-sm text-gray-400">{mech.type}</div>
+                              {isAssigned && assignedPilot && (
+                                <div className="text-xs text-cyan-400 mt-1">
+                                  배치됨: {matchState.selectedRoster.find(p => p.id === parseInt(assignedPilot[0]))?.name}
+                                </div>
+                              )}
+                            </div>
+                            {!isAssigned && (
+                              <select
+                                onChange={(e) => handleAssignMech(parseInt(e.target.value), mech)}
+                                className="bg-gray-600 text-white rounded px-2 py-1 text-sm"
+                                defaultValue=""
+                              >
+                                <option value="">파일럿 선택</option>
+                                {matchState.selectedRoster.filter(pilot => !matchState.pilotMechAssignments[pilot.id]).map(pilot => (
+                                  <option key={pilot.id} value={pilot.id}>{pilot.name}</option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between mt-6">
+                <CyberButton
+                  onClick={() => goToStep('banpick')}
+                  variant="secondary"
+                  className="px-6 py-2"
+                >
+                  이전
+                </CyberButton>
+                <CyberButton
+                  onClick={() => goToStep('strategy')}
+                  disabled={Object.keys(matchState.pilotMechAssignments).length !== 3}
+                  className="px-6 py-2"
+                >
+                  다음: 전략 선택
+                </CyberButton>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 전략 선택 */}
+        {matchState.currentStep === 'strategy' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800/50 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-cyan-400 mb-4">전투 전략 선택</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                {strategies.map(strategy => (
+                  <button
+                    key={strategy.id}
+                    onClick={() => setMatchState(prev => ({ ...prev, selectedStrategy: strategy.id }))}
+                    className={`p-4 rounded border-2 transition-all ${
+                      matchState.selectedStrategy === strategy.id
+                        ? 'border-cyan-400 bg-cyan-900/30'
+                        : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                    }`}
+                  >
+                    <div className="font-semibold text-lg">{strategy.name}</div>
+                    <div className="text-sm text-gray-400 mt-2">{strategy.description}</div>
+                  </button>
+                ))}
+              </div>
+              
+              <div className="flex justify-between">
+                <CyberButton
+                  onClick={() => goToStep('swap')}
+                  variant="secondary"
+                  className="px-6 py-2"
+                >
+                  이전
+                </CyberButton>
+                <CyberButton
+                  onClick={() => goToStep('simulation')}
+                  disabled={!matchState.selectedStrategy}
+                  className="px-6 py-2"
+                >
+                  최종 확인
+                </CyberButton>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 시뮬레이션 단계 */}
+        {matchState.currentStep === 'simulation' && (
+          <div className="space-y-6">
+            <div className="bg-gray-800/50 rounded-lg p-6">
+              <h3 className="text-lg font-bold text-cyan-400 mb-4">전투 준비 완료</h3>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h4 className="text-md font-semibold text-blue-300 mb-3">아군 편성</h4>
+                  <div className="space-y-2">
+                    {matchState.selectedRoster.map((pilot, index) => {
+                      const assignedMech = matchState.pilotMechAssignments[pilot.id];
+                      return (
+                        <div key={pilot.id} className="p-3 bg-blue-900/20 rounded border border-blue-400/30">
+                          <div className="font-semibold text-blue-200">{pilot.name}</div>
+                          <div className="text-sm text-blue-300">{assignedMech?.name}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="text-md font-semibold text-red-300 mb-3">적군 편성</h4>
+                  <div className="space-y-2">
+                    {matchState.pickedMechs.enemy.map((mech, index) => (
+                      <div key={mech.id} className="p-3 bg-red-900/20 rounded border border-red-400/30">
+                        <div className="font-semibold text-red-200">Enemy Pilot {index + 1}</div>
+                        <div className="text-sm text-red-300">{mech.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-cyan-900/20 p-4 rounded border border-cyan-400/30 mb-6">
+                <div className="text-center text-cyan-300">
+                  <div className="font-semibold">선택된 전략: {strategies.find(s => s.id === matchState.selectedStrategy)?.name}</div>
+                </div>
+              </div>
+              
+              <div className="flex justify-between">
+                <CyberButton
+                  onClick={() => goToStep('strategy')}
+                  variant="secondary"
+                  className="px-6 py-2"
+                >
+                  이전
+                </CyberButton>
+                <CyberButton
+                  onClick={handleStartBattle}
+                  className="px-8 py-3 text-lg"
+                >
+                  전투 시작!
+                </CyberButton>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 전투 진행 중일 때 */}
+        {currentBattle && (
+          <div className="mt-8">
+            <BattleSimulation battle={currentBattle} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

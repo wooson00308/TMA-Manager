@@ -329,68 +329,112 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
       {/* 실시간 통신 로그 (오른쪽) */}
       <div className="lg:col-span-1">
-        <div className="bg-black/80 p-4 rounded border border-cyan-400/50 h-full font-mono">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-cyan-300 font-bold text-sm">
-              ═══ TRINITY COMM ═══
-            </h4>
-            <div className="text-xs text-gray-400">
-              Turn {battle?.turn || 0}
+        <div className="bg-gray-900/60 backdrop-blur-sm rounded-lg border border-cyan-400/30 h-full overflow-hidden">
+          {/* 통신 헤더 */}
+          <div className="bg-cyan-900/40 px-4 py-3 border-b border-cyan-400/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <h4 className="text-cyan-300 font-bold text-sm">TRINITY COMM</h4>
+              </div>
+              <div className="text-xs text-cyan-200 bg-cyan-900/50 px-2 py-1 rounded">
+                Turn {battle?.turn || 0}
+              </div>
             </div>
           </div>
           
-          <div className="h-80 overflow-y-auto space-y-2 text-xs">
+          {/* 로그 영역 */}
+          <div className="p-3 h-80 overflow-y-auto custom-scrollbar">
             {battle?.log && battle.log.length > 0 ? (
-              battle.log.slice(-25).map((entry, index) => {
-                const timeStr = new Date(entry.timestamp).toLocaleTimeString('ko-KR', { 
-                  hour12: false, 
-                  hour: '2-digit', 
-                  minute: '2-digit', 
-                  second: '2-digit' 
-                });
-                
-                return (
-                  <div key={`${entry.timestamp}-${index}`} className="flex">
-                    <span className="text-gray-500 mr-2 font-mono text-xs">
-                      [{timeStr}]
-                    </span>
-                    <div className="flex-1">
+              <div className="space-y-3">
+                {battle.log.slice(-25).map((entry, index) => {
+                  const timeStr = new Date(entry.timestamp).toLocaleTimeString('ko-KR', { 
+                    hour12: false, 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                  });
+                  
+                  const isSystem = !entry.speaker;
+                  const isEnemy = entry.speaker && (entry.speaker.includes('Enemy') || entry.speaker.includes('적기'));
+                  
+                  return (
+                    <div 
+                      key={`${entry.timestamp}-${index}`} 
+                      className={`p-2 rounded-lg border-l-2 transition-all duration-300 ${
+                        isSystem 
+                          ? 'bg-gray-800/50 border-l-blue-400 text-blue-200' 
+                          : isEnemy
+                          ? 'bg-red-900/20 border-l-red-400'
+                          : 'bg-cyan-900/20 border-l-cyan-400'
+                      }`}
+                    >
+                      {/* 타임스탬프 */}
+                      <div className="text-xs text-gray-500 mb-1 font-mono">
+                        {timeStr}
+                      </div>
+                      
+                      {/* 메시지 내용 */}
                       {entry.speaker ? (
-                        <div className={`${
-                          entry.type === 'communication' ? 'text-cyan-300' :
-                          entry.type === 'attack' ? 'text-red-300' :
-                          entry.type === 'movement' ? 'text-yellow-300' :
-                          'text-green-300'
-                        }`}>
-                          <span className="font-bold text-white">
+                        <div className="space-y-1">
+                          <div className={`text-xs font-semibold ${
+                            isEnemy ? 'text-red-300' : 'text-cyan-300'
+                          }`}>
                             {entry.speaker}
-                          </span>
-                          <span className="text-gray-400 mx-1">▸</span>
-                          <span className="text-sm">{entry.message}</span>
+                          </div>
+                          <div className={`text-sm ${
+                            entry.type === 'communication' ? 'text-white' :
+                            entry.type === 'attack' ? 'text-red-200' :
+                            entry.type === 'movement' ? 'text-yellow-200' :
+                            'text-green-200'
+                          }`}>
+                            "{entry.message}"
+                          </div>
                         </div>
                       ) : (
-                        <div className="text-gray-400 italic text-sm">
-                          ● {entry.message}
+                        <div className="text-sm italic text-blue-200">
+                          {entry.message}
+                        </div>
+                      )}
+                      
+                      {/* 액션 타입 표시 */}
+                      {entry.speaker && (
+                        <div className="mt-1">
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            entry.type === 'communication' ? 'bg-cyan-900/50 text-cyan-200' :
+                            entry.type === 'attack' ? 'bg-red-900/50 text-red-200' :
+                            entry.type === 'movement' ? 'bg-yellow-900/50 text-yellow-200' :
+                            'bg-green-900/50 text-green-200'
+                          }`}>
+                            {entry.type === 'communication' ? '통신' :
+                             entry.type === 'attack' ? '공격' :
+                             entry.type === 'movement' ? '이동' : '행동'}
+                          </span>
                         </div>
                       )}
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             ) : (
-              <div className="text-center text-gray-500 italic py-8">
-                <div className="mb-2">📡</div>
-                <div>≫ 통신 대기 중 ≪</div>
-                <div className="text-xs mt-2">전투 시작 시 실시간 로그가 표시됩니다</div>
+              <div className="text-center text-gray-500 py-8 space-y-2">
+                <div className="text-2xl">📡</div>
+                <div className="text-base font-medium">통신 대기 중</div>
+                <div className="text-xs opacity-70">전투 시작 시 실시간 로그가 표시됩니다</div>
               </div>
             )}
           </div>
           
-          {/* 스크롤 표시기 */}
-          <div className="flex justify-center mt-3 pt-2 border-t border-gray-700">
-            <span className="text-xs text-gray-500">
-              ▼ 실시간 통신 ▼
-            </span>
+          {/* 하단 상태 표시 */}
+          <div className="bg-gray-800/50 px-4 py-2 border-t border-gray-700">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">
+                {battle?.log?.length || 0} 메시지
+              </span>
+              <span className="text-green-400">
+                ● LIVE
+              </span>
+            </div>
           </div>
         </div>
       </div>
