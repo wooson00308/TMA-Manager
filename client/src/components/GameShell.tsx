@@ -1,3 +1,4 @@
+import React from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
 import { HubScene } from './scenes/HubScene';
@@ -20,8 +21,15 @@ const sceneComponents = {
 };
 
 export function GameShell() {
-  const { currentScene, setScene, playerTeam, currentSeason, currentWeek } = useGameStore();
+  const { currentScene, setScene, playerTeam, currentSeason, currentWeek, initializePlayerTeam } = useGameStore();
   const { isConnected } = useBattleStore();
+
+  // Initialize player team on component mount
+  React.useEffect(() => {
+    if (!playerTeam) {
+      initializePlayerTeam();
+    }
+  }, [playerTeam, initializePlayerTeam]);
 
   const CurrentSceneComponent = sceneComponents[currentScene];
 

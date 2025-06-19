@@ -129,6 +129,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Team routes
+  app.get("/api/teams", async (req, res) => {
+    try {
+      const teams = await storage.getAllTeams();
+      res.json(teams);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch teams" });
+    }
+  });
+
   app.get("/api/teams/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);

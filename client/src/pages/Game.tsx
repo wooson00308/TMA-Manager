@@ -4,22 +4,19 @@ import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
 import { wsManager } from '@/lib/websocket';
 import { GameShell } from '@/components/GameShell';
+import type { Pilot, Mech } from '@shared/schema';
 
 export default function Game() {
-  const { setPlayerTeam, setPilots, setMechs } = useGameStore();
+  const { setPilots, setMechs } = useGameStore();
   const { setConnected } = useBattleStore();
 
   // Fetch initial game data
-  const { data: pilots } = useQuery({
+  const { data: pilots } = useQuery<Pilot[]>({
     queryKey: ['/api/pilots/active'],
   });
 
-  const { data: mechs } = useQuery({
+  const { data: mechs } = useQuery<Mech[]>({
     queryKey: ['/api/mechs/available'],
-  });
-
-  const { data: team } = useQuery({
-    queryKey: ['/api/teams/1'],
   });
 
   // Initialize WebSocket connection
@@ -29,15 +26,15 @@ export default function Game() {
         await wsManager.connect();
         setConnected(true);
 
-        wsManager.on('BATTLE_STARTED', (data) => {
+        wsManager.on('BATTLE_STARTED', (data: any) => {
           console.log('Battle started:', data);
         });
 
-        wsManager.on('BATTLE_UPDATE', (data) => {
+        wsManager.on('BATTLE_UPDATE', (data: any) => {
           console.log('Battle update:', data);
         });
 
-        wsManager.on('BATTLE_COMPLETE', (data) => {
+        wsManager.on('BATTLE_COMPLETE', (data: any) => {
           console.log('Battle complete:', data);
         });
 
@@ -63,9 +60,7 @@ export default function Game() {
     if (mechs) setMechs(mechs);
   }, [mechs, setMechs]);
 
-  useEffect(() => {
-    if (team) setPlayerTeam(team);
-  }, [team, setPlayerTeam]);
+  // Team initialization moved to GameShell
 
   return (
     <div className="min-h-screen terminal-bg text-gray-100 font-mono overflow-hidden">

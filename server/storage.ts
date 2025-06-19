@@ -26,6 +26,7 @@ export interface IStorage {
   getAvailableMechs(): Promise<Mech[]>;
 
   // Team management
+  getAllTeams(): Promise<Team[]>;
   getTeam(id: number): Promise<Team | undefined>;
   createTeam(team: InsertTeam): Promise<Team>;
   updateTeam(id: number, updates: Partial<Team>): Promise<Team | undefined>;
@@ -139,16 +140,159 @@ export class MemStorage implements IStorage {
         firepower: 95,
         range: 90,
         specialAbilities: ["Lock-On", "Piercing Shot"]
+      },
+      // Additional mechs for variety
+      {
+        name: "Knight Guardian",
+        type: "Knight", 
+        variant: "Heavy",
+        hp: 120,
+        armor: 100,
+        speed: 40,
+        firepower: 80,
+        range: 45,
+        specialAbilities: ["Fortress Mode", "Heavy Strike"]
+      },
+      {
+        name: "River Phantom",
+        type: "River",
+        variant: "Stealth", 
+        hp: 60,
+        armor: 35,
+        speed: 95,
+        firepower: 65,
+        range: 55,
+        specialAbilities: ["Stealth", "Silent Strike"]
+      },
+      {
+        name: "Arbiter Judge",
+        type: "Arbiter",
+        variant: "Command",
+        hp: 90,
+        armor: 70,
+        speed: 55,
+        firepower: 75,
+        range: 65,
+        specialAbilities: ["Command Boost", "Tactical Strike"]
+      },
+      {
+        name: "Titan Breaker",
+        type: "Custom",
+        variant: "Siege",
+        hp: 140,
+        armor: 90,
+        speed: 30,
+        firepower: 100,
+        range: 60,
+        specialAbilities: ["Siege Mode", "Armor Pierce"]
+      },
+      {
+        name: "Nova Striker", 
+        type: "Custom",
+        variant: "Energy",
+        hp: 75,
+        armor: 45,
+        speed: 80,
+        firepower: 85,
+        range: 70,
+        specialAbilities: ["Energy Burst", "Overcharge"]
       }
     ];
 
     defaultMechs.forEach(mech => this.createMech(mech));
 
-    // Initialize default team
-    this.createTeam({
-      name: "Trinity Squad",
-      currentSeason: 3,
-      leagueRank: 3
+    // Initialize default teams
+    const defaultTeams = [
+      { name: "Trinity Squad", currentSeason: 3, leagueRank: 3 },
+      { name: "Steel Ravens", currentSeason: 3, leagueRank: 4 },
+      { name: "Void Hunters", currentSeason: 3, leagueRank: 1 },
+      { name: "Crimson Lance", currentSeason: 3, leagueRank: 2 },
+      { name: "Ghost Protocol", currentSeason: 3, leagueRank: 5 },
+      { name: "Neon Spartans", currentSeason: 3, leagueRank: 6 },
+      { name: "Shadow Wolves", currentSeason: 3, leagueRank: 7 },
+      { name: "Iron Eagles", currentSeason: 3, leagueRank: 8 }
+    ];
+
+    defaultTeams.forEach(team => this.createTeam(team));
+
+    // Generate random pilots for each team
+    (this as any).generateRandomPilotsForTeams();
+    
+    // Create initial formations for each team
+    (this as any).createInitialFormations();
+  }
+
+  private generateRandomPilotsForTeams() {
+    const firstNames = ['Kai', 'Luna', 'Rex', 'Nova', 'Zara', 'Axel', 'Maya', 'Juno', 'Vex', 'Iris', 'Kira', 'Zephyr', 'Echo', 'Phoenix', 'Sage'];
+    const lastNames = ['Chen', 'Blackwood', 'Sterling', 'Cross', 'Vale', 'Storm', 'Fox', 'Kane', 'Voss', 'Reed', 'Stone', 'Blake', 'Nova', 'Grey', 'Ward'];
+    const dormitories = ['KNIGHT', 'RIVER', 'ARBITER'];
+    const traits = ['AGGRESSIVE', 'CAUTIOUS', 'ANALYTICAL', 'COOPERATIVE', 'INDEPENDENT', 'ASSAULT', 'DEFENSIVE', 'SUPPORT', 'SNIPER', 'SCOUT', 'ACE', 'VETERAN', 'ROOKIE', 'GENIUS'];
+
+    // Generate 5-7 pilots for each team
+    for (let teamId = 1; teamId <= 8; teamId++) {
+      const pilotCount = Math.floor(Math.random() * 3) + 5; // 5-7 pilots
+      
+      for (let i = 0; i < pilotCount; i++) {
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const name = `${firstName} ${lastName}`;
+        const callsign = `${firstName.toUpperCase()}-${Math.floor(Math.random() * 99) + 1}`;
+        const dormitory = dormitories[Math.floor(Math.random() * dormitories.length)];
+        
+        // Generate pilot traits (2-4 traits per pilot)
+        const pilotTraits = [];
+        const traitCount = Math.floor(Math.random() * 3) + 2;
+        const availableTraits = [...traits];
+        
+        for (let j = 0; j < traitCount; j++) {
+          const traitIndex = Math.floor(Math.random() * availableTraits.length);
+          pilotTraits.push(availableTraits.splice(traitIndex, 1)[0]);
+        }
+
+        this.createPilot({
+          name,
+          callsign,
+          dormitory,
+          rating: Math.floor(Math.random() * 40) + 40, // 40-80
+          reaction: Math.floor(Math.random() * 40) + 40,
+          accuracy: Math.floor(Math.random() * 40) + 40,
+          tactical: Math.floor(Math.random() * 40) + 40,
+          teamwork: Math.floor(Math.random() * 40) + 40,
+          traits: pilotTraits,
+          isActive: true
+        });
+      }
+    }
+  }
+
+  private createInitialFormations() {
+    const teams = Array.from(this.teams.values());
+    const allMechs = Array.from(this.mechs.values());
+    
+    teams.forEach(team => {
+      // Get pilots for this team (approximately distribute pilots among teams)
+      const teamPilots = Array.from(this.pilots.values()).slice(
+        (team.id - teams[0].id) * 3, 
+        (team.id - teams[0].id + 1) * 3
+      );
+      
+      if (teamPilots.length >= 3 && allMechs.length >= 3) {
+        // Assign mechs randomly
+        const shuffledMechs = [...allMechs].sort(() => Math.random() - 0.5);
+        const selectedMechs = shuffledMechs.slice(0, 3);
+        
+        this.createFormation({
+          teamId: team.id,
+          pilot1Id: teamPilots[0]?.id,
+          pilot2Id: teamPilots[1]?.id, 
+          pilot3Id: teamPilots[2]?.id,
+          mech1Id: selectedMechs[0]?.id,
+          mech2Id: selectedMechs[1]?.id,
+          mech3Id: selectedMechs[2]?.id,
+          formation: 'standard',
+          isActive: true
+        });
+      }
     });
   }
 
@@ -180,8 +324,17 @@ export class MemStorage implements IStorage {
   async createPilot(insertPilot: InsertPilot): Promise<Pilot> {
     const id = this.currentId++;
     const pilot: Pilot = { 
-      ...insertPilot, 
       id,
+      name: insertPilot.name,
+      callsign: insertPilot.callsign,
+      dormitory: insertPilot.dormitory,
+      rating: insertPilot.rating || 50,
+      reaction: insertPilot.reaction || 50,
+      accuracy: insertPilot.accuracy || 50,
+      tactical: insertPilot.tactical || 50,
+      teamwork: insertPilot.teamwork || 50,
+      traits: insertPilot.traits || [],
+      isActive: insertPilot.isActive ?? true,
       experience: 0,
       wins: 0,
       losses: 0
@@ -214,7 +367,19 @@ export class MemStorage implements IStorage {
 
   async createMech(insertMech: InsertMech): Promise<Mech> {
     const id = this.currentId++;
-    const mech: Mech = { ...insertMech, id };
+    const mech: Mech = { 
+      id,
+      name: insertMech.name,
+      type: insertMech.type,
+      variant: insertMech.variant,
+      hp: insertMech.hp,
+      armor: insertMech.armor,
+      speed: insertMech.speed,
+      firepower: insertMech.firepower,
+      range: insertMech.range,
+      specialAbilities: insertMech.specialAbilities || [],
+      isAvailable: insertMech.isAvailable ?? true
+    };
     this.mechs.set(id, mech);
     return mech;
   }
@@ -224,6 +389,10 @@ export class MemStorage implements IStorage {
   }
 
   // Team methods
+  async getAllTeams(): Promise<Team[]> {
+    return Array.from(this.teams.values());
+  }
+
   async getTeam(id: number): Promise<Team | undefined> {
     return this.teams.get(id);
   }
@@ -231,10 +400,12 @@ export class MemStorage implements IStorage {
   async createTeam(insertTeam: InsertTeam): Promise<Team> {
     const id = this.currentId++;
     const team: Team = { 
-      ...insertTeam, 
       id,
-      wins: 12,
-      losses: 5
+      name: insertTeam.name,
+      wins: Math.floor(Math.random() * 15) + 5,
+      losses: Math.floor(Math.random() * 10) + 2,
+      currentSeason: insertTeam.currentSeason || 3,
+      leagueRank: insertTeam.leagueRank || 8
     };
     this.teams.set(id, team);
     return team;
@@ -258,7 +429,18 @@ export class MemStorage implements IStorage {
 
   async createFormation(insertFormation: InsertFormation): Promise<Formation> {
     const id = this.currentId++;
-    const formation: Formation = { ...insertFormation, id };
+    const formation: Formation = { 
+      id,
+      teamId: insertFormation.teamId!,
+      pilot1Id: insertFormation.pilot1Id!,
+      pilot2Id: insertFormation.pilot2Id!,
+      pilot3Id: insertFormation.pilot3Id!,
+      mech1Id: insertFormation.mech1Id!,
+      mech2Id: insertFormation.mech2Id!,
+      mech3Id: insertFormation.mech3Id!,
+      formation: insertFormation.formation || 'standard',
+      isActive: insertFormation.isActive ?? false
+    };
     this.formations.set(id, formation);
     return formation;
   }
@@ -276,8 +458,14 @@ export class MemStorage implements IStorage {
   async createBattle(insertBattle: InsertBattle): Promise<Battle> {
     const id = this.currentId++;
     const battle: Battle = { 
-      ...insertBattle, 
       id,
+      teamAId: insertBattle.teamAId!,
+      teamBId: insertBattle.teamBId!,
+      winnerId: insertBattle.winnerId!,
+      battleData: insertBattle.battleData!,
+      season: insertBattle.season,
+      week: insertBattle.week,
+      status: insertBattle.status || 'pending',
       createdAt: new Date(),
       completedAt: null
     };
@@ -306,17 +494,39 @@ export class MemStorage implements IStorage {
 
   // Game state methods
   async getReconData(enemyTeamId: number): Promise<ReconData> {
-    // Mock reconnaissance data
+    const team = this.teams.get(enemyTeamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    // Get team's formation and pilots
+    const formation = Array.from(this.formations.values()).find(f => f.teamId === enemyTeamId && f.isActive);
+    const teamPilots = Array.from(this.pilots.values()).filter(p => 
+      formation && (p.id === formation.pilot1Id || p.id === formation.pilot2Id || p.id === formation.pilot3Id)
+    );
+
+    // Generate dynamic recon data based on actual team
+    const compositions = ["Knight-Heavy", "River-Scout", "Arbiter-Sniper", "Balanced-Formation", "Aggressive-Rush", "Defensive-Wall"];
+    const weaknesses = [
+      "Vulnerable to flanking maneuvers",
+      "Slow adaptation to formation changes", 
+      "Weak against long-range attacks",
+      "Poor coordination in close combat",
+      "Susceptible to electronic warfare",
+      "Limited mobility in defensive stance"
+    ];
+
     return {
-      teamName: "Steel Ravens",
-      recentWins: 8,
-      recentLosses: 4,
-      preferredComposition: ["Assault Heavy", "Support Medium", "Sniper Light"],
-      weaknesses: ["Long-range engagement", "Coordinated rushes"],
-      corePilots: [
-        { name: "Marcus Steel", traits: ["AGGRESSIVE", "VETERAN"], winRate: 0.73 },
-        { name: "Raven Night", traits: ["TACTICAL", "SNIPER"], winRate: 0.68 }
-      ]
+      teamName: team.name,
+      recentWins: team.wins,
+      recentLosses: team.losses,
+      preferredComposition: compositions.slice(0, 3),
+      weaknesses: weaknesses.slice(0, 2),
+      corePilots: teamPilots.slice(0, 3).map(pilot => ({
+        name: pilot.name,
+        traits: pilot.traits.slice(0, 3),
+        winRate: (pilot.wins / Math.max(pilot.wins + pilot.losses, 1)) || Math.random() * 0.3 + 0.5
+      }))
     };
   }
 }

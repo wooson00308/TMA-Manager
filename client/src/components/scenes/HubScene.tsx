@@ -101,7 +101,7 @@ export function HubScene() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <CyberButton onClick={() => setScene('battle')}>
+        <CyberButton onClick={() => setScene('formation')}>
           <div className="text-pink-400 font-semibold mb-2">
             <i className="fas fa-play mr-2"></i>START MATCH
           </div>
