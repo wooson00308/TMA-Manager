@@ -71,7 +71,6 @@ export function MatchPrepScene() {
   // 밴픽 단계 시작 시 첫 적군 턴 자동 실행
   useEffect(() => {
     if (matchState.currentStep === 'banpick' && banPickPhase === 'ban_enemy_1' && availableMechs.length > 0) {
-      console.log('[밴픽 시작] 첫 적군 턴 자동 실행');
       setTimeout(() => {
         handleEnemyBanPick('ban_enemy_1');
       }, 1500);
@@ -161,28 +160,21 @@ export function MatchPrepScene() {
   };
 
   const handleEnemyBanPick = (phase: BanPickPhase) => {
-    console.log(`[적군 AI] ${phase} 단계 실행 중...`);
-    
     const availableForAction = (availableMechs as Mech[]).filter(mech => 
       !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
       !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
       !matchState.pickedMechs.enemy.some(picked => picked.id === mech.id)
     );
 
-    console.log(`[적군 AI] 선택 가능한 메크: ${availableForAction.length}개`);
-
     if (availableForAction.length > 0) {
       const randomMech = availableForAction[Math.floor(Math.random() * availableForAction.length)];
-      console.log(`[적군 AI] 선택된 메크: ${randomMech.name}`);
       
       if (phase.includes('ban')) {
-        console.log(`[적군 AI] ${randomMech.name} 밴!`);
         setMatchState(prev => ({
           ...prev,
           bannedMechs: [...prev.bannedMechs, randomMech]
         }));
       } else {
-        console.log(`[적군 AI] ${randomMech.name} 픽!`);
         setMatchState(prev => ({
           ...prev,
           pickedMechs: {
@@ -193,11 +185,8 @@ export function MatchPrepScene() {
       }
       
       setTimeout(() => {
-        console.log(`[적군 AI] 다음 단계로 진행...`);
         advanceBanPickPhase();
-      }, 500);
-    } else {
-      console.log(`[적군 AI] 선택 가능한 메크가 없음!`);
+      }, 800);
     }
   };
 
@@ -212,15 +201,12 @@ export function MatchPrepScene() {
   };
 
   const goToStep = (step: MatchStep) => {
-    console.log(`[단계 이동] ${matchState.currentStep} → ${step}`);
     setMatchState(prev => ({ ...prev, currentStep: step }));
     
     // 밴픽 단계로 이동할 때 첫 적군 턴 자동 시작
     if (step === 'banpick') {
-      console.log('[밴픽 시작] 첫 번째 적군 밴 단계 시작');
       setBanPickPhase('ban_enemy_1');
       setTimeout(() => {
-        console.log('[밴픽 시작] handleEnemyBanPick 호출');
         handleEnemyBanPick('ban_enemy_1');
       }, 1000);
     }
@@ -389,8 +375,8 @@ export function MatchPrepScene() {
                 <div>
                   <h4 className="text-md font-semibold text-red-300 mb-3">밴된 메크 ({matchState.bannedMechs.length})</h4>
                   <div className="grid grid-cols-2 gap-2 min-h-[100px] p-3 bg-red-900/20 rounded border border-red-400/30">
-                    {matchState.bannedMechs.map(mech => (
-                      <div key={mech.id} className="text-xs p-2 bg-red-800/50 rounded text-red-200">
+                    {matchState.bannedMechs.map((mech, index) => (
+                      <div key={`banned-${mech.id}-${index}`} className="text-xs p-2 bg-red-800/50 rounded text-red-200">
                         {mech.name}
                       </div>
                     ))}
@@ -405,8 +391,8 @@ export function MatchPrepScene() {
                     <div className="p-3 bg-blue-900/20 rounded border border-blue-400/30">
                       <div className="text-sm text-blue-300 mb-1">플레이어</div>
                       <div className="grid grid-cols-1 gap-1">
-                        {matchState.pickedMechs.player.map(mech => (
-                          <div key={mech.id} className="text-xs p-1 bg-blue-800/50 rounded text-blue-200">
+                        {matchState.pickedMechs.player.map((mech, index) => (
+                          <div key={`player-pick-${mech.id}-${index}`} className="text-xs p-1 bg-blue-800/50 rounded text-blue-200">
                             {mech.name}
                           </div>
                         ))}
@@ -415,8 +401,8 @@ export function MatchPrepScene() {
                     <div className="p-3 bg-red-900/20 rounded border border-red-400/30">
                       <div className="text-sm text-red-300 mb-1">적팀</div>
                       <div className="grid grid-cols-1 gap-1">
-                        {matchState.pickedMechs.enemy.map(mech => (
-                          <div key={mech.id} className="text-xs p-1 bg-red-800/50 rounded text-red-200">
+                        {matchState.pickedMechs.enemy.map((mech, index) => (
+                          <div key={`enemy-pick-${mech.id}-${index}`} className="text-xs p-1 bg-red-800/50 rounded text-red-200">
                             {mech.name}
                           </div>
                         ))}
@@ -436,9 +422,9 @@ export function MatchPrepScene() {
                       !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
                       !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
                       !matchState.pickedMechs.enemy.some(picked => picked.id === mech.id)
-                    ).map(mech => (
+                    ).map((mech, index) => (
                       <button
-                        key={mech.id}
+                        key={`selectable-${mech.id}-${index}`}
                         onClick={() => handleMechAction(mech)}
                         className="p-3 bg-gray-700 hover:bg-gray-600 rounded border border-gray-500 text-left transition-colors"
                       >
