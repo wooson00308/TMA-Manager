@@ -23,6 +23,7 @@ export class WebSocketManager {
         this.ws.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data);
+            console.log('WebSocket received:', data.type, data);
             this.emit(data.type, data);
           } catch (error) {
             console.error('Failed to parse WebSocket message:', error);
