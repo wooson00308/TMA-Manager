@@ -29,7 +29,7 @@ interface MatchState {
 
 export function MatchPrepScene() {
   const { pilots, mechs, enemyTeams } = useGameStore();
-  const { setBattle, setConnected } = useBattleStore();
+  const { currentBattle, setBattle, setConnected } = useBattleStore();
   
   const [matchState, setMatchState] = useState<MatchState>({
     currentStep: 'roster',
@@ -62,6 +62,49 @@ export function MatchPrepScene() {
       setMatchState(prev => ({ ...prev, enemyTeam: randomEnemy }));
     }
   }, [enemyTeams, matchState.enemyTeam]);
+
+  // WebSocket 연결 및 이벤트 리스너 설정
+  useEffect(() => {
+    const setupWebSocket = async () => {
+      try {
+        await wsManager.connect();
+        setConnected(true);
+        
+        // 전투 상태 업데이트 리스너
+        const handleBattleUpdate = (data: any) => {
+          console.log('Battle update received:', data);
+          console.log('Update keys:', Object.keys(data));
+          if (data.update) {
+            console.log('Setting battle state from update:', data.update);
+            setBattle(data.update);
+          }
+        };
+
+        // 전투 시작 리스너
+        const handleBattleStart = (data: any) => {
+          console.log('Battle started:', data);
+          console.log('Start keys:', Object.keys(data));
+          if (data.state) {
+            console.log('Setting battle state from start:', data.state);
+            setBattle(data.state);
+          }
+        };
+
+        wsManager.on('BATTLE_UPDATE', handleBattleUpdate);
+        wsManager.on('BATTLE_STARTED', handleBattleStart);
+
+        return () => {
+          wsManager.off('BATTLE_UPDATE', handleBattleUpdate);
+          wsManager.off('BATTLE_STARTED', handleBattleStart);
+        };
+      } catch (error) {
+        console.error('WebSocket connection failed:', error);
+        setConnected(false);
+      }
+    };
+
+    setupWebSocket();
+  }, [setBattle, setConnected]);
 
   const stepTitles = {
     roster: '1단계: 출전 로스터 선택',
@@ -211,9 +254,16 @@ export function MatchPrepScene() {
       strategy: 'balanced'
     };
 
-    // 배틀 시작
-    wsManager.startBattle(formation, enemyFormation);
+    console.log('Starting battle with formations:', { formation, enemyFormation });
+    console.log('WebSocket connected:', wsManager.isConnected());
+    
+    // 시뮬레이션 단계로 이동 후 배틀 시작
     goToStep('simulation');
+    
+    // 약간의 지연 후 배틀 시작 (UI 업데이트 완료 후)
+    setTimeout(() => {
+      wsManager.startBattle(formation, enemyFormation);
+    }, 100);
   };
 
   return (
@@ -654,6 +704,11 @@ function SimulationDisplay({
           <div className="animate-pulse">
             <div className="text-lg mb-2">전투 시작 준비 중...</div>
             <div className="text-gray-400">잠시만 기다려주세요</div>
+            <div className="text-xs text-gray-500 mt-4">
+              Debug: currentBattle = {currentBattle ? 'exists' : 'null'}
+              <br />
+              WebSocket: {wsManager.isConnected() ? 'connected' : 'disconnected'}
+            </div>
           </div>
         </div>
       )}
