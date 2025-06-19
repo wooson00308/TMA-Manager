@@ -182,7 +182,7 @@ export function BanPickScene() {
       });
 
       // Start battle via WebSocket if connected
-      if (wsManager.ws && wsManager.ws.readyState === WebSocket.OPEN) {
+      if (wsManager.isConnected()) {
         wsManager.startBattle(playerFormation, enemyFormation);
       }
       

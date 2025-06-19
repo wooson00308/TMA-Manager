@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
-import { ASCIIBattlefield } from '@/components/ui/ASCIIBattlefield';
+import { BattleSimulation } from '@/components/BattleSimulation';
 import { CyberButton } from '@/components/ui/CyberButton';
 import { wsManager } from '@/lib/websocket';
 
@@ -165,9 +165,18 @@ export function BattleScene() {
       </div>
 
       <div className="grid grid-cols-3 gap-4 h-96">
-        {/* ASCII Battlefield */}
+        {/* Battle Simulation */}
         <div className="col-span-2">
-          <ASCIIBattlefield battleState={currentBattle} />
+          {currentBattle ? (
+            <BattleSimulation battle={currentBattle} />
+          ) : (
+            <div className="cyber-border bg-slate-800 p-4 flex items-center justify-center h-full">
+              <div className="text-gray-400 text-center">
+                <div className="text-xl mb-2">⚡</div>
+                <div>전투 데이터를 로딩 중...</div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Combat Log */}

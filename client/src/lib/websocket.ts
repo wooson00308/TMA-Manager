@@ -108,6 +108,10 @@ export class WebSocketManager {
       battleId
     });
   }
+
+  isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
 }
 
 export const wsManager = new WebSocketManager();
