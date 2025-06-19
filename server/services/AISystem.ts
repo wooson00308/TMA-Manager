@@ -1,4 +1,5 @@
 import { type BattleState } from "@shared/schema";
+import { storage } from "../storage";
 
 interface AIDecision {
   type: "MOVE" | "ATTACK" | "COMMUNICATE";
@@ -60,17 +61,36 @@ export class AISystem {
     }
   };
 
-  makeDecision(participant: any, battleState: BattleState, team: string): AIDecision {
-    const personality = this.pilotPersonalities[participant.pilotId as keyof typeof this.pilotPersonalities] || {
-      name: "Unknown Pilot",
-      callsign: "UNKNOWN",
-      dormitory: "UNKNOWN", 
-      traits: ["BALANCED"],
-      combat: ["Engaging target!"],
-      movement: ["Moving to position!"],
-      damage: ["Taking damage!"],
-      victory: ["Mission complete!"]
-    };
+  async makeDecision(participant: any, battleState: BattleState, team: string): Promise<AIDecision> {
+    // 실제 파일럿 데이터 가져오기
+    const pilot = await storage.getPilot(participant.pilotId);
+    
+    let personality;
+    if (pilot) {
+      // 실제 파일럿 정보 사용
+      personality = {
+        name: pilot.name,
+        callsign: pilot.callsign,
+        dormitory: pilot.dormitory,
+        traits: pilot.traits,
+        combat: this.getDialogueByTraits(pilot.traits, "combat"),
+        movement: this.getDialogueByTraits(pilot.traits, "movement"),
+        damage: this.getDialogueByTraits(pilot.traits, "damage"),
+        victory: this.getDialogueByTraits(pilot.traits, "victory")
+      };
+    } else {
+      // 하드코딩된 AI 적군 정보 사용
+      personality = this.pilotPersonalities[participant.pilotId as keyof typeof this.pilotPersonalities] || {
+        name: `Enemy-${participant.pilotId}`,
+        callsign: `TARGET-${participant.pilotId}`,
+        dormitory: "UNKNOWN", 
+        traits: ["BALANCED"],
+        combat: ["타겟 공격 중!"],
+        movement: ["포지션 이동!"],
+        damage: ["데미지 확인!"],
+        victory: ["임무 완료!"]
+      };
+    }
     
     const randomAction = Math.random();
     const isLowHP = participant.hp < 50;
