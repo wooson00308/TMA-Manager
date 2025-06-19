@@ -127,7 +127,7 @@ export type Formation = typeof formations.$inferSelect;
 export type InsertFormation = z.infer<typeof insertFormationSchema>;
 
 // Game state types
-export type GameScene = "hub" | "scouting" | "formation" | "recon" | "banpick" | "battle" | "analysis" | "match_prep";
+export type GameScene = "hub" | "match_prep" | "battle_view" | "analysis";
 
 export type PilotTrait = 
   | "AGGRESSIVE" | "CAUTIOUS" | "ANALYTICAL" | "COOPERATIVE" | "INDEPENDENT"
