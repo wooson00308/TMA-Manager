@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '@/stores/gameStore';
+import { useBattleStore } from '@/stores/battleStore';
 import { CyberButton } from '@/components/ui/CyberButton';
+import { wsManager } from '@/lib/websocket';
 import type { Mech } from '@shared/schema';
 
 type BanPickPhase = 'ban_enemy_1' | 'ban_player_1' | 'ban_player_2' | 'ban_enemy_2' | 
@@ -38,7 +40,8 @@ const phaseNames = {
 };
 
 export function BanPickScene() {
-  const { setScene, mechs } = useGameStore();
+  const { setScene, mechs, pilots } = useGameStore();
+  const { setBattle, setConnected } = useBattleStore();
   
   const [banPickState, setBanPickState] = useState<BanPickState>({
     phase: 'ban_enemy_1',
@@ -112,6 +115,50 @@ export function BanPickScene() {
   const isPlayerTurn = banPickState.phase.includes('player');
   const isBanPhase = banPickState.phase.startsWith('ban_');
   const isComplete = banPickState.phase === 'complete';
+
+  const handleStartBattle = async () => {
+    try {
+      // Get the top 3 active pilots for the battle
+      const activePilots = pilots.filter(p => p.isActive).slice(0, 3);
+      
+      if (activePilots.length < 3) {
+        alert('전투를 시작하려면 최소 3명의 활성 파일럿이 필요합니다.');
+        return;
+      }
+
+      // Create formation data with selected mechs and pilots
+      const playerFormation = {
+        pilot1Id: activePilots[0].id,
+        pilot2Id: activePilots[1].id,
+        pilot3Id: activePilots[2].id,
+        mech1Id: banPickState.selectedMechs.player[0]?.id || mechs[0].id,
+        mech2Id: banPickState.selectedMechs.player[1]?.id || mechs[1].id,
+        mech3Id: banPickState.selectedMechs.player[2]?.id || mechs[2].id,
+      };
+
+      const enemyFormation = {
+        pilot1Id: 101, // Enemy pilot IDs
+        pilot2Id: 102,
+        pilot3Id: 103,
+        mech1Id: banPickState.selectedMechs.enemy[0]?.id || mechs[3].id,
+        mech2Id: banPickState.selectedMechs.enemy[1]?.id || mechs[4].id,
+        mech3Id: banPickState.selectedMechs.enemy[2]?.id || mechs[5].id,
+      };
+
+      // Start battle via WebSocket
+      wsManager.startBattle(playerFormation, enemyFormation);
+      
+      // Set battle store state
+      setConnected(true);
+      
+      // Navigate to battle scene
+      setScene('battle');
+      
+    } catch (error) {
+      console.error('Failed to start battle:', error);
+      alert('전투 시작 중 오류가 발생했습니다.');
+    }
+  };
 
   return (
     <div className="scene-transition">
@@ -273,8 +320,8 @@ export function BanPickScene() {
         </CyberButton>
         
         {isComplete && (
-          <CyberButton onClick={() => setScene('formation')}>
-            편성 설정으로 진행
+          <CyberButton onClick={() => handleStartBattle()}>
+            전투 시작
           </CyberButton>
         )}
       </div>
