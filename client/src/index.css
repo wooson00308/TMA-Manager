@@ -1,0 +1,201 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(142, 76%, 36%);
+  --primary-foreground: hsl(355, 7%, 97%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+
+  /* TMA Custom Colors */
+  --cyber-green: hsl(122, 100%, 50%);
+  --cyber-pink: hsl(320, 100%, 50%);
+  --dark-navy: hsl(235, 26%, 13%);
+  --darker-navy: hsl(235, 33%, 9%);
+  --blue-accent: hsl(214, 67%, 22%);
+  --purple-accent: hsl(257, 33%, 36%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(142, 76%, 36%);
+  --primary-foreground: hsl(355, 7%, 97%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-mono antialiased bg-background text-foreground;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Orbitron', monospace;
+  }
+}
+
+/* TMA Custom Styles */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+.terminal-bg {
+  background: linear-gradient(135deg, var(--dark-navy) 0%, var(--darker-navy) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 65, 0.05) 2px,
+      rgba(0, 255, 65, 0.05) 4px
+    );
+  pointer-events: none;
+}
+
+.cyber-border {
+  border: 1px solid var(--cyber-green);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+}
+
+.cyber-glow {
+  animation: glow-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow-pulse {
+  from { 
+    box-shadow: 0 0 5px var(--cyber-green), 0 0 10px var(--cyber-green), 0 0 15px var(--cyber-green); 
+  }
+  to { 
+    box-shadow: 0 0 10px var(--cyber-green), 0 0 20px var(--cyber-green), 0 0 30px var(--cyber-green); 
+  }
+}
+
+.scan-line {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyber-green), transparent);
+  animation: scan-line 2s linear infinite;
+  z-index: 1000;
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.scene-transition {
+  transition: all 0.5s ease-in-out;
+}
+
+.status-panel {
+  background: rgba(26, 26, 46, 0.9);
+  backdrop-filter: blur(10px);
+}
+
+.ascii-art {
+  font-family: 'JetBrains Mono', monospace;
+  line-height: 1;
+  white-space: pre;
+}
+
+.matrix-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  opacity: 0.1;
+}
+
+@keyframes matrix-rain {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.matrix-rain {
+  animation: matrix-rain 20s linear infinite;
+}
+
+/* Cyberpunk UI elements */
+.cyber-button {
+  background: linear-gradient(135deg, var(--blue-accent) 0%, var(--purple-accent) 100%);
+  border: 1px solid var(--cyber-green);
+  color: white;
+  transition: all 0.3s ease;
+}
+
+.cyber-button:hover {
+  box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+  background: linear-gradient(135deg, var(--purple-accent) 0%, var(--blue-accent) 100%);
+}
+
+.trait-badge {
+  font-size: 0.7rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.trait-aggressive { background: hsl(0, 75%, 50%); }
+.trait-cautious { background: hsl(210, 50%, 50%); }
+.trait-analytical { background: hsl(45, 75%, 50%); }
+.trait-knight { background: hsl(60, 75%, 50%); }
+.trait-river { background: hsl(0, 75%, 50%); }
+.trait-arbiter { background: hsl(270, 75%, 50%); }
+.trait-assault { background: hsl(15, 75%, 50%); }
+.trait-support { background: hsl(120, 75%, 50%); }
+.trait-sniper { background: hsl(180, 75%, 50%); }
+
+/* Orbitron font class */
+.font-orbitron {
+  font-family: 'Orbitron', monospace;
+}
