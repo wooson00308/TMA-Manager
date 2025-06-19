@@ -63,16 +63,16 @@ export function BanPickScene() {
       return () => clearTimeout(timer);
     }
 
-    // 마지막 pick_enemy_3 완료 후 자동으로 complete 전환
-    if (banPickState.phase === 'pick_enemy_3' && 
-        banPickState.selectedMechs.enemy.length === 3 && 
-        banPickState.selectedMechs.player.length === 3) {
+    // 양팀 3기씩 선택 완료 시 자동으로 complete 전환
+    if ((banPickState.selectedMechs.enemy.length === 3 && 
+         banPickState.selectedMechs.player.length === 3) &&
+         banPickState.phase !== 'complete') {
       const timer = setTimeout(() => {
         setBanPickState(prev => ({
           ...prev,
           phase: 'complete'
         }));
-      }, 1000);
+      }, 500);
       
       return () => clearTimeout(timer);
     }
@@ -241,6 +241,14 @@ export function BanPickScene() {
             {isBanPhase ? '제한할 기체를 선택하세요' : '선택할 기체를 고르세요'}
           </div>
         )}
+        
+        {/* 디버그 정보 */}
+        <div className="text-xs text-gray-500 mt-2">
+          플레이어: {banPickState.selectedMechs.player.length}/3 | 
+          적팀: {banPickState.selectedMechs.enemy.length}/3 | 
+          Phase: {banPickState.phase} | 
+          Complete: {isComplete.toString()}
+        </div>
       </div>
 
       {/* Ban/Pick Progress */}
@@ -374,11 +382,28 @@ export function BanPickScene() {
           정찰로 돌아가기
         </CyberButton>
         
+        {/* 전투 시작 조건 확인 */}
+        {console.log('Button check:', {
+          isComplete,
+          playerMechs: banPickState.selectedMechs.player.length,
+          enemyMechs: banPickState.selectedMechs.enemy.length,
+          phase: banPickState.phase
+        })}
+        
         {(isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)) && (
           <CyberButton onClick={() => handleStartBattle()}>
             전투 시작
           </CyberButton>
         )}
+        
+        {/* 강제 전투 시작 버튼 (디버그용) */}
+        <CyberButton 
+          variant="secondary" 
+          onClick={() => handleStartBattle()}
+          className="ml-4"
+        >
+          강제 전투 시작 (디버그)
+        </CyberButton>
       </div>
     </div>
   );
