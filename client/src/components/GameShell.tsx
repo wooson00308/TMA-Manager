@@ -2,16 +2,24 @@ import React from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
 import { HubScene } from './scenes/HubScene';
-import { MatchPrepScene } from './scenes/MatchPrepScene';
-import { BattleViewScene } from './scenes/BattleViewScene';
+import { ScoutingScene } from './scenes/ScoutingScene';
+import { FormationScene } from './scenes/FormationScene';
+import { ReconScene } from './scenes/ReconScene';
+import { BanPickScene } from './scenes/BanPickScene';
+import { BattleScene } from './scenes/BattleScene';
 import { AnalysisScene } from './scenes/AnalysisScene';
+import { MatchPrepScene } from './scenes/MatchPrepScene';
 import { StatusPanel } from './ui/StatusPanel';
 
 const sceneComponents = {
   hub: HubScene,
-  match_prep: MatchPrepScene,
-  battle_view: BattleViewScene,
+  scouting: ScoutingScene,
+  formation: FormationScene,
+  recon: ReconScene,
+  banpick: BanPickScene,
+  battle: BattleScene,
   analysis: AnalysisScene,
+  match_prep: MatchPrepScene,
 };
 
 export function GameShell() {
