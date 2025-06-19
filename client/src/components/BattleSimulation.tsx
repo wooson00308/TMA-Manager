@@ -409,7 +409,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       
       setAttackEffects(prev => prev.filter(effect => currentTime - effect.startTime < 800));
       
-      battle.participants.forEach(participant => {
+      (battle.participants || []).forEach(participant => {
         const pilot = getPilotInfo(participant.pilotId);
         const x = participant.position.x * 40 + 20;
         const y = participant.position.y * 40 + 20;
@@ -507,194 +507,188 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     const tickInterval = setInterval(() => {
       const currentTime = Date.now();
       
-      setBattle(currentBattle => {
-        if (!currentBattle) return currentBattle;
-        
-        // 실시간 AI 행동 처리
-        const activeUnits = currentBattle.participants.filter((p: any) => p.status === 'active');
-        
-        if (activeUnits.length >= 1) {
-          // 1초 쿨다운 시스템
-          const availableUnits = activeUnits.filter((unit: any) => {
-            const lastActionTime = unit.lastActionTime || 0;
-            const cooldownTime = 1000; // 1초 쿨다운
-            return currentTime - lastActionTime > cooldownTime;
-          });
+      // 실시간 AI 행동 처리
+      const activeUnits = (battle.participants || []).filter((p: BattleParticipant) => p.status === 'active');
+      
+      if (activeUnits.length >= 1) {
+        // 1초 쿨다운 시스템
+        const availableUnits = activeUnits.filter((unit: BattleParticipant) => {
+          const lastActionTime = unit.lastActionTime || 0;
+          const cooldownTime = 1000; // 1초 쿨다운
+          return currentTime - lastActionTime > cooldownTime;
+        });
 
-          if (availableUnits.length > 0 && Math.random() < 0.6) { // 60% 확률로 행동
-            const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
-            const actorInfo = getPilotInfo(actor.pilotId);
+        if (availableUnits.length > 0 && Math.random() < 0.6) { // 60% 확률로 행동
+          const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
+          const actorInfo = getPilotInfo(actor.pilotId);
+          
+          const aiAction = determineAIAction(actor, battle, actorInfo);
+          
+          if (aiAction.type === 'ATTACK' && aiAction.target) {
+            const target = aiAction.target;
+            const attacker = aiAction.actor;
             
-            const aiAction = determineAIAction(actor, currentBattle, actorInfo);
+            const attackerTerrain = terrainFeatures.find(t => 
+              t.x === attacker.position.x && t.y === attacker.position.y
+            );
+            const targetTerrain = terrainFeatures.find(t => 
+              t.x === target.position.x && t.y === target.position.y
+            );
             
-            if (aiAction.type === 'ATTACK' && aiAction.target) {
-              const target = aiAction.target;
-              const attacker = aiAction.actor;
-              
-              const attackerTerrain = terrainFeatures.find(t => 
-                t.x === attacker.position.x && t.y === attacker.position.y
-              );
-              const targetTerrain = terrainFeatures.find(t => 
-                t.x === target.position.x && t.y === target.position.y
-              );
-              
-              setAnimatingUnits(new Set([attacker.pilotId]));
-              setTimeout(() => setAnimatingUnits(new Set()), 1500);
-              
-              const attackTypes: ('laser' | 'missile' | 'beam')[] = ['laser', 'missile', 'beam'];
-              let weaponType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
-              
-              if (actorInfo.initial === 'S') weaponType = 'laser';
-              else if (actorInfo.initial === 'M') weaponType = 'missile';
-              else if (actorInfo.initial === 'A') weaponType = 'beam';
-              
-              const attackEffect: AttackEffect = {
-                id: `${Date.now()}-${Math.random()}`,
-                from: attacker.position,
-                to: target.position,
-                startTime: Date.now(),
-                type: weaponType
-              };
-              setAttackEffects(prev => [...prev, attackEffect]);
-              
-              let baseDamage = Math.floor(Math.random() * 30) + 10;
-              let finalDamage = baseDamage;
-              
-              if (attackerTerrain?.type === 'elevation') {
-                finalDamage += Math.floor(baseDamage * 0.2);
-              }
-              
-              if (targetTerrain?.type === 'cover') {
-                finalDamage = Math.floor(finalDamage * 0.8);
-              }
-              
-              if (targetTerrain?.type === 'hazard') {
-                finalDamage += 5;
-              }
-              
-              const newLog = {
-                timestamp: Date.now(),
-                type: 'attack' as const,
-                message: `${aiAction.message} ${finalDamage} 데미지!${
-                  attackerTerrain?.type === 'elevation' ? ' [고지대]' : ''
-                }${targetTerrain?.type === 'cover' ? ' [엄폐]' : ''}${
-                  targetTerrain?.type === 'hazard' ? ' [위험지대]' : ''
-                }`,
-                speaker: actorInfo.name
-              };
-              
-              addBattleLog(newLog);
-              
-              const updatedParticipants = currentBattle.participants.map(p => {
-                if (p.pilotId === target.pilotId) {
-                  return {
-                    ...p,
-                    hp: Math.max(0, p.hp - finalDamage),
-                    status: p.hp - finalDamage <= 0 ? 'destroyed' as const : p.status
-                  };
-                }
-                if (p.pilotId === actor.pilotId) {
-                  return { ...p, lastActionTime: currentTime };
-                }
-                return p;
-              });
-              
-              return {
-                ...currentBattle,
-                turn: currentBattle.turn + 1,
-                participants: updatedParticipants,
-                log: [...currentBattle.log, newLog]
-              };
+            setAnimatingUnits(new Set([attacker.pilotId]));
+            setTimeout(() => setAnimatingUnits(new Set()), 1500);
+            
+            const attackTypes: ('laser' | 'missile' | 'beam')[] = ['laser', 'missile', 'beam'];
+            let weaponType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+            
+            if (actorInfo.initial === 'S') weaponType = 'laser';
+            else if (actorInfo.initial === 'M') weaponType = 'missile';
+            else if (actorInfo.initial === 'A') weaponType = 'beam';
+            
+            const attackEffect: AttackEffect = {
+              id: `${Date.now()}-${Math.random()}`,
+              from: attacker.position,
+              to: target.position,
+              startTime: Date.now(),
+              type: weaponType
+            };
+            setAttackEffects(prev => [...prev, attackEffect]);
+            
+            let baseDamage = Math.floor(Math.random() * 30) + 10;
+            let finalDamage = baseDamage;
+            
+            if (attackerTerrain?.type === 'elevation') {
+              finalDamage += Math.floor(baseDamage * 0.2);
             }
             
-            else if (aiAction.type === 'SUPPORT' && aiAction.target) {
-              const supportLog = {
-                timestamp: Date.now(),
-                type: 'system' as const,
-                message: aiAction.message,
-                speaker: actorInfo.name
-              };
-              addBattleLog(supportLog);
-              
-              const updatedParticipants = currentBattle.participants.map(p => {
-                if (p.pilotId === aiAction.target.pilotId) {
-                  return { ...p, hp: Math.min(100, p.hp + 15) };
-                }
-                if (p.pilotId === actor.pilotId) {
-                  return { ...p, lastActionTime: currentTime };
-                }
-                return p;
-              });
-              
-              return {
-                ...currentBattle,
-                turn: currentBattle.turn + 1,
-                participants: updatedParticipants,
-                log: [...currentBattle.log, supportLog]
-              };
+            if (targetTerrain?.type === 'cover') {
+              finalDamage = Math.floor(finalDamage * 0.8);
             }
             
-            else if (aiAction.type === 'RETREAT' || aiAction.type === 'SCOUT' || aiAction.type === 'MOVE') {
+            if (targetTerrain?.type === 'hazard') {
+              finalDamage += 5;
+            }
+            
+            const newLog = {
+              timestamp: Date.now(),
+              type: 'attack' as const,
+              message: `${aiAction.message} ${finalDamage} 데미지!${
+                attackerTerrain?.type === 'elevation' ? ' [고지대]' : ''
+              }${targetTerrain?.type === 'cover' ? ' [엄폐]' : ''}${
+                targetTerrain?.type === 'hazard' ? ' [위험지대]' : ''
+              }`,
+              speaker: actorInfo.name
+            };
+            
+            addBattleLog(newLog);
+            
+            const updatedParticipants = battle.participants.map((p: BattleParticipant) => {
+              if (p.pilotId === target.pilotId) {
+                return {
+                  ...p,
+                  hp: Math.max(0, p.hp - finalDamage),
+                  status: p.hp - finalDamage <= 0 ? 'destroyed' as const : p.status
+                };
+              }
+              if (p.pilotId === actor.pilotId) {
+                return { ...p, lastActionTime: currentTime };
+              }
+              return p;
+            });
+            
+            setBattle({
+              ...battle,
+              turn: battle.turn + 1,
+              participants: updatedParticipants,
+              log: [...(battle.log || []), newLog]
+            });
+          }
+          
+          else if (aiAction.type === 'SUPPORT' && aiAction.target) {
+            const supportLog = {
+              timestamp: Date.now(),
+              type: 'system' as const,
+              message: aiAction.message,
+              speaker: actorInfo.name
+            };
+            addBattleLog(supportLog);
+            
+            const updatedParticipants = battle.participants.map((p: BattleParticipant) => {
+              if (p.pilotId === aiAction.target.pilotId) {
+                return { ...p, hp: Math.min(100, p.hp + 15) };
+              }
+              if (p.pilotId === actor.pilotId) {
+                return { ...p, lastActionTime: currentTime };
+              }
+              return p;
+            });
+            
+            setBattle({
+              ...battle,
+              turn: battle.turn + 1,
+              participants: updatedParticipants,
+              log: [...(battle.log || []), supportLog]
+            });
+          }
+          
+          else if (aiAction.type === 'RETREAT' || aiAction.type === 'SCOUT' || aiAction.type === 'MOVE') {
+            setAnimatingUnits(new Set([actor.pilotId]));
+            setTimeout(() => setAnimatingUnits(new Set()), 1000);
+            
+            const moveLog = {
+              timestamp: Date.now(),
+              type: 'movement' as const,
+              message: aiAction.message,
+              speaker: actorInfo.name
+            };
+            addBattleLog(moveLog);
+            
+            const updatedParticipants = battle.participants.map((p: BattleParticipant) => {
+              if (p.pilotId === actor.pilotId) {
+                return { 
+                  ...p, 
+                  position: aiAction.newPosition || p.position, 
+                  lastActionTime: currentTime 
+                };
+              }
+              return p;
+            });
+            
+            setBattle({
+              ...battle,
+              turn: battle.turn + 1,
+              participants: updatedParticipants,
+              log: [...(battle.log || []), moveLog]
+            });
+          }
+          
+          else {
+            const actionLog = {
+              timestamp: Date.now(),
+              type: 'communication' as const,
+              message: aiAction.message,
+              speaker: actorInfo.name
+            };
+            addBattleLog(actionLog);
+            
+            if (aiAction.type === 'SPECIAL') {
               setAnimatingUnits(new Set([actor.pilotId]));
-              setTimeout(() => setAnimatingUnits(new Set()), 1000);
-              
-              const moveLog = {
-                timestamp: Date.now(),
-                type: 'movement' as const,
-                message: aiAction.message,
-                speaker: actorInfo.name
-              };
-              addBattleLog(moveLog);
-              
-              const updatedParticipants = currentBattle.participants.map(p => {
-                if (p.pilotId === actor.pilotId) {
-                  return { 
-                    ...p, 
-                    position: aiAction.newPosition || p.position, 
-                    lastActionTime: currentTime 
-                  };
-                }
-                return p;
-              });
-              
-              return {
-                ...currentBattle,
-                turn: currentBattle.turn + 1,
-                participants: updatedParticipants,
-                log: [...currentBattle.log, moveLog]
-              };
+              setTimeout(() => setAnimatingUnits(new Set()), 2000);
             }
             
-            else {
-              const actionLog = {
-                timestamp: Date.now(),
-                type: 'communication' as const,
-                message: aiAction.message,
-                speaker: actorInfo.name
-              };
-              addBattleLog(actionLog);
-              
-              if (aiAction.type === 'SPECIAL') {
-                setAnimatingUnits(new Set([actor.pilotId]));
-                setTimeout(() => setAnimatingUnits(new Set()), 2000);
-              }
-              
-              const updatedParticipants = currentBattle.participants.map(p => 
-                p.pilotId === actor.pilotId ? { ...p, lastActionTime: currentTime } : p
-              );
-              
-              return {
-                ...currentBattle,
-                turn: currentBattle.turn + 1,
-                participants: updatedParticipants,
-                log: [...currentBattle.log, actionLog]
-              };
-            }
+            const updatedParticipants = battle.participants.map((p: BattleParticipant) => 
+              p.pilotId === actor.pilotId ? { ...p, lastActionTime: currentTime } : p
+            );
+            
+            setBattle({
+              ...battle,
+              turn: battle.turn + 1,
+              participants: updatedParticipants,
+              log: [...(battle.log || []), actionLog]
+            });
           }
         }
-        
-        return currentBattle;
-      });
+      }
       
       // 전투 종료 조건 확인
       setCurrentTick(prev => {
@@ -857,7 +851,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           <div>
             <h4 className="text-md font-semibold text-blue-300 mb-3">아군 상태</h4>
             <div className="space-y-2">
-              {battle.participants
+              {(battle.participants || [])
                 .filter(p => getPilotInfo(p.pilotId).team === 'ally')
                 .map(participant => {
                   const pilot = getPilotInfo(participant.pilotId);
@@ -897,7 +891,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           <div>
             <h4 className="text-md font-semibold text-red-300 mb-3">적군 상태</h4>
             <div className="space-y-2">
-              {battle.participants
+              {(battle.participants || [])
                 .filter(p => getPilotInfo(p.pilotId).team === 'enemy')
                 .map(participant => {
                   const pilot = getPilotInfo(participant.pilotId);
@@ -939,7 +933,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       <div className="border-t border-cyan-400/20 p-4">
         <h4 className="text-md font-semibold text-gray-300 mb-3">실시간 전투 기록</h4>
         <div className="bg-gray-900 rounded max-h-32 overflow-y-auto custom-scrollbar">
-          {battle.log.slice(-8).map((logEntry, index) => (
+          {(battle.log || []).slice(-8).map((logEntry, index) => (
             <div key={index} className="p-2 border-b border-gray-700 last:border-b-0">
               <div className={`text-sm ${
                 logEntry.type === 'system' ? 'text-cyan-400' :
