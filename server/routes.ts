@@ -89,13 +89,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/pilots/recruitable", async (req, res) => {
     try {
       const allPilots = await storage.getAllPilots();
-      const recruitablePilots = allPilots.filter(pilot => !pilot.isActive).map(pilot => ({
+      const inactivePilots = allPilots.filter(pilot => !pilot.isActive);
+      
+      // Show 3-4 random recruitable pilots
+      const maxPilots = Math.min(4, inactivePilots.length);
+      const selectedCount = Math.max(3, maxPilots);
+      const shuffled = inactivePilots.sort(() => 0.5 - Math.random());
+      const recruitablePilots = shuffled.slice(0, selectedCount).map(pilot => ({
         ...pilot,
-        cost: Math.floor(pilot.rating * 100) + 1000,
+        cost: Math.floor(pilot.rating * 50) + 2000, // Higher cost based on rating
         background: `${pilot.dormitory} 기숙사 출신의 실력자`,
         specialAbility: pilot.traits.includes('ACE') ? '에이스 파일럿 특성' : 
                       pilot.traits.includes('VETERAN') ? '베테랑 경험' :
                       pilot.traits.includes('GENIUS') ? '천재적 재능' :
+                      pilot.traits.includes('ROOKIE') ? '신예 파일럿' :
                       '균형잡힌 능력'
       }));
       res.json(recruitablePilots);
@@ -360,13 +367,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const pilotId = parseInt(req.params.pilotId);
       
-      // For now, just activate the pilot (simplified recruitment)
-      const pilot = await storage.updatePilot(pilotId, { isActive: true });
-      if (!pilot) {
-        return res.status(404).json({ error: "Pilot not found" });
+      // Get pilot and calculate cost
+      const pilot = await storage.getPilot(pilotId);
+      if (!pilot || pilot.isActive) {
+        return res.status(404).json({ error: "Pilot not found or already recruited" });
       }
 
-      res.json(pilot);
+      const cost = Math.floor(pilot.rating * 50) + 2000;
+      
+      // Get Trinity Squad team (assuming team ID 1 for Trinity Squad)
+      const teams = await storage.getAllTeams();
+      const trinityTeam = teams.find(team => team.name === 'Trinity Squad');
+      
+      if (!trinityTeam || trinityTeam.credits < cost) {
+        return res.status(400).json({ error: "Insufficient credits" });
+      }
+
+      // Deduct credits and activate pilot
+      await storage.spendCredits(trinityTeam.id, cost);
+      const recruitedPilot = await storage.updatePilot(pilotId, { isActive: true });
+      
+      if (!recruitedPilot) {
+        return res.status(500).json({ error: "Failed to recruit pilot" });
+      }
+
+      res.json(recruitedPilot);
     } catch (error) {
       res.status(500).json({ error: "Failed to recruit pilot" });
     }

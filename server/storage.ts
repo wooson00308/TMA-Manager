@@ -72,44 +72,148 @@ export class MemStorage implements IStorage {
   }
 
   private initializeGameData() {
-    // Initialize default pilots
-    const defaultPilots: InsertPilot[] = [
+    // Initialize Trinity Squad pilots (5 active pilots)
+    const trinityPilots: InsertPilot[] = [
       {
         name: "Sasha Volkov",
-        callsign: "SASHA-03",
-        dormitory: "River",
-        rating: 87,
-        reaction: 92,
-        accuracy: 78,
-        tactical: 65,
-        teamwork: 75,
-        traits: ["AGGRESSIVE", "RIVER", "ASSAULT"]
-      },
-      {
-        name: "Mente Kazuki",
-        callsign: "MENTE-11",
+        callsign: "GHOST",
         dormitory: "Knight",
-        rating: 91,
-        reaction: 75,
-        accuracy: 85,
-        tactical: 95,
-        teamwork: 88,
-        traits: ["ANALYTICAL", "KNIGHT", "SUPPORT"]
+        rating: 78,
+        reaction: 82,
+        accuracy: 75,
+        tactical: 80,
+        teamwork: 73,
+        traits: ["AGGRESSIVE", "ACE"],
+        isActive: true
       },
       {
-        name: "Azuma Chen",
-        callsign: "AZUMA-07",
+        name: "Mei Chen",
+        callsign: "AZURE",
         dormitory: "Arbiter",
-        rating: 89,
-        reaction: 80,
-        accuracy: 96,
-        tactical: 90,
-        teamwork: 70,
-        traits: ["CAUTIOUS", "ARBITER", "SNIPER"]
+        rating: 71,
+        reaction: 68,
+        accuracy: 85,
+        tactical: 78,
+        teamwork: 67,
+        traits: ["ANALYTICAL", "SNIPER"],
+        isActive: true
+      },
+      {
+        name: "Alex Rodriguez",
+        callsign: "STORM",
+        dormitory: "River",
+        rating: 69,
+        reaction: 72,
+        accuracy: 66,
+        tactical: 65,
+        teamwork: 81,
+        traits: ["COOPERATIVE", "SUPPORT"],
+        isActive: true
+      },
+      {
+        name: "Jin Watanabe",
+        callsign: "BLADE",
+        dormitory: "Knight",
+        rating: 74,
+        reaction: 78,
+        accuracy: 71,
+        tactical: 73,
+        teamwork: 75,
+        traits: ["VETERAN", "ASSAULT"],
+        isActive: true
+      },
+      {
+        name: "Elena Vasquez",
+        callsign: "NOVA",
+        dormitory: "River",
+        rating: 67,
+        reaction: 65,
+        accuracy: 69,
+        tactical: 68,
+        teamwork: 79,
+        traits: ["SCOUT", "COOPERATIVE"],
+        isActive: true
       }
     ];
 
-    defaultPilots.forEach(pilot => this.createPilot(pilot));
+    // Initialize recruitable pilots (inactive)
+    const recruitablePilots: InsertPilot[] = [
+      {
+        name: "Viktor Kane",
+        callsign: "RAVEN",
+        dormitory: "Knight",
+        rating: 82,
+        reaction: 85,
+        accuracy: 79,
+        tactical: 81,
+        teamwork: 76,
+        traits: ["ACE", "AGGRESSIVE"],
+        isActive: false
+      },
+      {
+        name: "Luna Park",
+        callsign: "SHADOW",
+        dormitory: "Arbiter",
+        rating: 76,
+        reaction: 72,
+        accuracy: 88,
+        tactical: 84,
+        teamwork: 65,
+        traits: ["GENIUS", "SNIPER"],
+        isActive: false
+      },
+      {
+        name: "Marco Silva",
+        callsign: "TIDE",
+        dormitory: "River",
+        rating: 70,
+        reaction: 68,
+        accuracy: 71,
+        tactical: 75,
+        teamwork: 85,
+        traits: ["VETERAN", "SUPPORT"],
+        isActive: false
+      },
+      {
+        name: "Aria Kim",
+        callsign: "PHOENIX",
+        dormitory: "Knight",
+        rating: 79,
+        reaction: 83,
+        accuracy: 76,
+        tactical: 77,
+        teamwork: 74,
+        traits: ["ROOKIE", "ASSAULT"],
+        isActive: false
+      },
+      {
+        name: "Diego Morales",
+        callsign: "VIPER",
+        dormitory: "Arbiter",
+        rating: 73,
+        reaction: 70,
+        accuracy: 81,
+        tactical: 79,
+        teamwork: 68,
+        traits: ["ANALYTICAL", "DEFENSIVE"],
+        isActive: false
+      },
+      {
+        name: "Yuki Tanaka",
+        callsign: "FROST",
+        dormitory: "River",
+        rating: 68,
+        reaction: 66,
+        accuracy: 70,
+        tactical: 72,
+        teamwork: 82,
+        traits: ["CAUTIOUS", "SCOUT"],
+        isActive: false
+      }
+    ];
+
+    // Create all pilots
+    [...trinityPilots, ...recruitablePilots].forEach(pilot => this.createPilot(pilot));
 
     // Initialize default mechs
     const defaultMechs: InsertMech[] = [
@@ -433,55 +537,13 @@ export class MemStorage implements IStorage {
 
     defaultTeams.forEach(team => this.createTeam(team));
 
-    // Generate random pilots for each team
-    (this as any).generateRandomPilotsForTeams();
+
     
     // Create initial formations for each team
-    (this as any).createInitialFormations();
+    this.createInitialFormations();
   }
 
-  private generateRandomPilotsForTeams() {
-    const firstNames = ['Kai', 'Luna', 'Rex', 'Nova', 'Zara', 'Axel', 'Maya', 'Juno', 'Vex', 'Iris', 'Kira', 'Zephyr', 'Echo', 'Phoenix', 'Sage'];
-    const lastNames = ['Chen', 'Blackwood', 'Sterling', 'Cross', 'Vale', 'Storm', 'Fox', 'Kane', 'Voss', 'Reed', 'Stone', 'Blake', 'Nova', 'Grey', 'Ward'];
-    const dormitories = ['KNIGHT', 'RIVER', 'ARBITER'];
-    const traits = ['AGGRESSIVE', 'CAUTIOUS', 'ANALYTICAL', 'COOPERATIVE', 'INDEPENDENT', 'ASSAULT', 'DEFENSIVE', 'SUPPORT', 'SNIPER', 'SCOUT', 'ACE', 'VETERAN', 'ROOKIE', 'GENIUS'];
 
-    // Generate 5-7 pilots for each team
-    for (let teamId = 1; teamId <= 8; teamId++) {
-      const pilotCount = Math.floor(Math.random() * 3) + 5; // 5-7 pilots
-      
-      for (let i = 0; i < pilotCount; i++) {
-        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-        const name = `${firstName} ${lastName}`;
-        const callsign = `${firstName.toUpperCase()}-${Math.floor(Math.random() * 99) + 1}`;
-        const dormitory = dormitories[Math.floor(Math.random() * dormitories.length)];
-        
-        // Generate pilot traits (2-4 traits per pilot)
-        const pilotTraits = [];
-        const traitCount = Math.floor(Math.random() * 3) + 2;
-        const availableTraits = [...traits];
-        
-        for (let j = 0; j < traitCount; j++) {
-          const traitIndex = Math.floor(Math.random() * availableTraits.length);
-          pilotTraits.push(availableTraits.splice(traitIndex, 1)[0]);
-        }
-
-        this.createPilot({
-          name,
-          callsign,
-          dormitory,
-          rating: Math.floor(Math.random() * 40) + 40, // 40-80
-          reaction: Math.floor(Math.random() * 40) + 40,
-          accuracy: Math.floor(Math.random() * 40) + 40,
-          tactical: Math.floor(Math.random() * 40) + 40,
-          teamwork: Math.floor(Math.random() * 40) + 40,
-          traits: pilotTraits,
-          isActive: true
-        });
-      }
-    }
-  }
 
   private createInitialFormations() {
     const teams = Array.from(this.teams.values());
