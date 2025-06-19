@@ -7,6 +7,7 @@ interface BattleParticipant {
   position: { x: number; y: number };
   hp: number;
   status: 'active' | 'damaged' | 'destroyed';
+  lastActionTime?: number;
 }
 
 interface BattleState {
@@ -50,7 +51,7 @@ interface TerrainFeature {
 }
 
 export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element {
-  const [currentTurn, setCurrentTurn] = useState(0);
+  const [currentTick, setCurrentTick] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
   const [animatingUnits, setAnimatingUnits] = useState<Set<number>>(new Set());
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
@@ -164,7 +165,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     }
 
     // 특수 능력
-    if (battleState.turn > 3 && random < 0.15) {
+    if (battleState.turn > 5 && random < 0.15) {
       const abilities = ['오버드라이브', '정밀 조준', '일제 사격', '은폐 기동'];
       const ability = abilities[Math.floor(Math.random() * abilities.length)];
       return {
@@ -534,204 +535,235 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     };
   }, [battle, animatingUnits, attackEffects]);
 
-  // 시뮬레이션 로직
+  // 실시간 틱 시뮬레이션 로직
   useEffect(() => {
     if (battle && isSimulating) {
-      const interval = setInterval(() => {
-        setCurrentTurn(prev => {
-          const nextTurn = prev + 1;
+      const tickInterval = setInterval(() => {
+        setCurrentTick(prevTick => {
+          const nextTick = prevTick + 1;
           
-          if (nextTurn <= 10) {
-            // 다양한 AI 행동 시뮬레이션
+          // 실시간 틱마다 랜덤하게 유닛이 행동
+          const actionChance = Math.random();
+          if (actionChance < 0.4) { // 40% 확률로 행동 발생
+            // 실시간 AI 행동 처리
             const activeUnits = battle.participants.filter(p => p.status === 'active');
             if (activeUnits.length >= 1) {
-              const actor = activeUnits[Math.floor(Math.random() * activeUnits.length)];
-              const actorInfo = getPilotInfo(actor.pilotId);
+              // 각 유닛마다 개별 행동 쿨다운 시스템
+              const availableUnits = activeUnits.filter(unit => {
+                const lastActionTime = unit.lastActionTime || 0;
+                const cooldownTime = 3000; // 3초 쿨다운
+                return Date.now() - lastActionTime > cooldownTime;
+              });
+
+              if (availableUnits.length > 0) {
+                const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
+                const actorInfo = getPilotInfo(actor.pilotId);
+                
+                // AI 행동 결정 로직
+                const aiAction = determineAIAction(actor, battle, actorInfo);
               
-              // AI 행동 결정 로직
-              const aiAction = determineAIAction(actor, battle, actorInfo);
-              
-              // AI 행동 처리
-              if (aiAction.type === 'ATTACK' && aiAction.target) {
-                const target = aiAction.target;
-                const attacker = aiAction.actor;
-                const targetInfo = getPilotInfo(target.pilotId);
-                
-                // 지형 효과 계산
-                const attackerTerrain = terrainFeatures.find(t => 
-                  t.x === attacker.position.x && t.y === attacker.position.y
-                );
-                const targetTerrain = terrainFeatures.find(t => 
-                  t.x === target.position.x && t.y === target.position.y
-                );
-                
-                // 애니메이션 효과
-                setAnimatingUnits(new Set([attacker.pilotId]));
-                setTimeout(() => setAnimatingUnits(new Set()), 1500);
-                
-                // 공격 이펙트 (파일럿 특성에 따른 무기 선택)
-                const attackTypes: ('laser' | 'missile' | 'beam')[] = ['laser', 'missile', 'beam'];
-                let weaponType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
-                
-                // 파일럿별 선호 무기
-                if (actorInfo.initial === 'S') weaponType = 'laser'; // Sasha - 레이저
-                else if (actorInfo.initial === 'M') weaponType = 'missile'; // Mente - 미사일
-                else if (actorInfo.initial === 'A') weaponType = 'beam'; // Azuma - 빔
-                
-                const attackEffect: AttackEffect = {
-                  id: `${Date.now()}-${Math.random()}`,
-                  from: attacker.position,
-                  to: target.position,
-                  startTime: Date.now(),
-                  type: weaponType
-                };
-                setAttackEffects(prev => [...prev, attackEffect]);
-                
-                // 지형 효과가 적용된 데미지 계산
-                let baseDamage = Math.floor(Math.random() * 30) + 10;
-                let finalDamage = baseDamage;
-                
-                // 공격자 지형 보너스
-                if (attackerTerrain?.type === 'elevation') {
-                  finalDamage += Math.floor(baseDamage * 0.2);
+                // AI 행동 처리
+                if (aiAction.type === 'ATTACK' && aiAction.target) {
+                  const target = aiAction.target;
+                  const attacker = aiAction.actor;
+                  const targetInfo = getPilotInfo(target.pilotId);
+                  
+                  // 지형 효과 계산
+                  const attackerTerrain = terrainFeatures.find(t => 
+                    t.x === attacker.position.x && t.y === attacker.position.y
+                  );
+                  const targetTerrain = terrainFeatures.find(t => 
+                    t.x === target.position.x && t.y === target.position.y
+                  );
+                  
+                  // 애니메이션 효과
+                  setAnimatingUnits(new Set([attacker.pilotId]));
+                  setTimeout(() => setAnimatingUnits(new Set()), 1500);
+                  
+                  // 공격 이펙트 (파일럿 특성에 따른 무기 선택)
+                  const attackTypes: ('laser' | 'missile' | 'beam')[] = ['laser', 'missile', 'beam'];
+                  let weaponType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+                  
+                  // 파일럿별 선호 무기
+                  if (actorInfo.initial === 'S') weaponType = 'laser'; // Sasha - 레이저
+                  else if (actorInfo.initial === 'M') weaponType = 'missile'; // Mente - 미사일
+                  else if (actorInfo.initial === 'A') weaponType = 'beam'; // Azuma - 빔
+                  
+                  const attackEffect: AttackEffect = {
+                    id: `${Date.now()}-${Math.random()}`,
+                    from: attacker.position,
+                    to: target.position,
+                    startTime: Date.now(),
+                    type: weaponType
+                  };
+                  setAttackEffects(prev => [...prev, attackEffect]);
+                  
+                  // 지형 효과가 적용된 데미지 계산
+                  let baseDamage = Math.floor(Math.random() * 30) + 10;
+                  let finalDamage = baseDamage;
+                  
+                  // 공격자 지형 보너스
+                  if (attackerTerrain?.type === 'elevation') {
+                    finalDamage += Math.floor(baseDamage * 0.2);
+                  }
+                  
+                  // 방어자 지형 보너스
+                  if (targetTerrain?.type === 'cover') {
+                    finalDamage = Math.floor(finalDamage * 0.8);
+                  }
+                  
+                  // 위험지대 효과
+                  if (targetTerrain?.type === 'hazard') {
+                    finalDamage += 5;
+                  }
+                  
+                  const newLog = {
+                    timestamp: Date.now(),
+                    type: 'attack' as const,
+                    message: aiAction.message + ` ${finalDamage} 데미지!${
+                      attackerTerrain?.type === 'elevation' ? ' [고지대 보너스]' : ''
+                    }${targetTerrain?.type === 'cover' ? ' [엄폐 방어]' : ''}${
+                      targetTerrain?.type === 'hazard' ? ' [위험지대 피해]' : ''
+                    }`,
+                    speaker: actorInfo.name
+                  };
+                  
+                  addBattleLog(newLog);
+                  
+                  // HP 업데이트
+                  const updatedParticipants = battle.participants.map(p => {
+                    if (p.pilotId === target.pilotId) {
+                      return {
+                        ...p,
+                        hp: Math.max(0, p.hp - finalDamage),
+                        status: p.hp - finalDamage <= 0 ? 'destroyed' as const : p.status
+                      };
+                    }
+                    return p;
+                  });
+                  
+                  // 행동한 유닛의 쿨다운 업데이트
+                  const participantsWithCooldown = updatedParticipants.map(p => 
+                    p.pilotId === actor.pilotId 
+                      ? { ...p, lastActionTime: Date.now() }
+                      : p
+                  );
+                  
+                  setBattle({
+                    ...battle,
+                    turn: nextTick,
+                    participants: participantsWithCooldown,
+                    log: [...battle.log, newLog]
+                  });
                 }
                 
-                // 방어자 지형 보너스
-                if (targetTerrain?.type === 'cover') {
-                  finalDamage = Math.floor(finalDamage * 0.8);
+                // 다른 AI 행동들 처리
+                else if (aiAction.type === 'SUPPORT' && aiAction.target) {
+                  const supportLog = {
+                    timestamp: Date.now(),
+                    type: 'system' as const,
+                    message: aiAction.message,
+                    speaker: actorInfo.name
+                  };
+                  addBattleLog(supportLog);
+                  
+                  // 지원 효과 (HP 회복)
+                  const updatedParticipants = battle.participants.map(p => {
+                    if (p.pilotId === aiAction.target.pilotId) {
+                      return { ...p, hp: Math.min(100, p.hp + 15) };
+                    }
+                    return p.pilotId === actor.pilotId ? { ...p, lastActionTime: Date.now() } : p;
+                  });
+                  
+                  setBattle({
+                    ...battle,
+                    turn: nextTick,
+                    participants: updatedParticipants,
+                    log: [...battle.log, supportLog]
+                  });
                 }
                 
-                // 위험지대 효과
-                if (targetTerrain?.type === 'hazard') {
-                  finalDamage += 5;
+                else if (aiAction.type === 'RETREAT' || aiAction.type === 'SCOUT' || aiAction.type === 'MOVE') {
+                  // 이동 애니메이션
+                  setAnimatingUnits(new Set([actor.pilotId]));
+                  setTimeout(() => setAnimatingUnits(new Set()), 1000);
+                  
+                  const moveLog = {
+                    timestamp: Date.now(),
+                    type: 'movement' as const,
+                    message: aiAction.message,
+                    speaker: actorInfo.name
+                  };
+                  addBattleLog(moveLog);
+                  
+                  // 위치 업데이트
+                  const updatedParticipants = battle.participants.map(p => {
+                    if (p.pilotId === actor.pilotId && aiAction.newPosition) {
+                      return { ...p, position: aiAction.newPosition, lastActionTime: Date.now() };
+                    }
+                    return p;
+                  });
+                  
+                  setBattle({
+                    ...battle,
+                    turn: nextTick,
+                    participants: updatedParticipants,
+                    log: [...battle.log, moveLog]
+                  });
                 }
                 
-                const newLog = {
-                  timestamp: Date.now(),
-                  type: 'attack' as const,
-                  message: aiAction.message + ` ${finalDamage} 데미지!${
-                    attackerTerrain?.type === 'elevation' ? ' [고지대 보너스]' : ''
-                  }${targetTerrain?.type === 'cover' ? ' [엄폐 방어]' : ''}${
-                    targetTerrain?.type === 'hazard' ? ' [위험지대 피해]' : ''
-                  }`,
-                  speaker: actorInfo.name
-                };
+                else if (aiAction.type === 'SPECIAL') {
+                  const specialLog = {
+                    timestamp: Date.now(),
+                    type: 'system' as const,
+                    message: aiAction.message,
+                    speaker: actorInfo.name
+                  };
+                  addBattleLog(specialLog);
+                  
+                  // 특수 능력 효과는 시각적으로만 표현
+                  setAnimatingUnits(new Set([actor.pilotId]));
+                  setTimeout(() => setAnimatingUnits(new Set()), 2000);
+                  
+                  const updatedParticipants = battle.participants.map(p => 
+                    p.pilotId === actor.pilotId ? { ...p, lastActionTime: Date.now() } : p
+                  );
+                  
+                  setBattle({
+                    ...battle,
+                    turn: nextTick,
+                    participants: updatedParticipants,
+                    log: [...battle.log, specialLog]
+                  });
+                }
                 
-                addBattleLog(newLog);
-                
-                // HP 업데이트
-                const updatedParticipants = battle.participants.map(p => {
-                  if (p.pilotId === target.pilotId) {
-                    return {
-                      ...p,
-                      hp: Math.max(0, p.hp - finalDamage),
-                      status: p.hp - finalDamage <= 0 ? 'destroyed' as const : p.status
-                    };
-                  }
-                  return p;
-                });
-                
-                setBattle({
-                  ...battle,
-                  turn: nextTurn,
-                  participants: updatedParticipants,
-                  log: [...battle.log, newLog]
-                });
-              }
-              
-              // 다른 AI 행동들 처리
-              else if (aiAction.type === 'SUPPORT' && aiAction.target) {
-                const supportLog = {
-                  timestamp: Date.now(),
-                  type: 'system' as const,
-                  message: aiAction.message,
-                  speaker: actorInfo.name
-                };
-                addBattleLog(supportLog);
-                
-                // 지원 효과 (HP 회복)
-                const updatedParticipants = battle.participants.map(p => {
-                  if (p.pilotId === aiAction.target.pilotId) {
-                    return { ...p, hp: Math.min(100, p.hp + 15) };
-                  }
-                  return p;
-                });
-                
-                setBattle({
-                  ...battle,
-                  turn: nextTurn,
-                  participants: updatedParticipants,
-                  log: [...battle.log, supportLog]
-                });
-              }
-              
-              else if (aiAction.type === 'RETREAT' || aiAction.type === 'SCOUT' || aiAction.type === 'MOVE') {
-                // 이동 애니메이션
-                setAnimatingUnits(new Set([actor.pilotId]));
-                setTimeout(() => setAnimatingUnits(new Set()), 1000);
-                
-                const moveLog = {
-                  timestamp: Date.now(),
-                  type: 'movement' as const,
-                  message: aiAction.message,
-                  speaker: actorInfo.name
-                };
-                addBattleLog(moveLog);
-                
-                // 위치 업데이트
-                const updatedParticipants = battle.participants.map(p => {
-                  if (p.pilotId === actor.pilotId && aiAction.newPosition) {
-                    return { ...p, position: aiAction.newPosition };
-                  }
-                  return p;
-                });
-                
-                setBattle({
-                  ...battle,
-                  turn: nextTurn,
-                  participants: updatedParticipants,
-                  log: [...battle.log, moveLog]
-                });
-              }
-              
-              else if (aiAction.type === 'SPECIAL') {
-                const specialLog = {
-                  timestamp: Date.now(),
-                  type: 'system' as const,
-                  message: aiAction.message,
-                  speaker: actorInfo.name
-                };
-                addBattleLog(specialLog);
-                
-                // 특수 능력 효과는 시각적으로만 표현
-                setAnimatingUnits(new Set([actor.pilotId]));
-                setTimeout(() => setAnimatingUnits(new Set()), 2000);
-                
-                setBattle({
-                  ...battle,
-                  turn: nextTurn,
-                  log: [...battle.log, specialLog]
-                });
-              }
-              
-              else {
-                // 기본 행동 (대화, 방어 등)
-                const actionLog = {
-                  timestamp: Date.now(),
-                  type: 'communication' as const,
-                  message: aiAction.message,
-                  speaker: actorInfo.name
-                };
-                addBattleLog(actionLog);
-                
-                setBattle({
-                  ...battle,
-                  turn: nextTurn,
-                  log: [...battle.log, actionLog]
-                });
+                else {
+                  // 기본 행동 (대화, 방어 등)
+                  const actionLog = {
+                    timestamp: Date.now(),
+                    type: 'communication' as const,
+                    message: aiAction.message,
+                    speaker: actorInfo.name
+                  };
+                  addBattleLog(actionLog);
+                  
+                  const updatedParticipants = battle.participants.map(p => 
+                    p.pilotId === actor.pilotId ? { ...p, lastActionTime: Date.now() } : p
+                  );
+                  
+                  setBattle({
+                    ...battle,
+                    turn: nextTick,
+                    participants: updatedParticipants,
+                    log: [...battle.log, actionLog]
+                  });
+                }
               }
             }
-          } else {
+          }
+          
+          // 전투 종료 조건 확인 (실시간)
+          if (nextTick > 200) { // 최대 200틱 (약 3분 20초)
             setIsSimulating(false);
             const allyUnits = battle.participants.filter(p => {
               const info = getPilotInfo(p.pilotId);
@@ -742,31 +774,26 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               return info.team === 'enemy' && p.status === 'active';
             });
             
-            const winner = allyUnits.length > enemyUnits.length ? '아군' : '적군';
+            const winner = allyUnits.length > enemyUnits.length ? '아군' : 
+                         enemyUnits.length > allyUnits.length ? '적군' : '무승부';
             const endLog = {
               timestamp: Date.now(),
               type: 'system' as const,
-              message: `전투 종료! ${winner} 승리!`,
+              message: `전투 종료! ${winner}!`,
             };
             addBattleLog(endLog);
-            setBattle({
-              ...battle,
-              phase: 'completed',
-              turn: nextTurn,
-              log: [...battle.log, endLog]
-            });
           }
           
-          return nextTurn;
+          return nextTick;
         });
-      }, 2500);
+      }, 1000); // 1초마다 틱 실행 (실시간)
 
-      return () => clearInterval(interval);
+      return () => clearInterval(tickInterval);
     }
   }, [battle, isSimulating, addBattleLog, setBattle]);
 
   const startSimulation = () => {
-    setCurrentTurn(0);
+    setCurrentTick(0);
     setIsSimulating(true);
   };
 
@@ -785,13 +812,13 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       {/* 전투 상태 헤더 */}
       <div className="border-b border-cyan-400/20 p-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold text-cyan-400">2D 전투 시뮬레이션</h3>
+          <h3 className="text-lg font-bold text-cyan-400">실시간 전투 시뮬레이션</h3>
           <div className="flex items-center space-x-4">
             <div className="text-sm text-gray-300">
               페이즈: <span className="text-cyan-400">{battle.phase}</span>
             </div>
             <div className="text-sm text-gray-300">
-              턴: <span className="text-cyan-400">{battle.turn}</span>
+              틱: <span className="text-cyan-400">{currentTick}</span>
             </div>
           </div>
         </div>
@@ -801,14 +828,14 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             onClick={startSimulation}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
           >
-            시뮬레이션 시작
+            실시간 시뮬레이션 시작
           </button>
         )}
         
         {isSimulating && (
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-            <span className="text-green-400 text-sm">실시간 전투 진행 중...</span>
+            <span className="text-green-400 text-sm">실시간 전투 진행 중... (틱: {currentTick})</span>
           </div>
         )}
       </div>
