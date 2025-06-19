@@ -53,7 +53,7 @@ export function BanPickScene() {
     enemyTeamName: '스틸 레이븐스'
   });
 
-  // AI 자동 밴/픽
+  // AI 자동 밴/픽 및 완료 체크
   useEffect(() => {
     if (banPickState.phase.includes('enemy') && banPickState.phase !== 'complete') {
       const timer = setTimeout(() => {
@@ -62,7 +62,21 @@ export function BanPickScene() {
       
       return () => clearTimeout(timer);
     }
-  }, [banPickState.phase]);
+
+    // 마지막 pick_enemy_3 완료 후 자동으로 complete 전환
+    if (banPickState.phase === 'pick_enemy_3' && 
+        banPickState.selectedMechs.enemy.length === 3 && 
+        banPickState.selectedMechs.player.length === 3) {
+      const timer = setTimeout(() => {
+        setBanPickState(prev => ({
+          ...prev,
+          phase: 'complete'
+        }));
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [banPickState.phase, banPickState.selectedMechs]);
 
   const handleEnemyAction = () => {
     const availableMechs = mechs.filter(mech => 
@@ -84,7 +98,7 @@ export function BanPickScene() {
 
   const handleMechAction = (mech: Mech) => {
     const currentPhaseIndex = phaseSequence.indexOf(banPickState.phase);
-    if (currentPhaseIndex === -1 || currentPhaseIndex >= phaseSequence.length - 1) return;
+    if (currentPhaseIndex === -1) return;
 
     setBanPickState(prev => {
       const newState = { ...prev };
@@ -99,7 +113,13 @@ export function BanPickScene() {
         }
       }
       
-      newState.phase = phaseSequence[currentPhaseIndex + 1];
+      // 다음 단계로 진행 (마지막 단계라면 complete로)
+      if (currentPhaseIndex < phaseSequence.length - 1) {
+        newState.phase = phaseSequence[currentPhaseIndex + 1];
+      } else {
+        newState.phase = 'complete';
+      }
+      
       return newState;
     });
   };
@@ -354,7 +374,7 @@ export function BanPickScene() {
           정찰로 돌아가기
         </CyberButton>
         
-        {isComplete && (
+        {(isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)) && (
           <CyberButton onClick={() => handleStartBattle()}>
             전투 시작
           </CyberButton>
