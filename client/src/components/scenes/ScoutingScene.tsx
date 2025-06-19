@@ -455,6 +455,179 @@ export function ScoutingScene() {
                             상세
                           </CyberButton>
                         </DialogTrigger>
+                        
+                        {/* Pilot Details Modal Content */}
+                        {selectedPilot && selectedPilot.id === pilot.id && (
+                          <DialogContent className="max-w-4xl bg-gray-900 border-gray-700">
+                            <DialogHeader>
+                              <DialogTitle className="text-cyan-400 text-2xl flex items-center gap-3">
+                                <TrendingUp className="w-6 h-6" />
+                                {selectedPilot.name} - 상세 정보
+                              </DialogTitle>
+                            </DialogHeader>
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+                              {/* Basic Info */}
+                              <div className="space-y-4">
+                                <Card className="bg-gray-800 border-gray-700">
+                                  <CardHeader>
+                                    <CardTitle className="text-cyan-400">기본 정보</CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                      <div>
+                                        <span className="text-gray-400">콜사인:</span>
+                                        <div className="text-white">"{selectedPilot.callsign}"</div>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-400">기숙사:</span>
+                                        <div className="text-white">{selectedPilot.dormitory}</div>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-400">전체 평점:</span>
+                                        <div className="text-yellow-400 text-xl font-bold">{selectedPilot.rating}</div>
+                                      </div>
+                                      <div>
+                                        <span className="text-gray-400">활성 상태:</span>
+                                        <div className={selectedPilot.isActive ? 'text-green-400' : 'text-red-400'}>
+                                          {selectedPilot.isActive ? '활성' : '비활성'}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                      {selectedPilot.traits.map((trait) => (
+                                        <Badge key={trait} variant="secondary" className="bg-gray-700 text-gray-300">
+                                          {trait}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              </div>
+
+                              {/* Detailed Stats */}
+                              <div className="space-y-4">
+                                <Card className="bg-gray-800 border-gray-700">
+                                  <CardHeader>
+                                    <CardTitle className="text-cyan-400">능력치 상세</CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                    {[
+                                      { name: '반응속도', value: selectedPilot.reaction, icon: 'reaction' },
+                                      { name: '정확도', value: selectedPilot.accuracy, icon: 'accuracy' },
+                                      { name: '전술이해', value: selectedPilot.tactical, icon: 'tactical' },
+                                      { name: '팀워크', value: selectedPilot.teamwork, icon: 'teamwork' }
+                                    ].map((stat) => (
+                                      <div key={stat.name} className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                          <div className="flex items-center gap-2">
+                                            {getStatIcon(stat.icon)}
+                                            <span className="text-gray-300">{stat.name}</span>
+                                          </div>
+                                          <span className={`font-bold ${getStatColor(stat.value)}`}>{stat.value}</span>
+                                        </div>
+                                        <div className="w-full bg-gray-700 rounded-full h-2">
+                                          <div 
+                                            className={`h-2 rounded-full ${getStatColor(stat.value).includes('green') ? 'bg-green-500' : 
+                                              getStatColor(stat.value).includes('yellow') ? 'bg-yellow-500' : 'bg-red-500'}`}
+                                            style={{ width: `${stat.value}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </CardContent>
+                                </Card>
+
+                                {/* Status & Condition */}
+                                <Card className="bg-gray-800 border-gray-700">
+                                  <CardHeader>
+                                    <CardTitle className="text-cyan-400">현재 상태</CardTitle>
+                                  </CardHeader>
+                                  <CardContent className="space-y-4">
+                                    <div className="space-y-3">
+                                      <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                          <span className="text-gray-300">피로도</span>
+                                          <span className={selectedPilot.fatigue > 70 ? 'text-red-400' : 'text-gray-300'}>
+                                            {selectedPilot.fatigue}%
+                                          </span>
+                                        </div>
+                                        <div className="w-full bg-gray-700 rounded-full h-3">
+                                          <div 
+                                            className={`h-3 rounded-full ${getProgressColor(selectedPilot.fatigue, 'fatigue')}`}
+                                            style={{ width: `${selectedPilot.fatigue}%` }}
+                                          />
+                                        </div>
+                                      </div>
+
+                                      <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                          <span className="text-gray-300">사기</span>
+                                          <span className={selectedPilot.morale < 40 ? 'text-red-400' : 'text-gray-300'}>
+                                            {selectedPilot.morale}%
+                                          </span>
+                                        </div>
+                                        <div className="w-full bg-gray-700 rounded-full h-3">
+                                          <div 
+                                            className={`h-3 rounded-full ${getProgressColor(selectedPilot.morale, 'morale')}`}
+                                            style={{ width: `${selectedPilot.morale}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {selectedPilot.trainingUntil && (
+                                      <div className="bg-blue-900/30 p-3 rounded border border-blue-500/50">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Clock className="w-4 h-4 text-blue-400" />
+                                          <span className="text-blue-400 font-semibold">
+                                            {selectedPilot.trainingType} 훈련 진행 중
+                                          </span>
+                                        </div>
+                                        <div className="text-xs text-blue-300">
+                                          완료까지: {trainingCountdowns[selectedPilot.id] ? 
+                                            formatTime(trainingCountdowns[selectedPilot.id]) : '계산 중...'}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Action Buttons in Modal */}
+                                    <div className="flex gap-2 pt-4 border-t border-gray-700">
+                                      {selectedPilot.fatigue > 50 && !selectedPilot.trainingUntil && (
+                                        <CyberButton
+                                          variant="secondary"
+                                          onClick={() => {
+                                            handleRest(selectedPilot.id);
+                                            setSelectedPilot(null);
+                                          }}
+                                          disabled={restMutation.isPending}
+                                          className="flex-1"
+                                        >
+                                          <Coffee className="w-4 h-4 mr-2" />
+                                          휴식 명령
+                                        </CyberButton>
+                                      )}
+                                      
+                                      <CyberButton
+                                        variant="danger"
+                                        onClick={() => {
+                                          handleDismiss(selectedPilot.id);
+                                          setSelectedPilot(null);
+                                        }}
+                                        disabled={dismissMutation.isPending}
+                                        className="flex-1"
+                                      >
+                                        <UserMinus className="w-4 h-4 mr-2" />
+                                        파일럿 해고
+                                      </CyberButton>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        )}
                       </Dialog>
 
                       {pilot.fatigue > 50 && !pilot.trainingUntil && (
@@ -629,229 +802,6 @@ export function ScoutingScene() {
             </Card>
           ))}
         </div>
-      )}
-
-      {/* Pilot Details Modal */}
-      {selectedPilot && (
-        <DialogContent className="max-w-4xl bg-gray-900 border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="text-cyan-400 text-2xl flex items-center gap-3">
-              <TrendingUp className="w-6 h-6" />
-              {selectedPilot.name} - 상세 정보
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
-            {/* Basic Info */}
-            <div className="space-y-4">
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">기본 정보</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-400">콜사인:</span>
-                      <div className="text-white">"{selectedPilot.callsign}"</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">기숙사:</span>
-                      <div className="text-white">{selectedPilot.dormitory}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">전체 평점:</span>
-                      <div className="text-yellow-400 text-xl font-bold">{selectedPilot.rating}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-400">활성 상태:</span>
-                      <div className={selectedPilot.isActive ? 'text-green-400' : 'text-red-400'}>
-                        {selectedPilot.isActive ? '활성' : '비활성'}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {selectedPilot.traits.map((trait) => (
-                      <Badge key={trait} variant="secondary" className="bg-gray-700 text-gray-300">
-                        {trait}
-                      </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Performance Stats */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">전투 기록</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-green-400">{selectedPilot.wins}</div>
-                      <div className="text-xs text-gray-400">승리</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-red-400">{selectedPilot.losses}</div>
-                      <div className="text-xs text-gray-400">패배</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-blue-400">
-                        {selectedPilot.wins + selectedPilot.losses > 0 
-                          ? Math.round((selectedPilot.wins / (selectedPilot.wins + selectedPilot.losses)) * 100)
-                          : 0}%
-                      </div>
-                      <div className="text-xs text-gray-400">승률</div>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <div className="text-sm text-gray-400 mb-2">경험치</div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-gray-700 rounded-full h-3">
-                        <div 
-                          className="h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
-                          style={{ width: `${Math.min((selectedPilot.experience / 1000) * 100, 100)}%` }}
-                        />
-                      </div>
-                      <span className="text-white font-semibold">{selectedPilot.experience}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Detailed Stats */}
-            <div className="space-y-4">
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">능력치 상세</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {[
-                    { name: '반응속도', value: selectedPilot.reaction, icon: 'reaction' },
-                    { name: '정확도', value: selectedPilot.accuracy, icon: 'accuracy' },
-                    { name: '전술이해', value: selectedPilot.tactical, icon: 'tactical' },
-                    { name: '팀워크', value: selectedPilot.teamwork, icon: 'teamwork' }
-                  ].map((stat) => (
-                    <div key={stat.name} className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                          {getStatIcon(stat.icon)}
-                          <span className="text-gray-300">{stat.name}</span>
-                        </div>
-                        <span className={`font-bold ${getStatColor(stat.value)}`}>{stat.value}</span>
-                      </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${getStatColor(stat.value).includes('green') ? 'bg-green-500' : 
-                            getStatColor(stat.value).includes('yellow') ? 'bg-yellow-500' : 'bg-red-500'}`}
-                          style={{ width: `${stat.value}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Status & Condition */}
-              <Card className="bg-gray-800 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-cyan-400">현재 상태</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-gray-300">피로도</span>
-                        <span className={selectedPilot.fatigue > 70 ? 'text-red-400' : 'text-gray-300'}>
-                          {selectedPilot.fatigue}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-700 rounded-full h-3">
-                        <div 
-                          className={`h-3 rounded-full ${getProgressColor(selectedPilot.fatigue, 'fatigue')}`}
-                          style={{ width: `${selectedPilot.fatigue}%` }}
-                        />
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {selectedPilot.fatigue > 80 ? '매우 피곤함' : 
-                         selectedPilot.fatigue > 60 ? '피곤함' : 
-                         selectedPilot.fatigue > 40 ? '보통' : '컨디션 양호'}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-gray-300">사기</span>
-                        <span className={selectedPilot.morale < 40 ? 'text-red-400' : 'text-gray-300'}>
-                          {selectedPilot.morale}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-700 rounded-full h-3">
-                        <div 
-                          className={`h-3 rounded-full ${getProgressColor(selectedPilot.morale, 'morale')}`}
-                          style={{ width: `${selectedPilot.morale}%` }}
-                        />
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        {selectedPilot.morale > 80 ? '매우 높음' : 
-                         selectedPilot.morale > 60 ? '높음' : 
-                         selectedPilot.morale > 40 ? '보통' : '낮음'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedPilot.trainingUntil && (
-                    <div className="bg-blue-900/30 p-3 rounded border border-blue-500/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className="w-4 h-4 text-blue-400" />
-                        <span className="text-blue-400 font-semibold">
-                          {selectedPilot.trainingType} 훈련 진행 중
-                        </span>
-                      </div>
-                      <div className="text-xs text-blue-300">
-                        완료까지: {trainingCountdowns[selectedPilot.id] ? 
-                          formatTime(trainingCountdowns[selectedPilot.id]) : '계산 중...'}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action Buttons in Modal */}
-                  <div className="flex gap-2 pt-4 border-t border-gray-700">
-                    {selectedPilot.fatigue > 50 && !selectedPilot.trainingUntil && (
-                      <CyberButton
-                        variant="secondary"
-                        onClick={() => {
-                          handleRest(selectedPilot.id);
-                          setSelectedPilot(null);
-                        }}
-                        disabled={restMutation.isPending}
-                        className="flex-1"
-                      >
-                        <Coffee className="w-4 h-4 mr-2" />
-                        휴식 명령
-                      </CyberButton>
-                    )}
-                    
-                    <CyberButton
-                      variant="danger"
-                      onClick={() => {
-                        handleDismiss(selectedPilot.id);
-                        setSelectedPilot(null);
-                      }}
-                      disabled={dismissMutation.isPending}
-                      className="flex-1"
-                    >
-                      <UserMinus className="w-4 h-4 mr-2" />
-                      파일럿 해고
-                    </CyberButton>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </DialogContent>
       )}
     </div>
   );
