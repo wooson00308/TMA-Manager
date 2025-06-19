@@ -78,6 +78,17 @@ export function BanPickScene() {
     }
   }, [banPickState.phase, banPickState.selectedMechs]);
 
+  // 디버그 정보 로그
+  useEffect(() => {
+    console.log('Ban/Pick State Debug:', {
+      phase: banPickState.phase,
+      isComplete,
+      playerMechs: banPickState.selectedMechs.player.length,
+      enemyMechs: banPickState.selectedMechs.enemy.length,
+      shouldShowButton: isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)
+    });
+  }, [banPickState, isComplete]);
+
   const handleEnemyAction = () => {
     const availableMechs = mechs.filter(mech => 
       !banPickState.bannedMechs.some(banned => banned.id === mech.id) &&
@@ -382,28 +393,22 @@ export function BanPickScene() {
           정찰로 돌아가기
         </CyberButton>
         
-        {/* 전투 시작 조건 확인 */}
-        {console.log('Button check:', {
-          isComplete,
-          playerMechs: banPickState.selectedMechs.player.length,
-          enemyMechs: banPickState.selectedMechs.enemy.length,
-          phase: banPickState.phase
-        })}
-        
-        {(isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)) && (
-          <CyberButton onClick={() => handleStartBattle()}>
-            전투 시작
+        {/* 전투 시작 버튼 */}
+        <div className="flex space-x-4">
+          {(isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)) && (
+            <CyberButton onClick={() => handleStartBattle()}>
+              전투 시작
+            </CyberButton>
+          )}
+          
+          {/* 강제 전투 시작 버튼 (디버그용) */}
+          <CyberButton 
+            variant="secondary" 
+            onClick={() => handleStartBattle()}
+          >
+            강제 전투 시작 (디버그)
           </CyberButton>
-        )}
-        
-        {/* 강제 전투 시작 버튼 (디버그용) */}
-        <CyberButton 
-          variant="secondary" 
-          onClick={() => handleStartBattle()}
-          className="ml-4"
-        >
-          강제 전투 시작 (디버그)
-        </CyberButton>
+        </div>
       </div>
     </div>
   );
