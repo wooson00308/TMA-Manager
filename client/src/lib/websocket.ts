@@ -9,8 +9,19 @@ export class WebSocketManager {
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // Handle different environments (Replit, localhost, etc.)
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-        const wsUrl = `${protocol}//${window.location.host}/ws`;
+        let host = window.location.host;
+        
+        // Ensure host is valid
+        if (!host || host === 'undefined') {
+          host = 'localhost:5000';
+        }
+        
+        const wsUrl = `${protocol}//${host}/ws`;
+        
+        console.log('Attempting to connect to WebSocket:', wsUrl);
+        console.log('Current location:', window.location);
         
         this.ws = new WebSocket(wsUrl);
 
