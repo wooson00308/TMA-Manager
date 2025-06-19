@@ -100,7 +100,7 @@ export function HubScene() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <CyberButton onClick={() => setScene('match_prep')}>
           <div className="text-pink-400 font-semibold mb-2">
             <i className="fas fa-play mr-2"></i>경기 준비
@@ -113,13 +113,6 @@ export function HubScene() {
             <i className="fas fa-users mr-2"></i>파일럿 관리
           </div>
           <div className="text-xs text-gray-400">영입 및 훈련</div>
-        </CyberButton>
-        
-        <CyberButton onClick={() => setScene('formation')}>
-          <div className="text-pink-400 font-semibold mb-2">
-            <i className="fas fa-cogs mr-2"></i>편성 관리
-          </div>
-          <div className="text-xs text-gray-400">기체-파일럿 조합</div>
         </CyberButton>
         
         <CyberButton onClick={() => setScene('analysis')}>
