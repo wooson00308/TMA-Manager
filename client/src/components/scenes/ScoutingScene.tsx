@@ -71,7 +71,7 @@ export function ScoutingScene() {
   // Training mutation
   const startTrainingMutation = useMutation({
     mutationFn: ({ pilotId, trainingType }: { pilotId: number; trainingType: string }) =>
-      apiRequest(`/api/pilots/${pilotId}/training`, 'POST', { trainingType }),
+      apiRequest('POST', `/api/pilots/${pilotId}/training`, { trainingType }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
     },
@@ -89,7 +89,7 @@ export function ScoutingScene() {
   // Recruitment mutation
   const recruitMutation = useMutation({
     mutationFn: (pilotId: number) =>
-      apiRequest(`/api/pilots/${pilotId}/recruit`, 'POST'),
+      apiRequest('POST', `/api/pilots/${pilotId}/recruit`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
       queryClient.invalidateQueries({ queryKey: ['/api/pilots/recruitable'] });
@@ -100,7 +100,7 @@ export function ScoutingScene() {
   // Rest mutation
   const restMutation = useMutation({
     mutationFn: (pilotId: number) =>
-      apiRequest(`/api/pilots/${pilotId}/rest`, 'POST'),
+      apiRequest('POST', `/api/pilots/${pilotId}/rest`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
     },
@@ -109,7 +109,7 @@ export function ScoutingScene() {
   // Dismiss mutation
   const dismissMutation = useMutation({
     mutationFn: (pilotId: number) =>
-      apiRequest(`/api/pilots/${pilotId}/dismiss`, 'POST'),
+      apiRequest('POST', `/api/pilots/${pilotId}/dismiss`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
       queryClient.invalidateQueries({ queryKey: ['/api/pilots/recruitable'] });
