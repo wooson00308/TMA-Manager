@@ -39,6 +39,14 @@ interface AttackEffect {
   from: { x: number; y: number };
   to: { x: number; y: number };
   startTime: number;
+  type: 'laser' | 'missile' | 'beam';
+}
+
+interface TerrainFeature {
+  x: number;
+  y: number;
+  type: 'cover' | 'obstacle' | 'elevation' | 'hazard';
+  effect: string;
 }
 
 export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element {
@@ -46,6 +54,13 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const [isSimulating, setIsSimulating] = useState(false);
   const [animatingUnits, setAnimatingUnits] = useState<Set<number>>(new Set());
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
+  const [terrainFeatures] = useState<TerrainFeature[]>([
+    { x: 4, y: 3, type: 'cover', effect: '방어력 +20%' },
+    { x: 8, y: 5, type: 'elevation', effect: '사거리 +1' },
+    { x: 12, y: 7, type: 'obstacle', effect: '이동 제한' },
+    { x: 6, y: 9, type: 'hazard', effect: '턴당 HP -5' },
+    { x: 10, y: 2, type: 'cover', effect: '방어력 +20%' },
+  ]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const { addBattleLog, setBattle } = useBattleStore();
@@ -113,6 +128,56 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         ctx.stroke();
       }
       
+      // 지형지물 렌더링
+      terrainFeatures.forEach(terrain => {
+        const x = terrain.x * 40 + 20;
+        const y = terrain.y * 40 + 20;
+        
+        ctx.save();
+        switch (terrain.type) {
+          case 'cover':
+            ctx.fillStyle = '#059669';
+            ctx.fillRect(terrain.x * 40 + 5, terrain.y * 40 + 5, 30, 30);
+            ctx.fillStyle = '#10B981';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('🛡️', x, y + 4);
+            break;
+          case 'elevation':
+            ctx.fillStyle = '#7C3AED';
+            ctx.beginPath();
+            ctx.moveTo(x, y - 15);
+            ctx.lineTo(x - 15, y + 10);
+            ctx.lineTo(x + 15, y + 10);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#A855F7';
+            ctx.font = '10px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('⬆️', x, y + 2);
+            break;
+          case 'obstacle':
+            ctx.fillStyle = '#DC2626';
+            ctx.fillRect(terrain.x * 40 + 8, terrain.y * 40 + 8, 24, 24);
+            ctx.fillStyle = '#EF4444';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('🚫', x, y + 4);
+            break;
+          case 'hazard':
+            ctx.fillStyle = '#F59E0B';
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.fillStyle = '#FBBF24';
+            ctx.font = '12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('⚠️', x, y + 4);
+            break;
+        }
+        ctx.restore();
+      });
+      
       // 공격 효과 렌더링 (유닛보다 먼저)
       const currentTime = Date.now();
       attackEffects.forEach(effect => {
@@ -127,16 +192,60 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         const toX = effect.to.x * 40 + 20;
         const toY = effect.to.y * 40 + 20;
         
-        // 레이저 효과
+        // 공격 타입별 시각 효과
         const alpha = 1 - progress;
-        ctx.strokeStyle = `rgba(251, 191, 36, ${alpha})`;
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#FBBF24';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.moveTo(fromX, fromY);
-        ctx.lineTo(toX, toY);
-        ctx.stroke();
+        ctx.shadowBlur = 0;
+        
+        switch (effect.type) {
+          case 'laser':
+            ctx.strokeStyle = `rgba(251, 191, 36, ${alpha})`;
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#FBBF24';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            break;
+            
+          case 'missile':
+            const missileProgress = progress * (toX - fromX);
+            const currentX = fromX + missileProgress;
+            const currentY = fromY + progress * (toY - fromY);
+            
+            ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(currentX, currentY, 4, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 미사일 궤적
+            ctx.strokeStyle = `rgba(239, 68, 68, ${alpha * 0.5})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(currentX, currentY);
+            ctx.stroke();
+            break;
+            
+          case 'beam':
+            ctx.strokeStyle = `rgba(147, 51, 234, ${alpha})`;
+            ctx.lineWidth = 6;
+            ctx.shadowColor = '#9333EA';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            
+            // 빔 코어
+            ctx.strokeStyle = `rgba(196, 181, 253, ${alpha})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(fromX, fromY);
+            ctx.lineTo(toX, toY);
+            ctx.stroke();
+            break;
+        }
         ctx.shadowBlur = 0;
         
         // 폭발 효과
@@ -266,7 +375,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           const nextTurn = prev + 1;
           
           if (nextTurn <= 10) {
-            // 랜덤 액션 시뮬레이션
+            // 향상된 AI 전투 시뮬레이션
             const activeUnits = battle.participants.filter(p => p.status === 'active');
             if (activeUnits.length >= 2) {
               const attacker = activeUnits[Math.floor(Math.random() * activeUnits.length)];
@@ -277,42 +386,108 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               });
               
               if (targets.length > 0) {
-                const target = targets[Math.floor(Math.random() * targets.length)];
+                // 전략적 타겟 선택 (낮은 HP 우선)
+                const target = targets.reduce((prev, current) => 
+                  current.hp < prev.hp ? current : prev
+                );
                 const targetInfo = getPilotInfo(target.pilotId);
+                
+                // 지형 효과 계산
+                const attackerTerrain = terrainFeatures.find(t => 
+                  t.x === attacker.position.x && t.y === attacker.position.y
+                );
+                const targetTerrain = terrainFeatures.find(t => 
+                  t.x === target.position.x && t.y === target.position.y
+                );
                 
                 // 애니메이션 효과
                 setAnimatingUnits(new Set([attacker.pilotId]));
                 setTimeout(() => setAnimatingUnits(new Set()), 1500);
                 
-                // 공격 이펙트
+                // 공격 이펙트 (파일럿 특성에 따른 무기 선택)
+                const attackTypes: ('laser' | 'missile' | 'beam')[] = ['laser', 'missile', 'beam'];
+                let weaponType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
+                
+                // 파일럿별 선호 무기
+                if (attackerInfo.initial === 'S') weaponType = 'laser'; // Sasha - 레이저
+                else if (attackerInfo.initial === 'M') weaponType = 'missile'; // Mente - 미사일
+                else if (attackerInfo.initial === 'A') weaponType = 'beam'; // Azuma - 빔
+                
                 const attackEffect: AttackEffect = {
                   id: `${Date.now()}-${Math.random()}`,
                   from: attacker.position,
                   to: target.position,
-                  startTime: Date.now()
+                  startTime: Date.now(),
+                  type: weaponType
                 };
                 setAttackEffects(prev => [...prev, attackEffect]);
                 
-                const damage = Math.floor(Math.random() * 30) + 10;
+                // 지형 효과가 적용된 데미지 계산
+                let baseDamage = Math.floor(Math.random() * 30) + 10;
+                let finalDamage = baseDamage;
+                
+                // 공격자 지형 보너스
+                if (attackerTerrain?.type === 'elevation') {
+                  finalDamage += Math.floor(baseDamage * 0.2); // 고지대에서 20% 증가
+                }
+                
+                // 방어자 지형 보너스
+                if (targetTerrain?.type === 'cover') {
+                  finalDamage = Math.floor(finalDamage * 0.8); // 엄폐물에서 20% 감소
+                }
+                
+                // 위험지대 효과
+                if (targetTerrain?.type === 'hazard') {
+                  finalDamage += 5; // 위험지대에서 추가 데미지
+                }
+                
                 const newLog = {
                   timestamp: Date.now(),
                   type: 'attack' as const,
-                  message: `${attackerInfo.name}이(가) ${targetInfo.name}을(를) 공격! ${damage} 데미지!`,
+                  message: `${attackerInfo.name}이(가) ${targetInfo.name}을(를) ${weaponType === 'laser' ? '레이저' : weaponType === 'missile' ? '미사일' : '빔'}로 공격! ${finalDamage} 데미지!${
+                    attackerTerrain?.type === 'elevation' ? ' [고지대 보너스]' : ''
+                  }${targetTerrain?.type === 'cover' ? ' [엄폐 방어]' : ''}${
+                    targetTerrain?.type === 'hazard' ? ' [위험지대 피해]' : ''
+                  }`,
                   speaker: attackerInfo.name
                 };
                 
                 addBattleLog(newLog);
                 
-                // HP 업데이트
-                const updatedParticipants = battle.participants.map(p => 
-                  p.pilotId === target.pilotId 
-                    ? { 
-                        ...p, 
-                        hp: Math.max(0, p.hp - damage), 
-                        status: p.hp - damage <= 0 ? 'destroyed' as const : p.status 
-                      }
-                    : p
-                );
+                // HP 업데이트 및 지형 지속 효과
+                const updatedParticipants = battle.participants.map(p => {
+                  if (p.pilotId === target.pilotId) {
+                    return {
+                      ...p,
+                      hp: Math.max(0, p.hp - finalDamage),
+                      status: p.hp - finalDamage <= 0 ? 'destroyed' as const : p.status
+                    };
+                  }
+                  
+                  // 위험지대에 있는 모든 유닛에게 지속 피해
+                  const unitTerrain = terrainFeatures.find(t => 
+                    t.x === p.position.x && t.y === p.position.y
+                  );
+                  if (unitTerrain?.type === 'hazard' && p.status === 'active') {
+                    const hazardDamage = 5;
+                    const newHp = Math.max(0, p.hp - hazardDamage);
+                    if (hazardDamage > 0) {
+                      const hazardLog = {
+                        timestamp: Date.now() + 100,
+                        type: 'system' as const,
+                        message: `${getPilotInfo(p.pilotId).name}이(가) 위험지대에서 ${hazardDamage} 피해를 받았습니다!`
+                      };
+                      setTimeout(() => addBattleLog(hazardLog), 500);
+                    }
+                    return {
+                      ...p,
+                      hp: newHp,
+                      status: newHp <= 0 ? 'destroyed' as const : p.status
+                    };
+                  }
+                  
+                  return p;
+                });
                 
                 setBattle({
                   ...battle,
@@ -418,23 +593,64 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
           
           {/* 범례 */}
-          <div className="flex justify-center space-x-6 mt-4 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-              <span className="text-blue-300">아군 (파란색)</span>
+          <div className="grid grid-cols-2 gap-4 mt-4 text-xs">
+            <div>
+              <h5 className="font-semibold text-gray-300 mb-2">유닛</h5>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                  <span className="text-blue-300">아군 (파란색)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                  <span className="text-red-300">적군 (빨간색)</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-              <span className="text-red-300">적군 (빨간색)</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-4 h-1 bg-yellow-400"></div>
-              <span className="text-yellow-300">공격 효과</span>
+            <div>
+              <h5 className="font-semibold text-gray-300 mb-2">지형지물</h5>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-green-600 rounded text-center text-xs">🛡️</div>
+                  <span className="text-green-300">엄폐물 (방어+20%)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-purple-600 rounded text-center text-xs">⬆️</div>
+                  <span className="text-purple-300">고지대 (공격+20%)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-red-600 rounded text-center text-xs">🚫</div>
+                  <span className="text-red-300">장애물 (이동차단)</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 bg-yellow-600 rounded text-center text-xs">⚠️</div>
+                  <span className="text-yellow-300">위험지대 (턴당 -5HP)</span>
+                </div>
+              </div>
             </div>
           </div>
           
           <div className="text-center text-xs text-gray-400 mt-2">
             피아식별: 파일럿 이름 첫 글자로 표시 (S=Sasha, M=Mente, A=Azuma, E=Enemy)
+          </div>
+          
+          {/* 무기 효과 범례 */}
+          <div className="mt-3 p-2 bg-gray-800/50 rounded">
+            <h5 className="font-semibold text-gray-300 mb-2 text-xs">무기 효과</h5>
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-0.5 bg-yellow-400"></div>
+                <span className="text-yellow-300">레이저 (정확)</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                <span className="text-red-300">미사일 (추적)</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <div className="w-3 h-1 bg-purple-400"></div>
+                <span className="text-purple-300">빔 (관통)</span>
+              </div>
+            </div>
           </div>
         </div>
 

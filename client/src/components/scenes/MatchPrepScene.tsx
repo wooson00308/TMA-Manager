@@ -500,7 +500,7 @@ export function MatchPrepScene() {
                   <h4 className="text-md font-semibold text-gray-300 mb-3">
                     {banPickPhase.includes('ban') ? '밴할' : '선택할'} 메크를 클릭하세요
                   </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {(availableMechs as Mech[]).filter(mech => 
                       !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
                       !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
@@ -509,10 +509,19 @@ export function MatchPrepScene() {
                       <button
                         key={`selectable-${mech.id}-${index}`}
                         onClick={() => handleMechAction(mech)}
-                        className="p-3 bg-gray-700 hover:bg-gray-600 rounded border border-gray-500 text-left transition-colors"
+                        className={`p-3 rounded border text-left transition-all duration-200 hover:scale-105 ${
+                          banPickPhase.includes('ban') 
+                            ? 'bg-red-700/20 hover:bg-red-600/30 border-red-500/50 hover:border-red-400' 
+                            : 'bg-blue-700/20 hover:bg-blue-600/30 border-blue-500/50 hover:border-blue-400'
+                        }`}
                       >
-                        <div className="font-semibold text-sm">{mech.name}</div>
-                        <div className="text-xs text-gray-400">{mech.type}</div>
+                        <div className="font-semibold text-sm text-white">{mech.name}</div>
+                        <div className="text-xs text-gray-300">{mech.type}</div>
+                        <div className={`text-xs mt-1 ${
+                          banPickPhase.includes('ban') ? 'text-red-300' : 'text-blue-300'
+                        }`}>
+                          {banPickPhase.includes('ban') ? '밴하기' : '선택하기'}
+                        </div>
                       </button>
                     ))}
                   </div>
