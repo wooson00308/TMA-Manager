@@ -38,6 +38,12 @@ export function AnalysisScene() {
   
   const [selectedTab, setSelectedTab] = useState<'overview' | 'performance' | 'tactics' | 'history'>('overview');
 
+  // Fetch team battles from API
+  const { data: teamBattlesData = [] } = useQuery({
+    queryKey: ['/api/battles/team/1'],
+    enabled: selectedTab === 'history'
+  });
+
   // Mock battle analysis data - in a real app this would come from the API
   const battleAnalysis: BattleAnalysis = {
     battleId: currentBattle?.id || 'demo_battle',
@@ -98,9 +104,7 @@ export function AnalysisScene() {
     }
   };
 
-  const { data: teamBattles } = useQuery({
-    queryKey: ['/api/battles/team/1'],
-  });
+
 
   const getRatingColor = (rating: string) => {
     switch (rating) {
@@ -122,17 +126,17 @@ export function AnalysisScene() {
   };
 
   const tabButtons = [
-    { id: 'overview', label: 'OVERVIEW', icon: 'fas fa-chart-pie' },
-    { id: 'performance', label: 'PERFORMANCE', icon: 'fas fa-user' },
-    { id: 'tactics', label: 'TACTICS', icon: 'fas fa-chess' },
-    { id: 'history', label: 'HISTORY', icon: 'fas fa-history' }
+    { id: 'overview', label: '개요', icon: 'fas fa-chart-pie' },
+    { id: 'performance', label: '성과 분석', icon: 'fas fa-user' },
+    { id: 'tactics', label: '전술 분석', icon: 'fas fa-chess' },
+    { id: 'history', label: '전투 기록', icon: 'fas fa-history' }
   ];
 
   return (
     <div className="scene-transition">
       <div className="mb-6">
-        <h2 className="text-2xl font-orbitron font-bold text-green-400 mb-2">POST-BATTLE ANALYSIS</h2>
-        <p className="text-gray-400">Comprehensive battle data analysis and strategic insights</p>
+        <h2 className="text-2xl font-orbitron font-bold text-green-400 mb-2">전투 후 분석</h2>
+        <p className="text-gray-400">종합적인 전투 데이터 분석 및 전략적 통찰</p>
       </div>
 
       {/* Battle Result Header */}
@@ -147,10 +151,10 @@ export function AnalysisScene() {
                 {battleAnalysis.result.toUpperCase()}
               </div>
               <div className="text-gray-400">
-                Duration: {battleAnalysis.duration} minutes
+                지속 시간: {battleAnalysis.duration}분
               </div>
               <div className="text-gray-400">
-                Battle ID: {battleAnalysis.battleId}
+                전투 ID: {battleAnalysis.battleId}
               </div>
             </div>
           </div>
@@ -159,7 +163,7 @@ export function AnalysisScene() {
             <div className="text-2xl font-bold text-green-400">
               {battleAnalysis.statistics.totalDamage}
             </div>
-            <div className="text-xs text-gray-400">Total Damage</div>
+            <div className="text-xs text-gray-400">총 피해량</div>
           </div>
         </div>
       </div>
@@ -187,54 +191,54 @@ export function AnalysisScene() {
         {selectedTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="cyber-border p-4 bg-slate-800">
-              <h3 className="text-pink-400 font-semibold mb-4">BATTLE STATISTICS</h3>
+              <h3 className="text-pink-400 font-semibold mb-4">전투 통계</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="cyber-border p-3 bg-slate-900 text-center">
                   <div className="text-green-400 font-bold text-2xl">
                     {battleAnalysis.statistics.totalDamage}
                   </div>
-                  <div className="text-xs text-gray-400">Total Damage</div>
+                  <div className="text-xs text-gray-400">총 피해량</div>
                 </div>
                 <div className="cyber-border p-3 bg-slate-900 text-center">
                   <div className="text-blue-400 font-bold text-2xl">
                     {battleAnalysis.statistics.averageAccuracy}%
                   </div>
-                  <div className="text-xs text-gray-400">Avg Accuracy</div>
+                  <div className="text-xs text-gray-400">평균 명중률</div>
                 </div>
                 <div className="cyber-border p-3 bg-slate-900 text-center">
                   <div className="text-yellow-400 font-bold text-2xl">
                     {battleAnalysis.statistics.criticalHits}
                   </div>
-                  <div className="text-xs text-gray-400">Critical Hits</div>
+                  <div className="text-xs text-gray-400">치명타</div>
                 </div>
                 <div className="cyber-border p-3 bg-slate-900 text-center">
                   <div className="text-red-400 font-bold text-2xl">
                     {battleAnalysis.statistics.unitsLost}
                   </div>
-                  <div className="text-xs text-gray-400">Units Lost</div>
+                  <div className="text-xs text-gray-400">손실 유닛</div>
                 </div>
               </div>
             </div>
 
             <div className="cyber-border p-4 bg-slate-800">
-              <h3 className="text-pink-400 font-semibold mb-4">QUICK SUMMARY</h3>
+              <h3 className="text-pink-400 font-semibold mb-4">요약</h3>
               <div className="space-y-3">
                 <div>
-                  <div className="text-green-400 text-sm font-semibold">Victory Factors:</div>
+                  <div className="text-green-400 text-sm font-semibold">승리 요인:</div>
                   <div className="text-xs text-gray-300">
-                    Superior accuracy and tactical positioning led to decisive engagement victory.
+                    우수한 명중률과 전술적 포지셔닝으로 결정적인 교전 승리를 달성했습니다.
                   </div>
                 </div>
                 <div>
-                  <div className="text-yellow-400 text-sm font-semibold">Key Moments:</div>
+                  <div className="text-yellow-400 text-sm font-semibold">핵심 순간:</div>
                   <div className="text-xs text-gray-300">
-                    Critical flanking maneuver at 4:30, devastating sniper shots from AZUMA-07.
+                    4분 30초 치명적인 측면 기동, AZUMA-07의 파괴적인 저격 공격.
                   </div>
                 </div>
                 <div>
-                  <div className="text-blue-400 text-sm font-semibold">Team Synergy:</div>
+                  <div className="text-blue-400 text-sm font-semibold">팀 시너지:</div>
                   <div className="text-xs text-gray-300">
-                    Excellent coordination between assault and support units.
+                    돌격 유닛과 지원 유닛 간의 뛰어난 협조.
                   </div>
                 </div>
               </div>
@@ -252,7 +256,7 @@ export function AnalysisScene() {
                       {performance.pilotName}
                     </h3>
                     <div className="text-xs text-gray-400">
-                      Pilot Performance Analysis
+                      파일럿 성과 분석
                     </div>
                   </div>
                   <div className={`text-lg font-bold ${getRatingColor(performance.rating)}`}>
@@ -265,25 +269,25 @@ export function AnalysisScene() {
                     <div className="text-red-400 font-bold text-xl">
                       {performance.damageDealt}
                     </div>
-                    <div className="text-xs text-gray-400">Damage Dealt</div>
+                    <div className="text-xs text-gray-400">피해량</div>
                   </div>
                   <div className="text-center">
                     <div className="text-yellow-400 font-bold text-xl">
                       {performance.damageTaken}
                     </div>
-                    <div className="text-xs text-gray-400">Damage Taken</div>
+                    <div className="text-xs text-gray-400">받은 피해</div>
                   </div>
                   <div className="text-center">
                     <div className="text-blue-400 font-bold text-xl">
                       {performance.accuracy}%
                     </div>
-                    <div className="text-xs text-gray-400">Accuracy</div>
+                    <div className="text-xs text-gray-400">명중률</div>
                   </div>
                   <div className="text-center">
                     <div className="text-green-400 font-bold text-xl">
                       {performance.survivalTime}m
                     </div>
-                    <div className="text-xs text-gray-400">Survival Time</div>
+                    <div className="text-xs text-gray-400">생존 시간</div>
                   </div>
                 </div>
               </div>
@@ -294,7 +298,7 @@ export function AnalysisScene() {
         {selectedTab === 'tactics' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="cyber-border p-4 bg-slate-800">
-              <h3 className="text-green-400 font-semibold mb-3">STRONG POINTS</h3>
+              <h3 className="text-green-400 font-semibold mb-3">강점</h3>
               <div className="space-y-2">
                 {battleAnalysis.tacticalSummary.strongPoints.map((point, index) => (
                   <div key={index} className="flex items-start space-x-2">
@@ -306,7 +310,7 @@ export function AnalysisScene() {
             </div>
 
             <div className="cyber-border p-4 bg-slate-800">
-              <h3 className="text-red-400 font-semibold mb-3">WEAKNESSES</h3>
+              <h3 className="text-red-400 font-semibold mb-3">약점</h3>
               <div className="space-y-2">
                 {battleAnalysis.tacticalSummary.weaknesses.map((weakness, index) => (
                   <div key={index} className="flex items-start space-x-2">
@@ -318,7 +322,7 @@ export function AnalysisScene() {
             </div>
 
             <div className="cyber-border p-4 bg-slate-800">
-              <h3 className="text-yellow-400 font-semibold mb-3">RECOMMENDATIONS</h3>
+              <h3 className="text-yellow-400 font-semibold mb-3">권장사항</h3>
               <div className="space-y-2">
                 {battleAnalysis.tacticalSummary.recommendations.map((rec, index) => (
                   <div key={index} className="flex items-start space-x-2">
@@ -334,11 +338,11 @@ export function AnalysisScene() {
         {selectedTab === 'history' && (
           <div className="space-y-4">
             <div className="cyber-border p-4 bg-slate-800">
-              <h3 className="text-pink-400 font-semibold mb-4">RECENT BATTLES</h3>
+              <h3 className="text-pink-400 font-semibold mb-4">최근 전투</h3>
               
-              {teamBattles && teamBattles.length > 0 ? (
+              {Array.isArray(teamBattlesData) && teamBattlesData.length > 0 ? (
                 <div className="space-y-2">
-                  {teamBattles.slice(0, 10).map((battle: any, index: number) => (
+                  {(teamBattlesData as any[]).slice(0, 10).map((battle: any, index: number) => (
                     <div key={index} className="cyber-border p-3 bg-slate-900 hover:bg-slate-700 transition-colors">
                       <div className="flex justify-between items-center">
                         <div>
@@ -352,7 +356,7 @@ export function AnalysisScene() {
                         <div className={`font-semibold ${
                           battle.winnerId === 1 ? 'text-green-400' : 'text-red-400'
                         }`}>
-                          {battle.winnerId === 1 ? 'VICTORY' : 'DEFEAT'}
+                          {battle.winnerId === 1 ? '승리' : '패배'}
                         </div>
                       </div>
                     </div>
@@ -363,7 +367,7 @@ export function AnalysisScene() {
                   <div className="mb-2">
                     <i className="fas fa-database text-2xl"></i>
                   </div>
-                  <div>No battle history available</div>
+                  <div>전투 기록이 없습니다</div>
                 </div>
               )}
             </div>
