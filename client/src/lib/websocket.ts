@@ -12,6 +12,9 @@ export class WebSocketManager {
         const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const wsUrl = `${protocol}//${window.location.host}/ws`;
         
+        console.log('Attempting to connect to WebSocket:', wsUrl);
+        console.log('Current location:', window.location);
+        
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {

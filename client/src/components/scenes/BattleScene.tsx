@@ -106,6 +106,26 @@ export function BattleScene() {
         <p className="text-gray-400">Real-time combat observation and tactical analysis</p>
       </div>
 
+      {/* Connection Status */}
+      {!isConnected && (
+        <div className="cyber-border p-4 bg-red-900/30 border-red-500/50 mb-4">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+            <span className="text-red-400 font-semibold">연결 오류</span>
+          </div>
+          <p className="text-red-300 text-sm mt-2">
+            전투 시스템에 연결할 수 없습니다. 네트워크 상태를 확인하고 다시 시도하세요.
+          </p>
+          <CyberButton 
+            variant="secondary" 
+            className="mt-3"
+            onClick={() => wsManager.connect()}
+          >
+            재연결 시도
+          </CyberButton>
+        </div>
+      )}
+
       {/* Battle Status Header */}
       <div className="cyber-border p-4 bg-slate-800 mb-4">
         <div className="flex items-center justify-between">

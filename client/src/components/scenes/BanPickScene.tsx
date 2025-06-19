@@ -126,30 +126,65 @@ export function BanPickScene() {
         return;
       }
 
+      if (banPickState.selectedMechs.player.length < 3) {
+        alert('전투를 시작하려면 3기의 메카가 선택되어야 합니다.');
+        return;
+      }
+
+      // Ensure WebSocket connection
+      try {
+        await wsManager.connect();
+        setConnected(true);
+      } catch (error) {
+        console.warn('WebSocket connection failed, proceeding to battle scene with offline mode');
+        setConnected(false);
+      }
+
       // Create formation data with selected mechs and pilots
       const playerFormation = {
         pilot1Id: activePilots[0].id,
         pilot2Id: activePilots[1].id,
         pilot3Id: activePilots[2].id,
-        mech1Id: banPickState.selectedMechs.player[0]?.id || mechs[0].id,
-        mech2Id: banPickState.selectedMechs.player[1]?.id || mechs[1].id,
-        mech3Id: banPickState.selectedMechs.player[2]?.id || mechs[2].id,
+        mech1Id: banPickState.selectedMechs.player[0].id,
+        mech2Id: banPickState.selectedMechs.player[1].id,
+        mech3Id: banPickState.selectedMechs.player[2].id,
       };
 
       const enemyFormation = {
         pilot1Id: 101, // Enemy pilot IDs
         pilot2Id: 102,
         pilot3Id: 103,
-        mech1Id: banPickState.selectedMechs.enemy[0]?.id || mechs[3].id,
-        mech2Id: banPickState.selectedMechs.enemy[1]?.id || mechs[4].id,
-        mech3Id: banPickState.selectedMechs.enemy[2]?.id || mechs[5].id,
+        mech1Id: banPickState.selectedMechs.enemy[0].id,
+        mech2Id: banPickState.selectedMechs.enemy[1].id,
+        mech3Id: banPickState.selectedMechs.enemy[2].id,
       };
 
-      // Start battle via WebSocket
-      wsManager.startBattle(playerFormation, enemyFormation);
-      
-      // Set battle store state
-      setConnected(true);
+      // Store battle data in battle store
+      setBattle({
+        id: `battle_${Date.now()}`,
+        phase: 'preparation',
+        turn: 0,
+        participants: [
+          // Player team
+          { pilotId: playerFormation.pilot1Id, mechId: playerFormation.mech1Id, position: { x: 2, y: 2 }, hp: 100, status: 'active' },
+          { pilotId: playerFormation.pilot2Id, mechId: playerFormation.mech2Id, position: { x: 2, y: 4 }, hp: 100, status: 'active' },
+          { pilotId: playerFormation.pilot3Id, mechId: playerFormation.mech3Id, position: { x: 2, y: 6 }, hp: 100, status: 'active' },
+          // Enemy team
+          { pilotId: 101, mechId: enemyFormation.mech1Id, position: { x: 12, y: 2 }, hp: 100, status: 'active' },
+          { pilotId: 102, mechId: enemyFormation.mech2Id, position: { x: 12, y: 4 }, hp: 100, status: 'active' },
+          { pilotId: 103, mechId: enemyFormation.mech3Id, position: { x: 12, y: 6 }, hp: 100, status: 'active' },
+        ],
+        log: [{
+          timestamp: Date.now(),
+          type: 'system',
+          message: '전투 시스템 초기화 완료. 모든 유닛 대기 중.'
+        }]
+      });
+
+      // Start battle via WebSocket if connected
+      if (wsManager.ws && wsManager.ws.readyState === WebSocket.OPEN) {
+        wsManager.startBattle(playerFormation, enemyFormation);
+      }
       
       // Navigate to battle scene
       setScene('battle');
