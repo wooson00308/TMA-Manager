@@ -68,6 +68,16 @@ export function MatchPrepScene() {
     }
   }, [teams, matchState.enemyTeam]);
 
+  // 밴픽 단계 시작 시 첫 적군 턴 자동 실행
+  useEffect(() => {
+    if (matchState.currentStep === 'banpick' && banPickPhase === 'ban_enemy_1' && availableMechs.length > 0) {
+      console.log('[밴픽 시작] 첫 적군 턴 자동 실행');
+      setTimeout(() => {
+        handleEnemyBanPick('ban_enemy_1');
+      }, 1500);
+    }
+  }, [matchState.currentStep, banPickPhase, availableMechs]);
+
   const stepTitles = {
     roster: 'Step 1: 로스터 선택',
     banpick: 'Step 2: 밴픽 단계',
@@ -151,21 +161,28 @@ export function MatchPrepScene() {
   };
 
   const handleEnemyBanPick = (phase: BanPickPhase) => {
+    console.log(`[적군 AI] ${phase} 단계 실행 중...`);
+    
     const availableForAction = (availableMechs as Mech[]).filter(mech => 
       !matchState.bannedMechs.some(banned => banned.id === mech.id) &&
       !matchState.pickedMechs.player.some(picked => picked.id === mech.id) &&
       !matchState.pickedMechs.enemy.some(picked => picked.id === mech.id)
     );
 
+    console.log(`[적군 AI] 선택 가능한 메크: ${availableForAction.length}개`);
+
     if (availableForAction.length > 0) {
       const randomMech = availableForAction[Math.floor(Math.random() * availableForAction.length)];
+      console.log(`[적군 AI] 선택된 메크: ${randomMech.name}`);
       
       if (phase.includes('ban')) {
+        console.log(`[적군 AI] ${randomMech.name} 밴!`);
         setMatchState(prev => ({
           ...prev,
           bannedMechs: [...prev.bannedMechs, randomMech]
         }));
       } else {
+        console.log(`[적군 AI] ${randomMech.name} 픽!`);
         setMatchState(prev => ({
           ...prev,
           pickedMechs: {
@@ -176,8 +193,11 @@ export function MatchPrepScene() {
       }
       
       setTimeout(() => {
+        console.log(`[적군 AI] 다음 단계로 진행...`);
         advanceBanPickPhase();
       }, 500);
+    } else {
+      console.log(`[적군 AI] 선택 가능한 메크가 없음!`);
     }
   };
 
@@ -192,7 +212,18 @@ export function MatchPrepScene() {
   };
 
   const goToStep = (step: MatchStep) => {
+    console.log(`[단계 이동] ${matchState.currentStep} → ${step}`);
     setMatchState(prev => ({ ...prev, currentStep: step }));
+    
+    // 밴픽 단계로 이동할 때 첫 적군 턴 자동 시작
+    if (step === 'banpick') {
+      console.log('[밴픽 시작] 첫 번째 적군 밴 단계 시작');
+      setBanPickPhase('ban_enemy_1');
+      setTimeout(() => {
+        console.log('[밴픽 시작] handleEnemyBanPick 호출');
+        handleEnemyBanPick('ban_enemy_1');
+      }, 1000);
+    }
   };
 
   const handleStartBattle = () => {
@@ -340,8 +371,17 @@ export function MatchPrepScene() {
               </div>
               
               <div className="mb-6 p-4 bg-cyan-900/20 rounded border border-cyan-400/30">
-                <div className="text-center text-cyan-300">
-                  현재: {banPickPhase.includes('ban') ? '밴' : '픽'} 단계 - {banPickPhase.includes('player') ? '플레이어' : '적팀'} 턴
+                <div className="text-center">
+                  <div className="text-cyan-300 font-bold">
+                    현재: {banPickPhase.includes('ban') ? '밴' : '픽'} 단계 - {banPickPhase.includes('player') ? '플레이어' : '적팀'} 턴
+                  </div>
+                  {!banPickPhase.includes('player') && banPickPhase !== 'complete' && (
+                    <div className="flex items-center justify-center mt-2 space-x-2">
+                      <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                      <span className="text-red-300 text-sm">적팀이 선택 중...</span>
+                      <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                    </div>
+                  )}
                 </div>
               </div>
 
