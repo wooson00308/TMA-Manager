@@ -18,7 +18,7 @@ interface TacticalSetting {
 }
 
 export function FormationScene() {
-  const { setScene, pilots, mechs } = useGameStore();
+  const { setScene, pilots, mechs, selectedMechs } = useGameStore();
   
   const [formation, setFormation] = useState<FormationSlot[]>([
     { pilot: null, mech: null, role: 'Knight', position: { x: 1, y: 2 } },
@@ -31,21 +31,20 @@ export function FormationScene() {
   const [tacticalSetting, setTacticalSetting] = useState<string>('balanced');
   const [activeTab, setActiveTab] = useState<'formation' | 'tactics' | 'preview'>('formation');
 
-  // 자동 편성 완료
+  // 밴픽에서 선택된 메카와 파일럿을 매칭하여 자동 편성
   useEffect(() => {
-    if (pilots && mechs && pilots.length >= 3 && mechs.length >= 3) {
+    if (selectedMechs.player.length === 3 && pilots && pilots.length >= 3) {
       const activePilots = pilots.filter(p => p.isActive).slice(0, 3);
-      const availableMechs = mechs.slice(0, 3);
       
-      if (activePilots.length >= 3 && availableMechs.length >= 3) {
+      if (activePilots.length >= 3) {
         setFormation([
-          { pilot: activePilots[0], mech: availableMechs[0], role: 'Knight', position: { x: 1, y: 2 } },
-          { pilot: activePilots[1], mech: availableMechs[1], role: 'Arbiter', position: { x: 3, y: 1 } },
-          { pilot: activePilots[2], mech: availableMechs[2], role: 'River', position: { x: 2, y: 3 } }
+          { pilot: activePilots[0], mech: selectedMechs.player[0], role: 'Knight', position: { x: 1, y: 2 } },
+          { pilot: activePilots[1], mech: selectedMechs.player[1], role: 'Arbiter', position: { x: 3, y: 1 } },
+          { pilot: activePilots[2], mech: selectedMechs.player[2], role: 'River', position: { x: 2, y: 3 } }
         ]);
       }
     }
-  }, [pilots, mechs]);
+  }, [selectedMechs.player, pilots]);
 
   const tacticalSettings: TacticalSetting[] = [
     {

@@ -40,7 +40,7 @@ const phaseNames = {
 };
 
 export function BanPickScene() {
-  const { setScene, mechs, pilots } = useGameStore();
+  const { setScene, mechs, pilots, setSelectedMechs } = useGameStore();
   const { setBattle, setConnected } = useBattleStore();
   
   const [banPickState, setBanPickState] = useState<BanPickState>({
@@ -72,6 +72,12 @@ export function BanPickScene() {
           ...prev,
           phase: 'complete'
         }));
+        
+        // 선택된 메카 정보를 게임 스토어에 저장
+        setSelectedMechs({
+          player: banPickState.selectedMechs.player,
+          enemy: banPickState.selectedMechs.enemy
+        });
       }, 500);
       
       return () => clearTimeout(timer);
@@ -396,8 +402,8 @@ export function BanPickScene() {
         {/* 전투 시작 버튼 */}
         <div className="flex space-x-4">
           {(isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)) && (
-            <CyberButton onClick={() => handleStartBattle()}>
-              전투 시작
+            <CyberButton onClick={() => setScene('formation')}>
+              편성 확인하기
             </CyberButton>
           )}
           

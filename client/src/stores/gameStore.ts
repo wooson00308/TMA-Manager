@@ -11,6 +11,12 @@ interface GameState {
   activeFormation: Formation | null;
   enemyTeams: Team[];
   
+  // Ban/Pick results
+  selectedMechs: {
+    player: Mech[];
+    enemy: Mech[];
+  };
+  
   // Actions
   setScene: (scene: GameScene) => void;
   setPlayerTeam: (team: Team) => void;
@@ -18,6 +24,7 @@ interface GameState {
   setMechs: (mechs: Mech[]) => void;
   setActiveFormation: (formation: Formation | null) => void;
   setEnemyTeams: (teams: Team[]) => void;
+  setSelectedMechs: (mechs: { player: Mech[]; enemy: Mech[] }) => void;
   initializePlayerTeam: () => Promise<void>;
 }
 
@@ -30,6 +37,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   mechs: [],
   activeFormation: null,
   enemyTeams: [],
+  selectedMechs: {
+    player: [],
+    enemy: []
+  },
 
   setScene: (scene) => set({ currentScene: scene }),
   setPlayerTeam: (team) => set({ playerTeam: team }),
@@ -37,6 +48,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setMechs: (mechs) => set({ mechs }),
   setActiveFormation: (formation) => set({ activeFormation: formation }),
   setEnemyTeams: (teams) => set({ enemyTeams: teams }),
+  setSelectedMechs: (mechs) => set({ selectedMechs: mechs }),
   
   initializePlayerTeam: async () => {
     try {
