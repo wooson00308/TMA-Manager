@@ -6,7 +6,14 @@ import { PilotCard } from '@/components/ui/PilotCard';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import type { Pilot } from '@shared/schema';
 
-interface RecruitablePilot extends Pilot {
+interface RecruitablePilot {
+  id: number;
+  name: string;
+  callsign: string;
+  rating: number;
+  traits: string[];
+  teamId: number | null;
+  status: string;
   cost: number;
   requirements: string[];
   specialAbility: string;
@@ -46,8 +53,8 @@ export function ScoutingScene() {
       id: 101,
       name: "김준호",
       callsign: "스나이퍼",
-      combatRating: 88,
-      personalityTraits: ["ANALYTICAL", "SNIPER", "CAUTIOUS", "VETERAN"],
+      rating: 88,
+      traits: ["ANALYTICAL", "SNIPER", "CAUTIOUS", "VETERAN"],
       teamId: null,
       status: "available",
       cost: 2500,
@@ -59,8 +66,8 @@ export function ScoutingScene() {
       id: 102,
       name: "박민지",
       callsign: "서지",
-      combatRating: 85,
-      personalityTraits: ["AGGRESSIVE", "ASSAULT", "INDEPENDENT", "ACE"],
+      rating: 85,
+      traits: ["AGGRESSIVE", "ASSAULT", "INDEPENDENT", "ACE"],
       teamId: null,
       status: "available",
       cost: 3000,
@@ -72,8 +79,8 @@ export function ScoutingScene() {
       id: 103,
       name: "이도현",
       callsign: "가디언",
-      combatRating: 82,
-      personalityTraits: ["DEFENSIVE", "KNIGHT", "COOPERATIVE", "ROOKIE"],
+      rating: 82,
+      traits: ["DEFENSIVE", "KNIGHT", "COOPERATIVE", "ROOKIE"],
       teamId: null,
       status: "available",
       cost: 1800,
@@ -82,6 +89,24 @@ export function ScoutingScene() {
       background: "신인이지만 뛰어난 방어 감각을 가진 유망주"
     }
   ];
+
+  // Fix the interface to match actual data structure
+  interface ActualPilot {
+    id: number;
+    name: string;
+    callsign: string;
+    dormitory: string;
+    rating: number;
+    reaction: number;
+    accuracy: number;
+    tactical: number;
+    teamwork: number;
+    traits: string[];
+    isActive: boolean;
+    experience: number;
+    wins: number;
+    losses: number;
+  }
 
   const getTraitColor = (trait: string) => {
     if (trait.includes('AGGRESSIVE') || trait.includes('ASSAULT')) return 'text-red-400';
@@ -167,7 +192,7 @@ export function ScoutingScene() {
                       <p className="text-sm text-gray-400">"{pilot.callsign}"</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-lg font-bold text-green-400">{pilot.combatRating}</div>
+                      <div className="text-lg font-bold text-green-400">{(pilot as any).rating}</div>
                       <div className="text-xs text-gray-400">전투력</div>
                     </div>
                   </div>
@@ -175,14 +200,14 @@ export function ScoutingScene() {
                   <div className="mb-3">
                     <div className="text-xs text-gray-400 mb-1">특성:</div>
                     <div className="flex flex-wrap gap-1">
-                      {pilot.personalityTraits.map((trait, index) => (
+                      {(pilot as any).traits?.map((trait: string, index: number) => (
                         <span
                           key={index}
                           className={`px-2 py-1 bg-gray-700 text-xs rounded ${getTraitColor(trait)}`}
                         >
                           {trait}
                         </span>
-                      ))}
+                      )) || <span className="text-gray-500 text-xs">특성 없음</span>}
                     </div>
                   </div>
                   
@@ -225,7 +250,7 @@ export function ScoutingScene() {
                     <p className="text-sm text-gray-400">"{pilot.callsign}"</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-bold text-green-400">{pilot.combatRating}</div>
+                    <div className="text-lg font-bold text-green-400">{pilot.rating}</div>
                     <div className="text-xs text-gray-400">전투력</div>
                   </div>
                 </div>
@@ -243,7 +268,7 @@ export function ScoutingScene() {
                 <div className="mb-3">
                   <div className="text-xs text-gray-400 mb-1">특성:</div>
                   <div className="flex flex-wrap gap-1">
-                    {pilot.personalityTraits.map((trait, index) => (
+                    {pilot.traits.map((trait: string, index: number) => (
                       <span
                         key={index}
                         className={`px-2 py-1 bg-gray-700 text-xs rounded ${getTraitColor(trait)}`}

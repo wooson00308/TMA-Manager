@@ -98,24 +98,25 @@ export function FormationScene() {
     if (!pilot || !mech) return 0;
     
     let score = 50; // Base compatibility
+    const pilotTraits = (pilot as any).traits || [];
     
     // Role-based compatibility
     if (role === 'Knight') {
-      if (pilot.personalityTraits.includes('DEFENSIVE') || pilot.personalityTraits.includes('KNIGHT')) score += 20;
+      if (pilotTraits.includes('DEFENSIVE') || pilotTraits.includes('KNIGHT')) score += 20;
       if (mech.type === 'Knight') score += 15;
       if (mech.armor >= 80) score += 10;
     } else if (role === 'Arbiter') {
-      if (pilot.personalityTraits.includes('ANALYTICAL') || pilot.personalityTraits.includes('SNIPER')) score += 20;
+      if (pilotTraits.includes('ANALYTICAL') || pilotTraits.includes('SNIPER')) score += 20;
       if (mech.type === 'Arbiter') score += 15;
       if (mech.firepower >= 85) score += 10;
     } else if (role === 'River') {
-      if (pilot.personalityTraits.includes('AGGRESSIVE') || pilot.personalityTraits.includes('SCOUT')) score += 20;
+      if (pilotTraits.includes('AGGRESSIVE') || pilotTraits.includes('SCOUT')) score += 20;
       if (mech.type === 'River') score += 15;
       if (mech.speed >= 80) score += 10;
     }
     
     // Experience bonus
-    if (pilot.personalityTraits.includes('VETERAN') || pilot.personalityTraits.includes('ACE')) score += 10;
+    if (pilotTraits.includes('VETERAN') || pilotTraits.includes('ACE')) score += 10;
     
     return Math.min(100, Math.max(0, score));
   };
@@ -127,7 +128,7 @@ export function FormationScene() {
   const calculateTeamPower = () => {
     return formation.reduce((total, slot) => {
       if (!slot.pilot || !slot.mech) return total;
-      const basePower = slot.pilot.combatRating + slot.mech.firepower + slot.mech.speed + slot.mech.armor;
+      const basePower = (slot.pilot as any).rating + slot.mech.firepower + slot.mech.speed + slot.mech.armor;
       const compatibility = getCompatibilityScore(slot.pilot, slot.mech, slot.role);
       return total + (basePower * compatibility / 100);
     }, 0);
@@ -210,7 +211,7 @@ export function FormationScene() {
                         <div>
                           <div className="font-medium text-white">{slot.pilot.name}</div>
                           <div className="text-xs text-gray-400">"{slot.pilot.callsign}"</div>
-                          <div className="text-sm text-green-400">{slot.pilot.combatRating}</div>
+                          <div className="text-sm text-green-400">{(slot.pilot as any).rating}</div>
                         </div>
                       ) : (
                         <div className="text-center text-gray-500">파일럿 없음</div>
@@ -285,12 +286,12 @@ export function FormationScene() {
                           <div className="text-sm text-gray-400">"{pilot.callsign}"</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-bold text-green-400">{pilot.combatRating}</div>
+                          <div className="text-lg font-bold text-green-400">{(pilot as any).rating}</div>
                           <div className="text-xs text-gray-400">전투력</div>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {pilot.personalityTraits.map((trait, index) => (
+                        {((pilot as any).traits || []).map((trait: string, index: number) => (
                           <span
                             key={index}
                             className="px-2 py-1 bg-gray-600 text-xs text-gray-300 rounded"
