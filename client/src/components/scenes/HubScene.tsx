@@ -101,11 +101,11 @@ export function HubScene() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <CyberButton onClick={() => setScene('recon')}>
+        <CyberButton onClick={() => setScene('match_prep')}>
           <div className="text-pink-400 font-semibold mb-2">
-            <i className="fas fa-play mr-2"></i>매치 시작
+            <i className="fas fa-play mr-2"></i>경기 준비
           </div>
-          <div className="text-xs text-gray-400">사전 정찰부터 시작</div>
+          <div className="text-xs text-gray-400">로스터→밴픽→전략→시뮬</div>
         </CyberButton>
         
         <CyberButton onClick={() => setScene('scouting')}>
