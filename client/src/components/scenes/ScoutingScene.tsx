@@ -24,6 +24,9 @@ export function ScoutingScene() {
   const { setScene } = useGameStore();
   const [activeTab, setActiveTab] = useState<'current' | 'recruit' | 'training'>('current');
   const [selectedPilot, setSelectedPilot] = useState<Pilot | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recruitPage, setRecruitPage] = useState(1);
+  const itemsPerPage = 6;
 
   const { data: currentPilots, isLoading: pilotsLoading } = useQuery<Pilot[]>({
     queryKey: ['/api/pilots/active'],
@@ -128,6 +131,60 @@ export function ScoutingScene() {
     // trainingMutation.mutate({ pilotId, trainingType });
   };
 
+  // Pagination helpers
+  const getPaginatedPilots = (pilots: any[], page: number) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    return pilots?.slice(startIndex, startIndex + itemsPerPage) || [];
+  };
+
+  const getTotalPages = (total: number) => Math.ceil(total / itemsPerPage);
+
+  const PaginationControls = ({ currentPage, totalPages, onPageChange }: {
+    currentPage: number;
+    totalPages: number;
+    onPageChange: (page: number) => void;
+  }) => {
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex justify-center items-center space-x-2 mt-4">
+        <CyberButton
+          variant="secondary"
+          onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1 text-sm"
+        >
+          이전
+        </CyberButton>
+        
+        <div className="flex space-x-1">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => onPageChange(page)}
+              className={`px-3 py-1 text-sm rounded transition-all ${
+                page === currentPage
+                  ? 'bg-green-600 text-white'
+                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+        </div>
+
+        <CyberButton
+          variant="secondary"
+          onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 text-sm"
+        >
+          다음
+        </CyberButton>
+      </div>
+    );
+  };
+
   return (
     <div className="scene-transition">
       <div className="mb-6">
@@ -183,8 +240,9 @@ export function ScoutingScene() {
               <p className="text-gray-400">파일럿 정보 로딩 중...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {currentPilots?.map((pilot) => (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {getPaginatedPilots(currentPilots || [], currentPage).map((pilot) => (
                 <div key={pilot.id} className="cyber-border p-4 bg-slate-800">
                   <div className="flex justify-between items-center mb-3">
                     <div>
@@ -227,8 +285,15 @@ export function ScoutingScene() {
                     </CyberButton>
                   </div>
                 </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={getTotalPages(currentPilots?.length || 0)}
+                onPageChange={setCurrentPage}
+              />
+            </>
           )}
         </div>
       )}
@@ -242,7 +307,7 @@ export function ScoutingScene() {
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {mockRecruitablePilots.map((pilot) => (
+            {getPaginatedPilots(mockRecruitablePilots, recruitPage).map((pilot) => (
               <div key={pilot.id} className="cyber-border p-4 bg-slate-800">
                 <div className="flex justify-between items-start mb-3">
                   <div>
@@ -282,7 +347,7 @@ export function ScoutingScene() {
                 <div className="mb-4">
                   <div className="text-xs text-gray-400 mb-1">영입 조건:</div>
                   <div className="space-y-1">
-                    {pilot.requirements.map((req, index) => (
+                    {pilot.requirements.map((req: string, index: number) => (
                       <div key={index} className="text-xs text-yellow-400">
                         • {req}
                       </div>
@@ -301,6 +366,12 @@ export function ScoutingScene() {
               </div>
             ))}
           </div>
+          
+          <PaginationControls
+            currentPage={recruitPage}
+            totalPages={getTotalPages(mockRecruitablePilots.length)}
+            onPageChange={setRecruitPage}
+          />
         </div>
       )}
 

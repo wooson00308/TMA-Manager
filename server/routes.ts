@@ -86,6 +86,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/pilots/recruitable", async (req, res) => {
+    try {
+      const recruitablePilots = [
+        {
+          id: 101,
+          name: "김준호",
+          callsign: "스나이퍼",
+          rating: 88,
+          traits: ["ANALYTICAL", "SNIPER", "CAUTIOUS", "VETERAN"],
+          teamId: null,
+          status: "available",
+          cost: 2500,
+          requirements: ["승률 70% 이상", "시즌 3주 이상"],
+          specialAbility: "장거리 정밀 사격 시 추가 데미지",
+          background: "전직 군 저격수 출신으로 냉정한 판단력을 보유"
+        },
+        {
+          id: 102,
+          name: "박민지",
+          callsign: "서지",
+          rating: 85,
+          traits: ["AGGRESSIVE", "ASSAULT", "INDEPENDENT", "ACE"],
+          teamId: null,
+          status: "available",
+          cost: 3000,
+          requirements: ["리그 상위 50%", "공격형 기체 보유"],
+          specialAbility: "연속 공격 시 화력 증가",
+          background: "아카데미 수석 졸업생, 공격적인 전술을 선호"
+        },
+        {
+          id: 103,
+          name: "이도현",
+          callsign: "가디언",
+          rating: 82,
+          traits: ["DEFENSIVE", "KNIGHT", "COOPERATIVE", "ROOKIE"],
+          teamId: null,
+          status: "available",
+          cost: 1800,
+          requirements: ["기본 요구사항 없음"],
+          specialAbility: "아군 보호 시 방어력 증가",
+          background: "신인이지만 뛰어난 방어 감각을 가진 유망주"
+        },
+        {
+          id: 104,
+          name: "한수진",
+          callsign: "템페스트",
+          rating: 90,
+          traits: ["ANALYTICAL", "ARBITER", "INDEPENDENT", "GENIUS"],
+          teamId: null,
+          status: "available",
+          cost: 4500,
+          requirements: ["리그 상위 25%", "전술 지수 80 이상"],
+          specialAbility: "전장 분석으로 팀 전체 정확도 증가",
+          background: "전술 분석의 천재로 불리는 신진 파일럿"
+        },
+        {
+          id: 105,
+          name: "최민혁",
+          callsign: "블리츠",
+          rating: 87,
+          traits: ["AGGRESSIVE", "RIVER", "SCOUT", "VETERAN"],
+          teamId: null,
+          status: "available",
+          cost: 3200,
+          requirements: ["기동전 승리 5회 이상"],
+          specialAbility: "고속 기동 시 회피율 대폭 증가",
+          background: "기동전의 달인으로 유명한 베테랑 파일럿"
+        },
+        {
+          id: 106,
+          name: "정아연",
+          callsign: "오라클",
+          rating: 91,
+          traits: ["ANALYTICAL", "SUPPORT", "COOPERATIVE", "ACE"],
+          teamId: null,
+          status: "available",
+          cost: 5000,
+          requirements: ["리그 상위 10%", "팀워크 지수 90 이상"],
+          specialAbility: "전장 예측으로 팀 전체 반응속도 증가",
+          background: "미래를 예측하는 듯한 직감을 가진 에이스 파일럿"
+        }
+      ];
+      res.json(recruitablePilots);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch recruitable pilots" });
+    }
+  });
+
   app.post("/api/pilots", async (req, res) => {
     try {
       const pilotData = insertPilotSchema.parse(req.body);

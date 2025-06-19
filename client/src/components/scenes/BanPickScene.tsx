@@ -238,8 +238,9 @@ export function BanPickScene() {
           <h3 className="text-pink-400 font-semibold mb-3">
             {isBanPhase ? '밴할 기체 선택' : '픽할 기체 선택'}
           </h3>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {getAvailableMechs().map((mech) => (
+          <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {getAvailableMechs().map((mech) => (
               <button
                 key={mech.id}
                 onClick={() => handleMechAction(mech)}
@@ -259,7 +260,8 @@ export function BanPickScene() {
                   </div>
                 </div>
               </button>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       )}

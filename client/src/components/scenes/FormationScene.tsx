@@ -272,7 +272,7 @@ export function FormationScene() {
             </h3>
             
             {selectedSlot !== null ? (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div className="space-y-3 max-h-[500px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
                 {selectionMode === 'pilot' ? (
                   pilots?.map((pilot) => (
                     <button
