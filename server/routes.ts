@@ -111,7 +111,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/pilots/recruitable", async (req, res) => {
+  // Rest pilot
+  app.post('/api/pilots/:id/rest', async (req, res) => {
+    try {
+      const pilotId = parseInt(req.params.id);
+      const pilot = await storage.getPilot(pilotId);
+      
+      if (!pilot) {
+        return res.status(404).json({ error: 'Pilot not found' });
+      }
+
+      // Reduce fatigue by 30-50, increase morale by 10-20
+      const fatigueReduction = Math.floor(Math.random() * 21) + 30; // 30-50
+      const moraleIncrease = Math.floor(Math.random() * 11) + 10; // 10-20
+
+      const updatedPilot = await storage.updatePilot(pilotId, {
+        fatigue: Math.max(0, pilot.fatigue - fatigueReduction),
+        morale: Math.min(100, pilot.morale + moraleIncrease)
+      });
+
+      res.json(updatedPilot);
+    } catch (error) {
+      console.error('Error resting pilot:', error);
+      res.status(500).json({ error: 'Failed to rest pilot' });
+    }
+  });
+
+  // Dismiss pilot
+  app.post('/api/pilots/:id/dismiss', async (req, res) => {
+    try {
+      const pilotId = parseInt(req.params.id);
+      const pilot = await storage.getPilot(pilotId);
+      
+      if (!pilot) {
+        return res.status(404).json({ error: 'Pilot not found' });
+      }
+
+      // Check if this would leave less than 3 active pilots
+      const activePilots = await storage.getActivePilots();
+      if (activePilots.length <= 3) {
+        return res.status(400).json({ error: 'Cannot dismiss pilot - minimum 3 active pilots required' });
+      }
+
+      // Deactivate pilot instead of deleting
+      const updatedPilot = await storage.updatePilot(pilotId, { isActive: false });
+
+      res.json({ success: true, pilot: updatedPilot });
+    } catch (error) {
+      console.error('Error dismissing pilot:', error);
+      res.status(500).json({ error: 'Failed to dismiss pilot' });
+    }
+  });
+
+  app.get("/api/pilots/recruitable2", async (req, res) => {
     try {
       const recruitablePilots = [
         {

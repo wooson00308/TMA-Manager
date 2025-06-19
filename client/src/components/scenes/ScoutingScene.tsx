@@ -4,8 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CyberButton } from '@/components/ui/CyberButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { apiRequest } from '@/lib/queryClient';
-import { Clock, Zap, Target, Brain, Users, Star, Coins } from 'lucide-react';
+import { Clock, Zap, Target, Brain, Users, Star, Coins, Filter, SortAsc, Eye, UserMinus, Coffee, TrendingUp } from 'lucide-react';
 
 interface PilotWithTraining {
   id: number;
@@ -44,6 +46,10 @@ export function ScoutingScene() {
   const [activeTab, setActiveTab] = useState<'current' | 'training' | 'recruit'>('current');
   const [currentPage, setCurrentPage] = useState(1);
   const [trainingCountdowns, setTrainingCountdowns] = useState<{[key: number]: number}>({});
+  const [selectedPilot, setSelectedPilot] = useState<PilotWithTraining | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'rating' | 'experience' | 'fatigue'>('rating');
+  const [filterBy, setFilterBy] = useState<'all' | 'Knight' | 'Arbiter' | 'River'>('all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const itemsPerPage = 6;
   const queryClient = useQueryClient();
 
@@ -91,6 +97,25 @@ export function ScoutingScene() {
     },
   });
 
+  // Rest mutation
+  const restMutation = useMutation({
+    mutationFn: (pilotId: number) =>
+      apiRequest(`/api/pilots/${pilotId}/rest`, 'POST'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
+    },
+  });
+
+  // Dismiss mutation
+  const dismissMutation = useMutation({
+    mutationFn: (pilotId: number) =>
+      apiRequest(`/api/pilots/${pilotId}/dismiss`, 'POST'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/pilots/recruitable'] });
+    },
+  });
+
   // Update training countdowns
   useEffect(() => {
     const interval = setInterval(() => {
@@ -123,6 +148,25 @@ export function ScoutingScene() {
 
   const handleRecruit = (pilotId: number) => {
     recruitMutation.mutate(pilotId);
+  };
+
+  const handleRest = (pilotId: number) => {
+    restMutation.mutate(pilotId);
+  };
+
+  const handleDismiss = (pilotId: number) => {
+    if (confirm('정말로 이 파일럿을 해고하시겠습니까?')) {
+      dismissMutation.mutate(pilotId);
+    }
+  };
+
+  const handleSort = (newSortBy: typeof sortBy) => {
+    if (sortBy === newSortBy) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(newSortBy);
+      setSortOrder('desc');
+    }
   };
 
   const formatTime = (ms: number) => {
@@ -158,12 +202,55 @@ export function ScoutingScene() {
     }
   };
 
+  // Sorting and filtering logic
+  const filteredAndSortedPilots = React.useMemo(() => {
+    if (!currentPilots) return [];
+    
+    let filtered = (currentPilots as PilotWithTraining[]).filter(pilot => {
+      if (filterBy === 'all') return true;
+      return pilot.traits.includes(filterBy);
+    });
+
+    return filtered.sort((a, b) => {
+      let aValue: number | string;
+      let bValue: number | string;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name;
+          bValue = b.name;
+          break;
+        case 'rating':
+          aValue = a.rating;
+          bValue = b.rating;
+          break;
+        case 'experience':
+          aValue = a.experience;
+          bValue = b.experience;
+          break;
+        case 'fatigue':
+          aValue = a.fatigue;
+          bValue = b.fatigue;
+          break;
+        default:
+          aValue = a.rating;
+          bValue = b.rating;
+      }
+
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+      }
+      
+      return sortOrder === 'asc' ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number);
+    });
+  }, [currentPilots, sortBy, sortOrder, filterBy]);
+
   // Pagination logic
-  const totalPilots = (currentPilots as PilotWithTraining[]).length;
+  const totalPilots = filteredAndSortedPilots.length;
   const totalPages = Math.ceil(totalPilots / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentPilotsPage = (currentPilots as PilotWithTraining[]).slice(startIndex, endIndex);
+  const currentPilotsPage = filteredAndSortedPilots.slice(startIndex, endIndex);
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
@@ -213,17 +300,71 @@ export function ScoutingScene() {
       {/* Current Pilots Tab */}
       {activeTab === 'current' && (
         <div className="space-y-6">
+          {/* Sorting and Filtering Controls */}
+          <div className="flex flex-wrap gap-4 p-4 bg-gray-800 rounded-lg border border-gray-700">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-cyan-400" />
+              <span className="text-sm text-gray-300">필터:</span>
+              <Select value={filterBy} onValueChange={(value: any) => setFilterBy(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="Knight">나이트</SelectItem>
+                  <SelectItem value="Arbiter">아비터</SelectItem>
+                  <SelectItem value="River">리버</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <SortAsc className="w-4 h-4 text-cyan-400" />
+              <span className="text-sm text-gray-300">정렬:</span>
+              <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="rating">평점</SelectItem>
+                  <SelectItem value="name">이름</SelectItem>
+                  <SelectItem value="experience">경험치</SelectItem>
+                  <SelectItem value="fatigue">피로도</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              <CyberButton
+                variant="secondary"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="px-2 py-1"
+              >
+                {sortOrder === 'asc' ? '↑' : '↓'}
+              </CyberButton>
+            </div>
+
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <span>{totalPilots}명의 파일럿</span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentPilotsPage.map((pilot) => (
-              <Card key={pilot.id} className="bg-gray-800 border-gray-700">
+              <Card key={pilot.id} className="bg-gray-800 border-gray-700 hover:border-cyan-500 transition-colors">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-cyan-400">{pilot.name}</CardTitle>
                       <p className="text-gray-400">"{pilot.callsign}"</p>
-                      <Badge variant="outline" className="mt-1">
-                        {pilot.dormitory}
-                      </Badge>
+                      <div className="flex gap-1 mt-1">
+                        <Badge variant="outline" className="text-xs">
+                          {pilot.dormitory}
+                        </Badge>
+                        {pilot.traits.slice(0, 2).map((trait) => (
+                          <Badge key={trait} variant="secondary" className="text-xs">
+                            {trait}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-yellow-400">{pilot.rating}</div>
@@ -237,45 +378,48 @@ export function ScoutingScene() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div className="flex items-center gap-2">
                         {getStatIcon('reaction')}
-                        <span>반응속도:</span>
+                        <span>반응:</span>
                         <span className={getStatColor(pilot.reaction)}>{pilot.reaction}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatIcon('accuracy')}
-                        <span>정확도:</span>
+                        <span>정확:</span>
                         <span className={getStatColor(pilot.accuracy)}>{pilot.accuracy}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatIcon('tactical')}
-                        <span>전술이해:</span>
+                        <span>전술:</span>
                         <span className={getStatColor(pilot.tactical)}>{pilot.tactical}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatIcon('teamwork')}
-                        <span>팀워크:</span>
+                        <span>협동:</span>
                         <span className={getStatColor(pilot.teamwork)}>{pilot.teamwork}</span>
                       </div>
                     </div>
 
-                    {/* Status */}
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <div className="text-xs text-gray-400">피로도</div>
-                        <div className="w-full bg-gray-700 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${getProgressColor(pilot.fatigue, 'fatigue')}`}
-                            style={{ width: `${pilot.fatigue}%` }}
-                          />
-                        </div>
+                    {/* Status Bars */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-400">피로도</span>
+                        <span className={pilot.fatigue > 70 ? 'text-red-400' : 'text-gray-300'}>{pilot.fatigue}%</span>
                       </div>
-                      <div className="flex-1">
-                        <div className="text-xs text-gray-400">사기</div>
-                        <div className="w-full bg-gray-700 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${getProgressColor(pilot.morale, 'morale')}`}
-                            style={{ width: `${pilot.morale}%` }}
-                          />
-                        </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full ${getProgressColor(pilot.fatigue, 'fatigue')}`}
+                          style={{ width: `${pilot.fatigue}%` }}
+                        />
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-400">사기</span>
+                        <span className={pilot.morale < 40 ? 'text-red-400' : 'text-gray-300'}>{pilot.morale}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full ${getProgressColor(pilot.morale, 'morale')}`}
+                          style={{ width: `${pilot.morale}%` }}
+                        />
                       </div>
                     </div>
 
@@ -297,6 +441,43 @@ export function ScoutingScene() {
                         경험치: {pilot.experience} | 승: {pilot.wins} | 패: {pilot.losses}
                       </div>
                     )}
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <CyberButton 
+                            variant="secondary" 
+                            className="flex-1 text-xs"
+                            onClick={() => setSelectedPilot(pilot)}
+                          >
+                            <Eye className="w-3 h-3 mr-1" />
+                            상세
+                          </CyberButton>
+                        </DialogTrigger>
+                      </Dialog>
+
+                      {pilot.fatigue > 50 && !pilot.trainingUntil && (
+                        <CyberButton
+                          variant="secondary"
+                          onClick={() => handleRest(pilot.id)}
+                          disabled={restMutation.isPending}
+                          className="text-xs"
+                        >
+                          <Coffee className="w-3 h-3 mr-1" />
+                          휴식
+                        </CyberButton>
+                      )}
+
+                      <CyberButton
+                        variant="danger"
+                        onClick={() => handleDismiss(pilot.id)}
+                        disabled={dismissMutation.isPending}
+                        className="text-xs px-2"
+                      >
+                        <UserMinus className="w-3 h-3" />
+                      </CyberButton>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -448,6 +629,229 @@ export function ScoutingScene() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Pilot Details Modal */}
+      {selectedPilot && (
+        <DialogContent className="max-w-4xl bg-gray-900 border-gray-700">
+          <DialogHeader>
+            <DialogTitle className="text-cyan-400 text-2xl flex items-center gap-3">
+              <TrendingUp className="w-6 h-6" />
+              {selectedPilot.name} - 상세 정보
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-4">
+            {/* Basic Info */}
+            <div className="space-y-4">
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-cyan-400">기본 정보</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-400">콜사인:</span>
+                      <div className="text-white">"{selectedPilot.callsign}"</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">기숙사:</span>
+                      <div className="text-white">{selectedPilot.dormitory}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">전체 평점:</span>
+                      <div className="text-yellow-400 text-xl font-bold">{selectedPilot.rating}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">활성 상태:</span>
+                      <div className={selectedPilot.isActive ? 'text-green-400' : 'text-red-400'}>
+                        {selectedPilot.isActive ? '활성' : '비활성'}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {selectedPilot.traits.map((trait) => (
+                      <Badge key={trait} variant="secondary" className="bg-gray-700 text-gray-300">
+                        {trait}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Performance Stats */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-cyan-400">전투 기록</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="text-2xl font-bold text-green-400">{selectedPilot.wins}</div>
+                      <div className="text-xs text-gray-400">승리</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-red-400">{selectedPilot.losses}</div>
+                      <div className="text-xs text-gray-400">패배</div>
+                    </div>
+                    <div>
+                      <div className="text-2xl font-bold text-blue-400">
+                        {selectedPilot.wins + selectedPilot.losses > 0 
+                          ? Math.round((selectedPilot.wins / (selectedPilot.wins + selectedPilot.losses)) * 100)
+                          : 0}%
+                      </div>
+                      <div className="text-xs text-gray-400">승률</div>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4">
+                    <div className="text-sm text-gray-400 mb-2">경험치</div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-gray-700 rounded-full h-3">
+                        <div 
+                          className="h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
+                          style={{ width: `${Math.min((selectedPilot.experience / 1000) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-white font-semibold">{selectedPilot.experience}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Detailed Stats */}
+            <div className="space-y-4">
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-cyan-400">능력치 상세</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {[
+                    { name: '반응속도', value: selectedPilot.reaction, icon: 'reaction' },
+                    { name: '정확도', value: selectedPilot.accuracy, icon: 'accuracy' },
+                    { name: '전술이해', value: selectedPilot.tactical, icon: 'tactical' },
+                    { name: '팀워크', value: selectedPilot.teamwork, icon: 'teamwork' }
+                  ].map((stat) => (
+                    <div key={stat.name} className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          {getStatIcon(stat.icon)}
+                          <span className="text-gray-300">{stat.name}</span>
+                        </div>
+                        <span className={`font-bold ${getStatColor(stat.value)}`}>{stat.value}</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-2">
+                        <div 
+                          className={`h-2 rounded-full ${getStatColor(stat.value).includes('green') ? 'bg-green-500' : 
+                            getStatColor(stat.value).includes('yellow') ? 'bg-yellow-500' : 'bg-red-500'}`}
+                          style={{ width: `${stat.value}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Status & Condition */}
+              <Card className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <CardTitle className="text-cyan-400">현재 상태</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-300">피로도</span>
+                        <span className={selectedPilot.fatigue > 70 ? 'text-red-400' : 'text-gray-300'}>
+                          {selectedPilot.fatigue}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-3">
+                        <div 
+                          className={`h-3 rounded-full ${getProgressColor(selectedPilot.fatigue, 'fatigue')}`}
+                          style={{ width: `${selectedPilot.fatigue}%` }}
+                        />
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {selectedPilot.fatigue > 80 ? '매우 피곤함' : 
+                         selectedPilot.fatigue > 60 ? '피곤함' : 
+                         selectedPilot.fatigue > 40 ? '보통' : '컨디션 양호'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-300">사기</span>
+                        <span className={selectedPilot.morale < 40 ? 'text-red-400' : 'text-gray-300'}>
+                          {selectedPilot.morale}%
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-3">
+                        <div 
+                          className={`h-3 rounded-full ${getProgressColor(selectedPilot.morale, 'morale')}`}
+                          style={{ width: `${selectedPilot.morale}%` }}
+                        />
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {selectedPilot.morale > 80 ? '매우 높음' : 
+                         selectedPilot.morale > 60 ? '높음' : 
+                         selectedPilot.morale > 40 ? '보통' : '낮음'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedPilot.trainingUntil && (
+                    <div className="bg-blue-900/30 p-3 rounded border border-blue-500/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Clock className="w-4 h-4 text-blue-400" />
+                        <span className="text-blue-400 font-semibold">
+                          {selectedPilot.trainingType} 훈련 진행 중
+                        </span>
+                      </div>
+                      <div className="text-xs text-blue-300">
+                        완료까지: {trainingCountdowns[selectedPilot.id] ? 
+                          formatTime(trainingCountdowns[selectedPilot.id]) : '계산 중...'}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons in Modal */}
+                  <div className="flex gap-2 pt-4 border-t border-gray-700">
+                    {selectedPilot.fatigue > 50 && !selectedPilot.trainingUntil && (
+                      <CyberButton
+                        variant="secondary"
+                        onClick={() => {
+                          handleRest(selectedPilot.id);
+                          setSelectedPilot(null);
+                        }}
+                        disabled={restMutation.isPending}
+                        className="flex-1"
+                      >
+                        <Coffee className="w-4 h-4 mr-2" />
+                        휴식 명령
+                      </CyberButton>
+                    )}
+                    
+                    <CyberButton
+                      variant="danger"
+                      onClick={() => {
+                        handleDismiss(selectedPilot.id);
+                        setSelectedPilot(null);
+                      }}
+                      disabled={dismissMutation.isPending}
+                      className="flex-1"
+                    >
+                      <UserMinus className="w-4 h-4 mr-2" />
+                      파일럿 해고
+                    </CyberButton>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </DialogContent>
       )}
     </div>
   );
