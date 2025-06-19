@@ -184,24 +184,51 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     }
   }, [isSimulating, battle, currentTurn]);
 
-  // ASCII 전장 렌더링
+  // 고급 ASCII 전장 렌더링 (사이버코드 온라인 스타일)
   const renderBattlefield = () => {
     if (!battle) return null;
 
-    const field = Array(8).fill(null).map(() => Array(15).fill('░'));
+    const width = 20;
+    const height = 12;
+    const field = Array(height).fill(null).map(() => Array(width).fill('░'));
     
+    // 지형 요소 추가
+    // 중앙 엄폐물
+    for (let i = 8; i <= 11; i++) {
+      for (let j = 4; j <= 7; j++) {
+        field[j][i] = '█';
+      }
+    }
+    
+    // 측면 엄폐물
+    for (let i = 2; i <= 4; i++) {
+      field[2][i] = '█';
+      field[9][i] = '█';
+      field[2][width-1-i] = '█';
+      field[9][width-1-i] = '█';
+    }
+
     // 참가자 위치 표시 (안전 체크)
     if (battle.participants && Array.isArray(battle.participants)) {
       battle.participants.forEach((participant: BattleParticipant) => {
         const { x, y } = participant.position;
-        if (x >= 0 && x < 15 && y >= 0 && y < 8) {
+        if (x >= 0 && x < width && y >= 0 && y < height) {
           let symbol = '░';
           if (participant.status === 'destroyed') {
             symbol = '💥';
           } else if (participant.pilotId < 100) {
-            symbol = participant.hp > 70 ? '🟦' : participant.hp > 30 ? '🟨' : '🟧';
+            // 아군: 나이트, 리버, 아비터 스타일로 구분
+            const mechType = participant.mechId % 3;
+            if (participant.hp > 70) {
+              symbol = mechType === 0 ? '🛡️' : mechType === 1 ? '⚡' : '🎯';
+            } else if (participant.hp > 30) {
+              symbol = '🟨';
+            } else {
+              symbol = '🟧';
+            }
           } else {
-            symbol = participant.hp > 70 ? '🟥' : participant.hp > 30 ? '🟪' : '⬛';
+            // 적군
+            symbol = participant.hp > 70 ? '🔴' : participant.hp > 30 ? '🟪' : '⬛';
           }
           field[y][x] = symbol;
         }
@@ -209,63 +236,150 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     }
 
     return (
-      <div className="bg-black/60 p-4 rounded border border-cyan-500/30 font-mono text-sm">
-        <div className="text-center text-cyan-400 mb-2">╔══ BATTLE FIELD ══╗</div>
-        <div className="space-y-1">
+      <div className="bg-black/80 p-4 rounded border border-cyan-400/50 font-mono text-xs">
+        <div className="text-center text-cyan-300 mb-3 font-bold">
+          ╔═══════════ TRINITY BATTLEFIELD ═══════════╗
+        </div>
+        <div className="bg-gray-900/50 p-2 rounded">
           {field.map((row, y) => (
-            <div key={y} className="flex justify-center space-x-1">
+            <div key={y} className="flex justify-center">
               {row.map((cell, x) => (
-                <span key={x} className="inline-block w-6 text-center">
+                <span 
+                  key={x} 
+                  className={`inline-block w-4 h-4 text-center leading-4 ${
+                    cell === '█' ? 'text-gray-600' : 
+                    cell === '💥' ? 'text-red-500' :
+                    cell === '🛡️' ? 'text-blue-400' :
+                    cell === '⚡' ? 'text-yellow-400' :
+                    cell === '🎯' ? 'text-green-400' :
+                    cell === '🔴' ? 'text-red-400' : ''
+                  }`}
+                  style={{ fontSize: '12px' }}
+                >
                   {cell}
                 </span>
               ))}
             </div>
           ))}
         </div>
-        <div className="text-center text-cyan-400 mt-2">╚═══════════════════╝</div>
+        <div className="text-center text-cyan-300 mt-3 font-bold">
+          ╚═══════════════════════════════════════════╝
+        </div>
         
-        {/* 범례 */}
-        <div className="mt-4 text-xs text-gray-400 space-y-1">
-          <div>🟦 아군(양호) 🟨 아군(손상) 🟧 아군(위험)</div>
-          <div>🟥 적군(양호) 🟪 적군(손상) ⬛ 적군(위험) 💥 격파</div>
+        {/* 개선된 범례 */}
+        <div className="mt-4 text-xs text-gray-300 space-y-1 bg-gray-900/30 p-2 rounded">
+          <div className="text-cyan-400 font-bold mb-2">▼ LEGEND</div>
+          <div>🛡️ Knight (균형형) ⚡ River (돌격형) 🎯 Arbiter (저격형)</div>
+          <div>🟨 손상 🟧 위험 🔴 적군 💥 격파 █ 엄폐물</div>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="space-y-4">
-      {/* 전투 상태 표시 */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <span className="text-lg font-bold text-green-400">Turn {currentTurn}</span>
-          {isSimulating && (
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-xs text-green-400">SIMULATING</span>
-            </div>
-          )}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full">
+      {/* 전장 표시 (왼쪽) */}
+      <div className="lg:col-span-2 space-y-4">
+        {/* 전투 상태 표시 */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <span className="text-lg font-bold text-cyan-400">Turn {currentTurn}</span>
+            {isSimulating && (
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-green-400">ACTIVE</span>
+              </div>
+            )}
+          </div>
+          
+          <div className="text-sm text-gray-400">
+            Phase: {battle?.phase?.toUpperCase() || 'STANDBY'}
+          </div>
         </div>
-        
-        <div className="text-sm text-gray-400">
-          Phase: {battle?.phase || 'Unknown'}
-        </div>
+
+        {/* 전장 표시 */}
+        {renderBattlefield()}
+
+        {/* 수동 진행 버튼 (디버그용) */}
+        {battle?.phase === 'active' && (
+          <div className="flex justify-center">
+            <button
+              onClick={progressSimulation}
+              className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-sm"
+            >
+              Next Turn (Manual)
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 전장 표시 */}
-      {renderBattlefield()}
-
-      {/* 수동 진행 버튼 (디버그용) */}
-      {battle?.phase === 'active' && (
-        <div className="flex justify-center">
-          <button
-            onClick={progressSimulation}
-            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded text-sm"
-          >
-            Next Turn (Manual)
-          </button>
+      {/* 실시간 통신 로그 (오른쪽) */}
+      <div className="lg:col-span-1">
+        <div className="bg-black/80 p-4 rounded border border-cyan-400/50 h-full font-mono">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-cyan-300 font-bold text-sm">
+              ═══ TRINITY COMM ═══
+            </h4>
+            <div className="text-xs text-gray-400">
+              Turn {battle?.turn || 0}
+            </div>
+          </div>
+          
+          <div className="h-80 overflow-y-auto space-y-2 text-xs">
+            {battle?.log && battle.log.length > 0 ? (
+              battle.log.slice(-25).map((entry, index) => {
+                const timeStr = new Date(entry.timestamp).toLocaleTimeString('ko-KR', { 
+                  hour12: false, 
+                  hour: '2-digit', 
+                  minute: '2-digit', 
+                  second: '2-digit' 
+                });
+                
+                return (
+                  <div key={index} className="flex">
+                    <span className="text-gray-500 mr-2 font-mono text-xs">
+                      [{timeStr}]
+                    </span>
+                    <div className="flex-1">
+                      {entry.speaker ? (
+                        <div className={`${
+                          entry.type === 'communication' ? 'text-cyan-300' :
+                          entry.type === 'attack' ? 'text-red-300' :
+                          entry.type === 'movement' ? 'text-yellow-300' :
+                          'text-green-300'
+                        }`}>
+                          <span className="font-bold text-white">
+                            {entry.speaker}
+                          </span>
+                          <span className="text-gray-400 mx-1">▸</span>
+                          <span className="text-sm">{entry.message}</span>
+                        </div>
+                      ) : (
+                        <div className="text-gray-400 italic text-sm">
+                          ● {entry.message}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center text-gray-500 italic py-8">
+                <div className="mb-2">📡</div>
+                <div>≫ 통신 대기 중 ≪</div>
+                <div className="text-xs mt-2">전투 시작 시 실시간 로그가 표시됩니다</div>
+              </div>
+            )}
+          </div>
+          
+          {/* 스크롤 표시기 */}
+          <div className="flex justify-center mt-3 pt-2 border-t border-gray-700">
+            <span className="text-xs text-gray-500">
+              ▼ 실시간 통신 ▼
+            </span>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
