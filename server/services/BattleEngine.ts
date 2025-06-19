@@ -78,10 +78,10 @@ export class BattleEngine {
       turn++;
       battleState.turn = turn;
 
-      // Process AI decisions for each active participant
+      // Process AI decisions for each active participant (simplified)
       battleState.participants.forEach((participant, index) => {
         if (participant.status === "active") {
-          const aiDecision = this.aiSystem.makeDecision(participant, battleState, index < 3 ? "team1" : "team2");
+          const aiDecision = this.aiSystem.makeSimpleDecision(participant, battleState, index < 3 ? "team1" : "team2");
           this.executeAction(participant, aiDecision, battleState);
         }
       });
