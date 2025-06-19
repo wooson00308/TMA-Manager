@@ -5,7 +5,7 @@ import { CyberButton } from '@/components/ui/CyberButton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { apiRequest } from '@/lib/queryClient';
-import { Clock, Zap, Target, Brain, Users, Star, Coins, Plus } from 'lucide-react';
+import { Clock, Zap, Target, Brain, Users, Star, Coins } from 'lucide-react';
 
 interface PilotWithTraining {
   id: number;
@@ -42,7 +42,9 @@ interface TeamWithCredits {
 export function ScoutingScene() {
   const { setScene } = useGameStore();
   const [activeTab, setActiveTab] = useState<'current' | 'training' | 'recruit'>('current');
+  const [currentPage, setCurrentPage] = useState(1);
   const [trainingCountdowns, setTrainingCountdowns] = useState<{[key: number]: number}>({});
+  const itemsPerPage = 6;
   const queryClient = useQueryClient();
 
   // Fetch current pilots
@@ -156,6 +158,13 @@ export function ScoutingScene() {
     }
   };
 
+  // Pagination logic
+  const totalPilots = (currentPilots as PilotWithTraining[]).length;
+  const totalPages = Math.ceil(totalPilots / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentPilotsPage = (currentPilots as PilotWithTraining[]).slice(startIndex, endIndex);
+
   return (
     <div className="min-h-screen bg-black text-white p-6">
       {/* Header */}
@@ -185,7 +194,7 @@ export function ScoutingScene() {
           variant={activeTab === 'current' ? 'primary' : 'secondary'}
           onClick={() => setActiveTab('current')}
         >
-          현재 파일럿 ({(currentPilots as PilotWithTraining[]).length})
+          현재 파일럿 ({totalPilots})
         </CyberButton>
         <CyberButton
           variant={activeTab === 'training' ? 'primary' : 'secondary'}
@@ -203,94 +212,134 @@ export function ScoutingScene() {
 
       {/* Current Pilots Tab */}
       {activeTab === 'current' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {(currentPilots as PilotWithTraining[]).map((pilot) => (
-            <Card key={pilot.id} className="bg-gray-800 border-gray-700">
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-cyan-400">{pilot.name}</CardTitle>
-                    <p className="text-gray-400">"{pilot.callsign}"</p>
-                    <Badge variant="outline" className="mt-1">
-                      {pilot.dormitory}
-                    </Badge>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-yellow-400">{pilot.rating}</div>
-                    <div className="text-xs text-gray-400">전체 평점</div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {/* Stats */}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      {getStatIcon('reaction')}
-                      <span>반응속도:</span>
-                      <span className={getStatColor(pilot.reaction)}>{pilot.reaction}</span>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentPilotsPage.map((pilot) => (
+              <Card key={pilot.id} className="bg-gray-800 border-gray-700">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-cyan-400">{pilot.name}</CardTitle>
+                      <p className="text-gray-400">"{pilot.callsign}"</p>
+                      <Badge variant="outline" className="mt-1">
+                        {pilot.dormitory}
+                      </Badge>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {getStatIcon('accuracy')}
-                      <span>정확도:</span>
-                      <span className={getStatColor(pilot.accuracy)}>{pilot.accuracy}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getStatIcon('tactical')}
-                      <span>전술이해:</span>
-                      <span className={getStatColor(pilot.tactical)}>{pilot.tactical}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getStatIcon('teamwork')}
-                      <span>팀워크:</span>
-                      <span className={getStatColor(pilot.teamwork)}>{pilot.teamwork}</span>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-yellow-400">{pilot.rating}</div>
+                      <div className="text-xs text-gray-400">전체 평점</div>
                     </div>
                   </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        {getStatIcon('reaction')}
+                        <span>반응속도:</span>
+                        <span className={getStatColor(pilot.reaction)}>{pilot.reaction}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatIcon('accuracy')}
+                        <span>정확도:</span>
+                        <span className={getStatColor(pilot.accuracy)}>{pilot.accuracy}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatIcon('tactical')}
+                        <span>전술이해:</span>
+                        <span className={getStatColor(pilot.tactical)}>{pilot.tactical}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatIcon('teamwork')}
+                        <span>팀워크:</span>
+                        <span className={getStatColor(pilot.teamwork)}>{pilot.teamwork}</span>
+                      </div>
+                    </div>
 
-                  {/* Status */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1">
-                      <div className="text-xs text-gray-400">피로도</div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${getProgressColor(pilot.fatigue, 'fatigue')}`}
-                          style={{ width: `${pilot.fatigue}%` }}
-                        />
+                    {/* Status */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-400">피로도</div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${getProgressColor(pilot.fatigue, 'fatigue')}`}
+                            style={{ width: `${pilot.fatigue}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-400">사기</div>
+                        <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full ${getProgressColor(pilot.morale, 'morale')}`}
+                            style={{ width: `${pilot.morale}%` }}
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="text-xs text-gray-400">사기</div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div 
-                          className={`h-2 rounded-full ${getProgressColor(pilot.morale, 'morale')}`}
-                          style={{ width: `${pilot.morale}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Training Status */}
-                  {trainingCountdowns[pilot.id] ? (
-                    <div className="bg-blue-900/30 p-3 rounded border border-blue-500/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className="w-4 h-4 text-blue-400" />
-                        <span className="text-sm text-blue-400">
-                          {pilot.trainingType} 훈련 중
-                        </span>
+                    {/* Training Status */}
+                    {trainingCountdowns[pilot.id] ? (
+                      <div className="bg-blue-900/30 p-3 rounded border border-blue-500/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="w-4 h-4 text-blue-400" />
+                          <span className="text-sm text-blue-400">
+                            {pilot.trainingType} 훈련 중
+                          </span>
+                        </div>
+                        <div className="text-lg font-mono text-blue-300">
+                          {formatTime(trainingCountdowns[pilot.id])}
+                        </div>
                       </div>
-                      <div className="text-lg font-mono text-blue-300">
-                        {formatTime(trainingCountdowns[pilot.id])}
+                    ) : (
+                      <div className="text-xs text-gray-400">
+                        경험치: {pilot.experience} | 승: {pilot.wins} | 패: {pilot.losses}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="text-xs text-gray-400">
-                      경험치: {pilot.experience} | 승: {pilot.wins} | 패: {pilot.losses}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2">
+              <CyberButton
+                variant="secondary"
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1"
+              >
+                이전
+              </CyberButton>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <CyberButton
+                  key={page}
+                  variant={currentPage === page ? "primary" : "secondary"}
+                  onClick={() => setCurrentPage(page)}
+                  className="px-3 py-1"
+                >
+                  {page}
+                </CyberButton>
+              ))}
+              
+              <CyberButton
+                variant="secondary"
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1"
+              >
+                다음
+              </CyberButton>
+            </div>
+          )}
+          
+          <div className="text-center text-sm text-gray-400">
+            {totalPilots}명 중 {startIndex + 1}-{Math.min(endIndex, totalPilots)}명 표시
+          </div>
         </div>
       )}
 
