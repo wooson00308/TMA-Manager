@@ -196,6 +196,219 @@ export class MemStorage implements IStorage {
         firepower: 85,
         range: 70,
         specialAbilities: ["Energy Burst", "Overcharge"]
+      },
+      // Additional Knight Class Mechs
+      {
+        name: "Iron Bulwark",
+        type: "Knight",
+        variant: "Fortress",
+        hp: 130,
+        armor: 100,
+        speed: 35,
+        firepower: 65,
+        range: 40,
+        specialAbilities: ["Immobile Defense", "Damage Reflection"]
+      },
+      {
+        name: "Steel Vanguard",
+        type: "Knight",
+        variant: "Striker",
+        hp: 105,
+        armor: 70,
+        speed: 65,
+        firepower: 80,
+        range: 50,
+        specialAbilities: ["Charge Attack", "Shield Slam"]
+      },
+      {
+        name: "Paladin Core",
+        type: "Knight",
+        variant: "Healer",
+        hp: 100,
+        armor: 75,
+        speed: 50,
+        firepower: 55,
+        range: 55,
+        specialAbilities: ["Repair Field", "Emergency Shield"]
+      },
+      {
+        name: "Crusader MK-III",
+        type: "Knight",
+        variant: "Assault",
+        hp: 115,
+        armor: 80,
+        speed: 55,
+        firepower: 90,
+        range: 45,
+        specialAbilities: ["Berserker Mode", "Heavy Impact"]
+      },
+      // Additional River Class Mechs
+      {
+        name: "Shadow Current",
+        type: "River",
+        variant: "Stealth",
+        hp: 65,
+        armor: 40,
+        speed: 100,
+        firepower: 70,
+        range: 45,
+        specialAbilities: ["Invisibility", "Backstab"]
+      },
+      {
+        name: "Wind Dancer",
+        type: "River",
+        variant: "Evasion",
+        hp: 70,
+        armor: 45,
+        speed: 95,
+        firepower: 65,
+        range: 40,
+        specialAbilities: ["Perfect Dodge", "Counter Strike"]
+      },
+      {
+        name: "Torrent Rush",
+        type: "River",
+        variant: "Burst",
+        hp: 60,
+        armor: 35,
+        speed: 90,
+        firepower: 95,
+        range: 35,
+        specialAbilities: ["Speed Boost", "Multi-Strike"]
+      },
+      {
+        name: "Swift Tide",
+        type: "River",
+        variant: "Mobility",
+        hp: 75,
+        armor: 50,
+        speed: 85,
+        firepower: 75,
+        range: 50,
+        specialAbilities: ["Wall Jump", "Flow State"]
+      },
+      {
+        name: "Blade Cyclone",
+        type: "River",
+        variant: "Melee",
+        hp: 80,
+        armor: 55,
+        speed: 80,
+        firepower: 85,
+        range: 25,
+        specialAbilities: ["Sword Dance", "Bleeding Edge"]
+      },
+      // Additional Arbiter Class Mechs
+      {
+        name: "Silent Judge",
+        type: "Arbiter",
+        variant: "Assassin",
+        hp: 70,
+        armor: 50,
+        speed: 75,
+        firepower: 90,
+        range: 75,
+        specialAbilities: ["Silent Shot", "Mark for Death"]
+      },
+      {
+        name: "Thunder Verdict",
+        type: "Arbiter",
+        variant: "Artillery",
+        hp: 85,
+        armor: 60,
+        speed: 45,
+        firepower: 105,
+        range: 90,
+        specialAbilities: ["Thunder Strike", "Area Bombard"]
+      },
+      {
+        name: "Omega Protocol",
+        type: "Arbiter",
+        variant: "Tech",
+        hp: 80,
+        armor: 65,
+        speed: 60,
+        firepower: 80,
+        range: 70,
+        specialAbilities: ["System Hack", "EMP Burst"]
+      },
+      {
+        name: "Divine Arbiter",
+        type: "Arbiter",
+        variant: "Elite",
+        hp: 95,
+        armor: 70,
+        speed: 70,
+        firepower: 85,
+        range: 75,
+        specialAbilities: ["Divine Judgment", "Perfect Aim"]
+      },
+      {
+        name: "Crimson Executioner",
+        type: "Arbiter",
+        variant: "Berserker",
+        hp: 75,
+        armor: 55,
+        speed: 80,
+        firepower: 100,
+        range: 55,
+        specialAbilities: ["Blood Frenzy", "Execution Strike"]
+      },
+      // Experimental/Custom Mechs
+      {
+        name: "Hybrid Genesis",
+        type: "Custom",
+        variant: "Adaptive",
+        hp: 85,
+        armor: 60,
+        speed: 70,
+        firepower: 75,
+        range: 60,
+        specialAbilities: ["Mode Switch", "Adaptive Armor"]
+      },
+      {
+        name: "Quantum Phantom",
+        type: "Custom",
+        variant: "Phase",
+        hp: 70,
+        armor: 40,
+        speed: 85,
+        firepower: 80,
+        range: 65,
+        specialAbilities: ["Phase Shift", "Quantum Strike"]
+      },
+      {
+        name: "Meteor Hammer",
+        type: "Custom",
+        variant: "Demolition",
+        hp: 120,
+        armor: 85,
+        speed: 40,
+        firepower: 110,
+        range: 50,
+        specialAbilities: ["Meteor Drop", "Shockwave"]
+      },
+      {
+        name: "Angel Wing",
+        type: "Custom",
+        variant: "Flight",
+        hp: 65,
+        armor: 45,
+        speed: 90,
+        firepower: 70,
+        range: 80,
+        specialAbilities: ["Aerial Combat", "Dive Bomb"]
+      },
+      {
+        name: "Demon Claw",
+        type: "Custom",
+        variant: "Predator",
+        hp: 80,
+        armor: 50,
+        speed: 85,
+        firepower: 90,
+        range: 45,
+        specialAbilities: ["Hunt Mode", "Fear Aura"]
       }
     ];
 
