@@ -44,14 +44,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const getAllyPilotIds = () => {
     if (!battle?.participants) return [];
     // 전장 좌측(x <= 10)에 배치된 유닛을 아군으로 판단
-    const allyIds = battle.participants
+    return battle.participants
       .filter(p => p.position.x <= 10)
       .map(p => p.pilotId);
-    
-    console.log('Battle participants:', battle.participants);
-    console.log('Ally pilot IDs (x <= 10):', allyIds);
-    
-    return allyIds;
   };
 
   const getPilotName = (pilotId: number) => {

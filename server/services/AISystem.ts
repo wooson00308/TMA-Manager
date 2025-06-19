@@ -61,36 +61,21 @@ export class AISystem {
     }
   };
 
-  async makeDecision(participant: any, battleState: BattleState, team: string): Promise<AIDecision> {
-    // 실제 파일럿 데이터 가져오기
-    const pilot = await storage.getPilot(participant.pilotId);
-    
-    let personality;
-    if (pilot) {
-      // 실제 파일럿 정보 사용
-      personality = {
-        name: pilot.name,
-        callsign: pilot.callsign,
-        dormitory: pilot.dormitory,
-        traits: pilot.traits,
-        combat: this.getDialogueByTraits(pilot.traits, "combat"),
-        movement: this.getDialogueByTraits(pilot.traits, "movement"),
-        damage: this.getDialogueByTraits(pilot.traits, "damage"),
-        victory: this.getDialogueByTraits(pilot.traits, "victory")
-      };
-    } else {
-      // 하드코딩된 AI 적군 정보 사용
-      personality = this.pilotPersonalities[participant.pilotId as keyof typeof this.pilotPersonalities] || {
-        name: `Enemy-${participant.pilotId}`,
-        callsign: `TARGET-${participant.pilotId}`,
-        dormitory: "UNKNOWN", 
-        traits: ["BALANCED"],
-        combat: ["타겟 공격 중!"],
-        movement: ["포지션 이동!"],
-        damage: ["데미지 확인!"],
-        victory: ["임무 완료!"]
-      };
-    }
+  makeDecision(participant: any, battleState: BattleState, team: string): AIDecision {
+    // 간단한 파일럿 정보 매핑
+    const pilotNames: { [key: number]: string } = {
+      1: "Sasha Volkov",
+      2: "Mei Chen", 
+      3: "Alex Rodriguez",
+      4: "Jin Watanabe",
+      5: "Elena Vasquez",
+      101: "Enemy Alpha",
+      102: "Enemy Beta", 
+      103: "Enemy Gamma"
+    };
+
+    const pilotName = pilotNames[participant.pilotId] || `Unit-${participant.pilotId}`;
+    const isEnemy = participant.pilotId >= 100;
     
     const randomAction = Math.random();
     const isLowHP = participant.hp < 50;
@@ -99,17 +84,37 @@ export class AISystem {
       ? battleState.participants.filter((p: any) => p.pilotId >= 100 && p.status === 'active')
       : battleState.participants.filter((p: any) => p.pilotId < 100 && p.status === 'active');
 
-    // 특성에 따른 행동 확률 조정
-    const isAggressive = personality.traits.includes("AGGRESSIVE");
-    const isCautious = personality.traits.includes("CAUTIOUS");
-    const isAnalytical = personality.traits.includes("ANALYTICAL");
+    // 대사 선택
+    const getCombatDialogue = () => {
+      if (isEnemy) {
+        return ["타겟 공격!", "전면 공격이다!", "격파한다!"][Math.floor(Math.random() * 3)];
+      } else {
+        return ["돌격이야!", "나가자!", "공격 개시!"][Math.floor(Math.random() * 3)];
+      }
+    };
+
+    const getMovementDialogue = () => {
+      if (isEnemy) {
+        return ["포지션 이동!", "재배치!", "우회한다!"][Math.floor(Math.random() * 3)];
+      } else {
+        return ["이동한다!", "포지션 체인지!", "좌표 이동!"][Math.floor(Math.random() * 3)];
+      }
+    };
+
+    const getDamageDialogue = () => {
+      if (isEnemy) {
+        return ["데미지 확인!", "시스템 체크!", "아직 괜찮다!"][Math.floor(Math.random() * 3)];
+      } else {
+        return ["아직 괜찮아!", "이 정도론!", "더 세게 와!"][Math.floor(Math.random() * 3)];
+      }
+    };
 
     // 초반 전투 시 커뮤니케이션 증가
     if (isEarlyBattle && randomAction < 0.4) {
       return {
         type: "COMMUNICATE",
-        pilotName: personality.name,
-        dialogue: personality.combat[Math.floor(Math.random() * personality.combat.length)]
+        pilotName: pilotName,
+        dialogue: getCombatDialogue()
       };
     }
 
@@ -117,30 +122,8 @@ export class AISystem {
     if (isLowHP && randomAction < 0.3) {
       return {
         type: "COMMUNICATE",
-        pilotName: personality.name,
-        dialogue: personality.damage[Math.floor(Math.random() * personality.damage.length)]
-      };
-    }
-
-    // 공격적 성향일 때 공격 우선
-    if (isAggressive && enemyTargets.length > 0 && randomAction < 0.6) {
-      const targetIndex = battleState.participants.findIndex((p: any) => p === enemyTargets[0]);
-      return {
-        type: "ATTACK",
-        pilotName: personality.name,
-        targetIndex,
-        dialogue: personality.combat[Math.floor(Math.random() * personality.combat.length)]
-      };
-    }
-
-    // 신중한 성향일 때 이동 우선
-    if (isCautious && randomAction < 0.5) {
-      const newPosition = this.calculateNewPosition(participant.position, team);
-      return {
-        type: "MOVE",
-        pilotName: personality.name,
-        newPosition,
-        dialogue: personality.movement[Math.floor(Math.random() * personality.movement.length)]
+        pilotName: pilotName,
+        dialogue: getDamageDialogue()
       };
     }
 
@@ -149,25 +132,25 @@ export class AISystem {
       const targetIndex = battleState.participants.findIndex((p: any) => p === enemyTargets[0]);
       return {
         type: "ATTACK",
-        pilotName: personality.name,
+        pilotName: pilotName,
         targetIndex,
-        dialogue: personality.combat[Math.floor(Math.random() * personality.combat.length)]
+        dialogue: getCombatDialogue()
       };
     } else if (randomAction < 0.7) {
       const newPosition = this.calculateNewPosition(participant.position, team);
       return {
         type: "MOVE",
-        pilotName: personality.name,
+        pilotName: pilotName,
         newPosition,
-        dialogue: personality.movement[Math.floor(Math.random() * personality.movement.length)]
+        dialogue: getMovementDialogue()
       };
     }
 
     // 기본 커뮤니케이션
     return {
       type: "COMMUNICATE",
-      pilotName: personality.name,
-      dialogue: isAnalytical ? "상황 분석 중..." : "대기 중입니다."
+      pilotName: pilotName,
+      dialogue: "대기 중..."
     };
   }
 
