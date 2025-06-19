@@ -36,9 +36,9 @@ export function GameShell() {
   const navigationItems = [
     { id: 'hub', icon: 'fas fa-home', label: 'COMMAND HUB', description: 'Season overview & team status' },
     { id: 'scouting', icon: 'fas fa-search', label: 'PILOT SCOUTING', description: 'Recruit & analyze pilots' },
-    { id: 'formation', icon: 'fas fa-cogs', label: 'FORMATION', description: 'Mech-pilot combinations' },
     { id: 'recon', icon: 'fas fa-eye', label: 'RECONNAISSANCE', description: 'Enemy team analysis' },
     { id: 'banpick', icon: 'fas fa-chess', label: 'BAN/PICK PHASE', description: 'Strategic mech selection' },
+    { id: 'formation', icon: 'fas fa-cogs', label: 'FORMATION', description: 'Mech-pilot combinations' },
     { id: 'battle', icon: 'fas fa-crosshairs', label: 'BATTLE SIM', description: 'Real-time combat observation' },
     { id: 'analysis', icon: 'fas fa-chart-line', label: 'POST-ANALYSIS', description: 'Battle data & strategy' },
   ];

@@ -183,7 +183,7 @@ export function AnalysisScene() {
       </div>
 
       {/* Tab Content */}
-      <div className="min-h-96">
+      <div className="scrollable-content">
         {selectedTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="cyber-border p-4 bg-slate-800">

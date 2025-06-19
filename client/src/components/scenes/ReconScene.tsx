@@ -17,8 +17,8 @@ export function ReconScene() {
   });
 
   useEffect(() => {
-    if (fetchedReconData) {
-      setReconData(fetchedReconData);
+    if (fetchedReconData && typeof fetchedReconData === 'object') {
+      setReconData(fetchedReconData as ReconData);
     }
   }, [fetchedReconData]);
 

@@ -216,6 +216,56 @@
   background: #6b7280;
 }
 
+/* Enhanced scrollable containers */
+.scrollable-content {
+  max-height: calc(100vh - 300px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #1f2937;
+  padding-right: 4px;
+}
+
+.scrollable-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollable-content::-webkit-scrollbar-track {
+  background: #1f2937;
+  border-radius: 4px;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+  border: 1px solid #374151;
+}
+
+.scrollable-content::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Scene-specific scrolling */
+.pilot-grid-container {
+  max-height: 60vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #1f2937;
+}
+
+.mech-grid-container {
+  max-height: 50vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #1f2937;
+}
+
+.battle-log-container {
+  max-height: 40vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 #1f2937;
+}
+
 /* Mobile responsive scrolling */
 @media (max-width: 768px) {
   .scene-transition {
@@ -224,6 +274,18 @@
   
   .content-container {
     max-height: calc(100vh - 150px);
+  }
+  
+  .scrollable-content {
+    max-height: calc(100vh - 200px);
+  }
+  
+  .pilot-grid-container {
+    max-height: 50vh;
+  }
+  
+  .mech-grid-container {
+    max-height: 40vh;
   }
 }
 
