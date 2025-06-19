@@ -86,6 +86,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced pilot analytics endpoint
+  app.get("/api/pilots/:id/analytics", async (req, res) => {
+    try {
+      const pilotId = parseInt(req.params.id);
+      const pilot = await storage.getPilot(pilotId);
+      
+      if (!pilot) {
+        return res.status(404).json({ error: 'Pilot not found' });
+      }
+
+      // Generate comprehensive analytics
+      const analytics = {
+        pilot,
+        performance: {
+          winRate: pilot.wins / Math.max(pilot.wins + pilot.losses, 1),
+          averageRating: pilot.rating,
+          battleCount: pilot.wins + pilot.losses,
+          experienceGrowth: pilot.experience,
+          efficiency: {
+            accuracy: pilot.accuracy,
+            reaction: pilot.reaction,
+            tactical: pilot.tactical,
+            teamwork: pilot.teamwork
+          }
+        },
+        career: {
+          status: pilot.experience < 300 ? "신예" : 
+                  pilot.experience < 700 ? "일반" :
+                  pilot.experience < 1200 ? "베테랑" : "에이스",
+          specialization: pilot.traits.includes("KNIGHT") ? "Knight 전문" :
+                         pilot.traits.includes("ARBITER") ? "Arbiter 전문" :
+                         pilot.traits.includes("RIVER") ? "River 전문" : "범용",
+          strengths: pilot.accuracy > 85 ? ["정확도"] :
+                    pilot.reaction > 85 ? ["반응속도"] :
+                    pilot.tactical > 85 ? ["전술"] :
+                    pilot.teamwork > 85 ? ["팀워크"] : ["균형"],
+          growthPotential: pilot.traits.includes("ROOKIE") ? 85 :
+                          pilot.traits.includes("VETERAN") ? 60 : 75
+        },
+        recommendations: [
+          pilot.fatigue > 60 ? "휴식 필요" : null,
+          pilot.morale < 70 ? "사기 진작" : null,
+          pilot.accuracy < 70 ? "정확도 훈련" : null,
+          pilot.tactical < 70 ? "전술 교육" : null
+        ].filter(Boolean)
+      };
+
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error generating pilot analytics:', error);
+      res.status(500).json({ error: 'Failed to generate analytics' });
+    }
+  });
+
   app.get("/api/pilots/recruitable", async (req, res) => {
     try {
       const allPilots = await storage.getAllPilots();
@@ -162,6 +216,201 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: 'Failed to dismiss pilot' });
     }
   });
+
+  // Team performance analytics endpoint
+  app.get("/api/teams/:id/analytics", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.id);
+      const team = await storage.getTeam(teamId);
+      
+      if (!team) {
+        return res.status(404).json({ error: 'Team not found' });
+      }
+
+      const pilots = await storage.getActivePilots();
+      const battles = await storage.getTeamBattles(teamId);
+
+      // Calculate comprehensive team analytics
+      const analytics = {
+        team,
+        season: {
+          current: 3,
+          week: 8,
+          record: { wins: team.wins, losses: team.losses },
+          winRate: team.wins / Math.max(team.wins + team.losses, 1),
+          leagueRank: team.leagueRank,
+          reputation: team.reputation
+        },
+        pilots: {
+          count: pilots.length,
+          averageRating: pilots.reduce((sum, p) => sum + p.rating, 0) / pilots.length,
+          averageExperience: pilots.reduce((sum, p) => sum + p.experience, 0) / pilots.length,
+          averageFatigue: pilots.reduce((sum, p) => sum + p.fatigue, 0) / pilots.length,
+          averageMorale: pilots.reduce((sum, p) => sum + p.morale, 0) / pilots.length,
+          specializations: {
+            knight: pilots.filter(p => p.traits.includes("KNIGHT")).length,
+            arbiter: pilots.filter(p => p.traits.includes("ARBITER")).length,
+            river: pilots.filter(p => p.traits.includes("RIVER")).length
+          }
+        },
+        performance: {
+          totalBattles: battles.length,
+          recentForm: battles.slice(-5).map(b => b.winnerId === teamId ? 'W' : 'L'),
+          strengths: determineTeamStrengths(pilots),
+          weaknesses: determineTeamWeaknesses(pilots),
+          recommendations: generateTeamRecommendations(pilots, team)
+        },
+        resources: {
+          credits: team.credits,
+          facilities: {
+            trainingCenter: { level: 2, effect: "+10% 훈련 효율" },
+            medicalBay: { level: 1, effect: "+5% 회복 속도" },
+            techLab: { level: 2, effect: "+8% 메크 성능" },
+            dormitory: { level: 3, effect: "+15% 파일럿 사기" }
+          }
+        },
+        projections: {
+          seasonOutlook: team.wins >= team.losses * 2 ? "우승 후보" : 
+                        team.wins > team.losses ? "플레이오프 진출" : "순위 개선 필요",
+          budgetStatus: team.credits > 10000 ? "안정적" : 
+                       team.credits > 5000 ? "보통" : "긴축 필요",
+          developmentFocus: pilots.some(p => p.traits.includes("ROOKIE")) ? "신예 육성" :
+                           pilots.filter(p => p.experience > 1000).length >= 3 ? "베테랑 관리" : "균형 발전"
+        }
+      };
+
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error generating team analytics:', error);
+      res.status(500).json({ error: 'Failed to generate team analytics' });
+    }
+  });
+
+  // Comprehensive season progress endpoint
+  app.get("/api/season/progress", async (req, res) => {
+    try {
+      const teams = await storage.getAllTeams();
+      const trinitySquad = teams.find(t => t.name === 'Trinity Squad');
+      const pilots = await storage.getActivePilots();
+
+      const seasonData = {
+        current: {
+          season: 3,
+          week: 8,
+          totalWeeks: 16
+        },
+        standings: teams.map(team => ({
+          name: team.name,
+          wins: team.wins,
+          losses: team.losses,
+          winRate: team.wins / Math.max(team.wins + team.losses, 1),
+          rank: team.leagueRank
+        })).sort((a, b) => a.rank - b.rank),
+        playerTeam: {
+          name: trinitySquad?.name || 'Trinity Squad',
+          performance: {
+            wins: trinitySquad?.wins || 0,
+            losses: trinitySquad?.losses || 0,
+            rank: trinitySquad?.leagueRank || 8,
+            credits: trinitySquad?.credits || 0
+          },
+          roster: {
+            totalPilots: pilots.length,
+            readyPilots: pilots.filter(p => p.fatigue < 60).length,
+            trainingPilots: pilots.filter(p => p.trainingUntil).length,
+            averageRating: Math.round(pilots.reduce((sum, p) => sum + p.rating, 0) / pilots.length)
+          }
+        },
+        milestones: [
+          {
+            name: "시즌 우승",
+            progress: Math.min((trinitySquad?.wins || 0) / 12 * 100, 100),
+            requirement: "12승 달성",
+            reward: "50,000 크레딧 + 명예"
+          },
+          {
+            name: "플레이오프 진출",
+            progress: Math.min((trinitySquad?.wins || 0) / 8 * 100, 100),
+            requirement: "8승 달성",
+            reward: "20,000 크레딧"
+          },
+          {
+            name: "베테랑 육성",
+            progress: Math.min(pilots.filter(p => p.experience > 1000).length / 3 * 100, 100),
+            requirement: "베테랑 파일럿 3명",
+            reward: "훈련 효율 증가"
+          }
+        ],
+        upcomingEvents: [
+          { week: 9, event: "vs Steel Phoenixes", difficulty: "어려움" },
+          { week: 10, event: "시설 업그레이드 기회", type: "facility" },
+          { week: 11, event: "vs Lightning Bolts", difficulty: "보통" },
+          { week: 12, event: "중간 평가", type: "evaluation" }
+        ]
+      };
+
+      res.json(seasonData);
+    } catch (error) {
+      console.error('Error generating season progress:', error);
+      res.status(500).json({ error: 'Failed to generate season progress' });
+    }
+  });
+
+  // Helper functions for team analytics
+  function determineTeamStrengths(pilots: any[]): string[] {
+    const strengths = [];
+    const avgAccuracy = pilots.reduce((sum, p) => sum + p.accuracy, 0) / pilots.length;
+    const avgReaction = pilots.reduce((sum, p) => sum + p.reaction, 0) / pilots.length;
+    const avgTactical = pilots.reduce((sum, p) => sum + p.tactical, 0) / pilots.length;
+    const avgTeamwork = pilots.reduce((sum, p) => sum + p.teamwork, 0) / pilots.length;
+
+    if (avgAccuracy > 80) strengths.push("높은 정확도");
+    if (avgReaction > 80) strengths.push("빠른 반응속도");
+    if (avgTactical > 80) strengths.push("뛰어난 전술 이해");
+    if (avgTeamwork > 80) strengths.push("강한 팀워크");
+    if (pilots.filter(p => p.traits.includes("ACE")).length >= 2) strengths.push("에이스 파일럿 다수");
+    if (pilots.filter(p => p.experience > 1000).length >= 3) strengths.push("풍부한 경험");
+    
+    return strengths.length > 0 ? strengths : ["균형잡힌 팀"];
+  }
+
+  function determineTeamWeaknesses(pilots: any[]): string[] {
+    const weaknesses = [];
+    const avgFatigue = pilots.reduce((sum, p) => sum + p.fatigue, 0) / pilots.length;
+    const avgMorale = pilots.reduce((sum, p) => sum + p.morale, 0) / pilots.length;
+    const rookieCount = pilots.filter(p => p.traits.includes("ROOKIE")).length;
+
+    if (avgFatigue > 60) weaknesses.push("높은 피로도");
+    if (avgMorale < 70) weaknesses.push("낮은 사기");
+    if (rookieCount >= 3) weaknesses.push("경험 부족");
+    if (pilots.length < 5) weaknesses.push("부족한 로스터");
+    
+    const specializationCounts = {
+      knight: pilots.filter(p => p.traits.includes("KNIGHT")).length,
+      arbiter: pilots.filter(p => p.traits.includes("ARBITER")).length,
+      river: pilots.filter(p => p.traits.includes("RIVER")).length
+    };
+    
+    const minSpecialization = Math.min(...Object.values(specializationCounts));
+    if (minSpecialization === 0) weaknesses.push("특화 부족");
+    
+    return weaknesses.length > 0 ? weaknesses : ["특별한 약점 없음"];
+  }
+
+  function generateTeamRecommendations(pilots: any[], team: any): string[] {
+    const recommendations = [];
+    const avgFatigue = pilots.reduce((sum, p) => sum + p.fatigue, 0) / pilots.length;
+    const avgMorale = pilots.reduce((sum, p) => sum + p.morale, 0) / pilots.length;
+    const rookieCount = pilots.filter(p => p.traits.includes("ROOKIE")).length;
+
+    if (avgFatigue > 60) recommendations.push("팀 휴식 시간 늘리기");
+    if (avgMorale < 70) recommendations.push("사기 진작 활동 실시");
+    if (rookieCount >= 2) recommendations.push("베테랑 파일럿 영입");
+    if (team.credits > 15000) recommendations.push("시설 업그레이드 고려");
+    if (pilots.length < 6) recommendations.push("로스터 확장");
+    
+    return recommendations.length > 0 ? recommendations : ["현재 팀 상태 양호"];
+  }
 
   app.get("/api/pilots/recruitable2", async (req, res) => {
     try {

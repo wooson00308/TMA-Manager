@@ -1,6 +1,7 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -27,6 +28,8 @@ export const pilots = pgTable("pilots", {
   trainingType: text("training_type"),
   fatigue: integer("fatigue").notNull().default(0),
   morale: integer("morale").notNull().default(50),
+  
+
 });
 
 export const mechs = pgTable("mechs", {
