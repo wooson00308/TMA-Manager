@@ -145,21 +145,14 @@ export function BanPickScene() {
         mech3Id: banPickState.selectedMechs.enemy[2]?.id || mechs[5].id,
       };
 
-      console.log('Starting battle with formations:', { playerFormation, enemyFormation });
-
-      // Set up one-time listener for battle start confirmation
-      const handleBattleStarted = (data: any) => {
-        console.log('Battle started, navigating to battle scene');
-        setBattle(data.state);
-        setConnected(true);
-        setScene('battle');
-        wsManager.off('BATTLE_STARTED', handleBattleStarted);
-      };
-
-      wsManager.on('BATTLE_STARTED', handleBattleStarted);
-
       // Start battle via WebSocket
       wsManager.startBattle(playerFormation, enemyFormation);
+      
+      // Set battle store state
+      setConnected(true);
+      
+      // Navigate to battle scene
+      setScene('battle');
       
     } catch (error) {
       console.error('Failed to start battle:', error);
@@ -327,8 +320,8 @@ export function BanPickScene() {
         </CyberButton>
         
         {isComplete && (
-          <CyberButton onClick={() => setScene('match_prep')}>
-            경기 준비
+          <CyberButton onClick={() => handleStartBattle()}>
+            전투 시작
           </CyberButton>
         )}
       </div>
