@@ -179,16 +179,79 @@ export class AISystem {
     };
   }
 
+  // 특성에 따른 대사 생성
+  private getDialogueByTraits(traits: string[], situation: string): string[] {
+    const dialogues: { [key: string]: { [key: string]: string[] } } = {
+      combat: {
+        AGGRESSIVE: ["치이! 가버려!", "내가 먼저다!", "돌격이야!", "전면 공격이다!"],
+        CAUTIOUS: ["신중하게 접근한다.", "안전을 확보하고...", "상황을 파악 중."],
+        ANALYTICAL: ["상황을 분석하고 있습니다.", "전술적 우위 확보.", "조율된 공격 개시."],
+        COOPERATIVE: ["팀과 함께!", "협력해서 가자!", "같이 밀어붙인다!"],
+        KNIGHT: ["나이트의 힘을 보여준다!", "방어에서 공격으로!", "균형잡힌 전투다!"],
+        RIVER: ["리버 스타일로 간다!", "빠르게 치고 빠진다!", "물처럼 유연하게!"],
+        ARBITER: ["정밀 조준 완료.", "한 발로 끝낸다.", "아비터의 정밀성이다."],
+        ACE: ["에이스의 실력을 보여주지!", "이 정도는 식은 죽 먹기!", "완벽한 타이밍이다!"],
+        VETERAN: ["경험이 말해주는군!", "이런 건 익숙해!", "베테랑의 직감이야!"],
+        ROOKIE: ["아직 배우는 중이지만!", "열심히 해보겠어!", "신입이라고 만만히 보지 마!"]
+      },
+      movement: {
+        AGGRESSIVE: ["앞으로!", "후퇴는 없어!", "돌진한다!"],
+        CAUTIOUS: ["유리한 고지로 이동.", "안전한 루트로.", "신중하게 포지셔닝."],
+        ANALYTICAL: ["최적 위치로 이동.", "대형 유지하며 전진.", "계산된 이동이다."],
+        COOPERATIVE: ["팀원들과 함께!", "대형을 맞춘다!", "협조해서 움직인다!"],
+        KNIGHT: ["균형잡힌 전진!", "방어진을 유지하며!", "나이트답게 움직인다!"],
+        RIVER: ["빠르게 접근!", "측면 우회한다!", "흘러가듯 이동!"],
+        ARBITER: ["저격 위치 선점.", "거리 확보.", "최적 사격 지점으로."],
+        SCOUT: ["정찰 완료!", "새로운 루트 발견!", "앞서서 길을 연다!"]
+      },
+      damage: {
+        AGGRESSIVE: ["아직이야!", "더 세게 와!", "이 정도로?"],
+        CAUTIOUS: ["데미지 리포트. 경미함.", "시스템 정상.", "아직 문제없음."],
+        ANALYTICAL: ["손상 보고. 지속 가능.", "방어막 재충전 중.", "전투 지속 가능합니다."],
+        COOPERATIVE: ["아직 괜찮아!", "팀에 부담 주지 않겠어!", "계속 싸울 수 있어!"],
+        KNIGHT: ["나이트의 방어력!", "이 정도론 안 쓰러져!", "방어막이 버텨준다!"],
+        RIVER: ["아직 괜찮아!", "리버는 질기거든!", "더 심한 것도 견뎠어!"],
+        ARBITER: ["시스템 체크 완료.", "정밀도에는 문제없음.", "아직 조준이 가능해."],
+        VETERAN: ["이 정도야 뭐!", "여전히 멀쩡하다!", "더 심한 것도 견뎠어!"]
+      },
+      victory: {
+        AGGRESSIVE: ["힘이 곧 정의다!", "압도적이었지!", "당연한 결과야!"],
+        CAUTIOUS: ["예상 범위 내입니다.", "신중함이 승리했네요.", "계획대로였어요."],
+        ANALYTICAL: ["계산대로입니다.", "분석이 정확했군요.", "논리적 결론이죠."],
+        COOPERATIVE: ["팀워크의 승리!", "모두 함께 해냈어!", "협력의 힘이야!"],
+        KNIGHT: ["나이트의 전술이 통했네요.", "균형잡힌 싸움이었어.", "기사도의 승리!"],
+        RIVER: ["어떻게? 내가 이겼다고?", "역시 리버 스타일이지!", "유연함이 이겼다!"],
+        ARBITER: ["정밀성의 승리죠.", "아비터다운 결과네요.", "한 치의 오차도 없었어."],
+        ACE: ["역시 에이스답지!", "완벽한 승리였어!", "이게 실력 차이야!"]
+      }
+    };
+
+    const situationDialogues = dialogues[situation] || {};
+    let result: string[] = [];
+
+    // 특성에 해당하는 대사들을 수집
+    traits.forEach(trait => {
+      if (situationDialogues[trait]) {
+        result.push(...situationDialogues[trait]);
+      }
+    });
+
+    // 특성별 대사가 없으면 기본 대사 사용
+    if (result.length === 0) {
+      const defaultDialogues = {
+        combat: ["공격 개시!", "전투 준비!", "타겟 확인!"],
+        movement: ["이동 중!", "포지션 변경!", "재배치!"],
+        damage: ["데미지 확인!", "시스템 체크!", "전투 지속!"],
+        victory: ["승리했다!", "임무 완료!", "성공이야!"]
+      };
+      result = defaultDialogues[situation as keyof typeof defaultDialogues] || ["..."];
+    }
+
+    return result;
+  }
+
   private getAttackDialogue(traits: string[]): string {
-    if (traits.includes("AGGRESSIVE")) {
-      return ["Take this!", "No escape!", "Full power!"][Math.floor(Math.random() * 3)];
-    }
-    if (traits.includes("ANALYTICAL")) {
-      return ["Calculated strike.", "Precision attack.", "Target confirmed."][Math.floor(Math.random() * 3)];
-    }
-    if (traits.includes("CAUTIOUS")) {
-      return ["Careful shot.", "Taking aim...", "Steady..."][Math.floor(Math.random() * 3)];
-    }
-    return ["Engaging target!", "Fire!", "Attack!"][Math.floor(Math.random() * 3)];
+    const dialogues = this.getDialogueByTraits(traits, "combat");
+    return dialogues[Math.floor(Math.random() * dialogues.length)];
   }
 }
