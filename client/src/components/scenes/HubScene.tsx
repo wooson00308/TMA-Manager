@@ -91,7 +91,7 @@ export function HubScene() {
 
       {/* Pilot Status Grid */}
       <div className="mb-6">
-        <h3 className="text-xl font-orbitron font-semibold text-green-400 mb-4">ACTIVE PILOT ROSTER</h3>
+        <h3 className="text-xl font-orbitron font-semibold text-green-400 mb-4">활성 파일럿 로스터</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {pilots.slice(0, 3).map((pilot) => (
             <PilotCard key={pilot.id} pilot={pilot} />
@@ -117,7 +117,7 @@ export function HubScene() {
         
         <CyberButton onClick={() => setScene('analysis')}>
           <div className="text-pink-400 font-semibold mb-2">
-            <i className="fas fa-chart-bar mr-2"></i>전적 분석
+            <i className="fas fa-chart-bar mr-2"></i>전투 분석
           </div>
           <div className="text-xs text-gray-400">성과 및 통계</div>
         </CyberButton>

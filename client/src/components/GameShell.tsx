@@ -36,10 +36,10 @@ export function GameShell() {
   const CurrentSceneComponent = sceneComponents[currentScene];
 
   const navigationItems = [
-    { id: 'hub', icon: 'fas fa-home', label: 'COMMAND HUB', description: 'Season overview & team status' },
-    { id: 'scouting', icon: 'fas fa-search', label: 'PILOT SCOUTING', description: 'Recruit & analyze pilots' },
-    { id: 'match_prep', icon: 'fas fa-play', label: 'MATCH PREP', description: 'Unified battle preparation' },
-    { id: 'analysis', icon: 'fas fa-chart-line', label: 'POST-ANALYSIS', description: 'Battle data & strategy' },
+    { id: 'hub', icon: 'fas fa-home', label: '사령부', description: '시즌 개요 및 팀 현황' },
+    { id: 'scouting', icon: 'fas fa-search', label: '파일럿 스카우팅', description: '파일럿 영입 및 분석' },
+    { id: 'match_prep', icon: 'fas fa-play', label: '경기 준비', description: '통합 전투 준비 시스템' },
+    { id: 'analysis', icon: 'fas fa-chart-line', label: '전투 분석', description: '전투 데이터 및 전략 분석' },
   ];
 
   return (
@@ -64,19 +64,19 @@ export function GameShell() {
           
           <div className="flex items-center space-x-6">
             <div className="text-right">
-              <div className="text-pink-400 font-semibold">SEASON {currentSeason}</div>
-              <div className="text-xs text-gray-400">Week {currentWeek}/12</div>
+              <div className="text-pink-400 font-semibold">시즌 {currentSeason}</div>
+              <div className="text-xs text-gray-400">주차 {currentWeek}/12</div>
             </div>
             
             <div className="cyber-border p-2 bg-slate-800">
-              <div className="text-xs text-gray-400">OPERATOR</div>
+              <div className="text-xs text-gray-400">운영자</div>
               <div className="text-green-400 font-semibold">NEXUS-07</div>
             </div>
             
             <div className="flex items-center space-x-2">
               <div className={`w-2 h-2 rounded-full animate-pulse ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
               <span className={`text-xs ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
-                {isConnected ? 'ONLINE' : 'OFFLINE'}
+                {isConnected ? '온라인' : '오프라인'}
               </span>
             </div>
           </div>
