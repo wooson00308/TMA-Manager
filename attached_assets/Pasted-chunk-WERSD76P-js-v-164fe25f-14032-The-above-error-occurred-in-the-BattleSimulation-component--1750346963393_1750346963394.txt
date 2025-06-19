@@ -1,0 +1,40 @@
+chunk-WERSD76P.js?v=164fe25f:14032 The above error occurred in the <BattleSimulation> component:
+
+    at BattleSimulation (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/src/components/BattleSimulation.tsx:20:36)
+    at div
+    at SimulationDisplay (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/src/components/scenes/MatchPrepScene.tsx:916:3)
+    at div
+    at div
+    at MatchPrepScene (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/src/components/scenes/MatchPrepScene.tsx:28:41)
+    at main
+    at div
+    at div
+    at GameShell (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/src/components/GameShell.tsx:42:100)
+    at div
+    at Game (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/src/pages/Game.tsx:26:35)
+    at Route (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=164fe25f:323:16)
+    at Switch (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=164fe25f:379:17)
+    at Router
+    at Provider (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-TBZK4T4L.js?v=164fe25f:78:15)
+    at TooltipProvider (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=164fe25f:56:5)
+    at QueryClientProvider (https://571eea25-fde7-48b5-9cb0-8cb46fb5f3af-00-1y0llbhhra38i.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=164fe25f:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-WERSD76P.js?v=164fe25f:14032
+update.callback @ chunk-WERSD76P.js?v=164fe25f:14052
+callCallback @ chunk-WERSD76P.js?v=164fe25f:11248
+commitUpdateQueue @ chunk-WERSD76P.js?v=164fe25f:11265
+commitLayoutEffectOnFiber @ chunk-WERSD76P.js?v=164fe25f:17093
+commitLayoutMountEffects_complete @ chunk-WERSD76P.js?v=164fe25f:17980
+commitLayoutEffects_begin @ chunk-WERSD76P.js?v=164fe25f:17969
+commitLayoutEffects @ chunk-WERSD76P.js?v=164fe25f:17920
+commitRootImpl @ chunk-WERSD76P.js?v=164fe25f:19353
+commitRoot @ chunk-WERSD76P.js?v=164fe25f:19277
+performSyncWorkOnRoot @ chunk-WERSD76P.js?v=164fe25f:18895
+flushSyncCallbacks @ chunk-WERSD76P.js?v=164fe25f:9119
+(anonymous) @ chunk-WERSD76P.js?v=164fe25f:18627Understand this error
+chunk-WERSD76P.js?v=164fe25f:9129 Uncaught TypeError: Cannot read properties of undefined (reading 'forEach')
+    at renderBattlefield (BattleSimulation.tsx:194:25)
+    at BattleSimulation (BattleSimulation.tsx:254:8)

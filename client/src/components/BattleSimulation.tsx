@@ -26,7 +26,7 @@ interface BattleSimulationProps {
   battle: BattleState;
 }
 
-export function BattleSimulation({ battle }: BattleSimulationProps) {
+export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element {
   const [currentTurn, setCurrentTurn] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
   const { addBattleLog, setBattle } = useBattleStore();
@@ -190,21 +190,23 @@ export function BattleSimulation({ battle }: BattleSimulationProps) {
 
     const field = Array(8).fill(null).map(() => Array(15).fill('░'));
     
-    // 참가자 위치 표시
-    battle.participants.forEach((participant: BattleParticipant) => {
-      const { x, y } = participant.position;
-      if (x >= 0 && x < 15 && y >= 0 && y < 8) {
-        let symbol = '░';
-        if (participant.status === 'destroyed') {
-          symbol = '💥';
-        } else if (participant.pilotId < 100) {
-          symbol = participant.hp > 70 ? '🟦' : participant.hp > 30 ? '🟨' : '🟧';
-        } else {
-          symbol = participant.hp > 70 ? '🟥' : participant.hp > 30 ? '🟪' : '⬛';
+    // 참가자 위치 표시 (안전 체크)
+    if (battle.participants && Array.isArray(battle.participants)) {
+      battle.participants.forEach((participant: BattleParticipant) => {
+        const { x, y } = participant.position;
+        if (x >= 0 && x < 15 && y >= 0 && y < 8) {
+          let symbol = '░';
+          if (participant.status === 'destroyed') {
+            symbol = '💥';
+          } else if (participant.pilotId < 100) {
+            symbol = participant.hp > 70 ? '🟦' : participant.hp > 30 ? '🟨' : '🟧';
+          } else {
+            symbol = participant.hp > 70 ? '🟥' : participant.hp > 30 ? '🟪' : '⬛';
+          }
+          field[y][x] = symbol;
         }
-        field[y][x] = symbol;
-      }
-    });
+      });
+    }
 
     return (
       <div className="bg-black/60 p-4 rounded border border-cyan-500/30 font-mono text-sm">
