@@ -23,6 +23,10 @@ export const pilots = pgTable("pilots", {
   experience: integer("experience").notNull().default(0),
   wins: integer("wins").notNull().default(0),
   losses: integer("losses").notNull().default(0),
+  trainingUntil: timestamp("training_until"),
+  trainingType: text("training_type"),
+  fatigue: integer("fatigue").notNull().default(0),
+  morale: integer("morale").notNull().default(50),
 });
 
 export const mechs = pgTable("mechs", {
@@ -46,6 +50,8 @@ export const teams = pgTable("teams", {
   losses: integer("losses").notNull().default(0),
   currentSeason: integer("current_season").notNull().default(1),
   leagueRank: integer("league_rank").notNull().default(8),
+  credits: integer("credits").notNull().default(10000),
+  reputation: integer("reputation").notNull().default(0),
 });
 
 export const battles = pgTable("battles", {

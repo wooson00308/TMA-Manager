@@ -44,6 +44,11 @@ export interface IStorage {
 
   // Game state
   getReconData(enemyTeamId: number): Promise<ReconData>;
+
+  // Training methods
+  startPilotTraining(pilotId: number, trainingType: string): Promise<Pilot | undefined>;
+  completePilotTraining(pilotId: number): Promise<Pilot | undefined>;
+  spendCredits(teamId: number, amount: number): Promise<Team | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -550,7 +555,11 @@ export class MemStorage implements IStorage {
       isActive: insertPilot.isActive ?? true,
       experience: 0,
       wins: 0,
-      losses: 0
+      losses: 0,
+      trainingUntil: null,
+      trainingType: null,
+      fatigue: 0,
+      morale: 50
     };
     this.pilots.set(id, pilot);
     return pilot;
@@ -618,7 +627,9 @@ export class MemStorage implements IStorage {
       wins: Math.floor(Math.random() * 15) + 5,
       losses: Math.floor(Math.random() * 10) + 2,
       currentSeason: insertTeam.currentSeason || 3,
-      leagueRank: insertTeam.leagueRank || 8
+      leagueRank: insertTeam.leagueRank || 8,
+      credits: insertTeam.credits || 10000,
+      reputation: insertTeam.reputation || 0
     };
     this.teams.set(id, team);
     return team;
@@ -741,6 +752,66 @@ export class MemStorage implements IStorage {
         winRate: (pilot.wins / Math.max(pilot.wins + pilot.losses, 1)) || Math.random() * 0.3 + 0.5
       }))
     };
+  }
+
+  // Training methods
+  async startPilotTraining(pilotId: number, trainingType: string): Promise<Pilot | undefined> {
+    const pilot = this.pilots.get(pilotId);
+    if (!pilot) return undefined;
+
+    const trainingDuration = 30000; // 30 seconds for demo
+    const trainingUntil = new Date(Date.now() + trainingDuration);
+    
+    const updatedPilot = {
+      ...pilot,
+      trainingUntil,
+      trainingType,
+      fatigue: Math.min(pilot.fatigue + 10, 100)
+    };
+    
+    this.pilots.set(pilotId, updatedPilot);
+    return updatedPilot;
+  }
+
+  async completePilotTraining(pilotId: number): Promise<Pilot | undefined> {
+    const pilot = this.pilots.get(pilotId);
+    if (!pilot || !pilot.trainingType) return undefined;
+
+    const statBonus = Math.floor(Math.random() * 3) + 1; // 1-3 stat increase
+    let updatedPilot = { ...pilot };
+
+    // Apply training benefits based on type
+    switch (pilot.trainingType) {
+      case 'reaction':
+        updatedPilot.reaction = Math.min(pilot.reaction + statBonus, 100);
+        break;
+      case 'accuracy':
+        updatedPilot.accuracy = Math.min(pilot.accuracy + statBonus, 100);
+        break;
+      case 'tactical':
+        updatedPilot.tactical = Math.min(pilot.tactical + statBonus, 100);
+        break;
+      case 'teamwork':
+        updatedPilot.teamwork = Math.min(pilot.teamwork + statBonus, 100);
+        break;
+    }
+
+    updatedPilot.experience += 10;
+    updatedPilot.trainingUntil = null;
+    updatedPilot.trainingType = null;
+    updatedPilot.morale = Math.min(pilot.morale + 5, 100);
+    
+    this.pilots.set(pilotId, updatedPilot);
+    return updatedPilot;
+  }
+
+  async spendCredits(teamId: number, amount: number): Promise<Team | undefined> {
+    const team = this.teams.get(teamId);
+    if (!team || team.credits < amount) return undefined;
+
+    const updatedTeam = { ...team, credits: team.credits - amount };
+    this.teams.set(teamId, updatedTeam);
+    return updatedTeam;
   }
 }
 

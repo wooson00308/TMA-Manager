@@ -19,7 +19,11 @@ export class AISystem {
   };
 
   makeDecision(participant: any, battleState: BattleState, team: string): AIDecision {
-    const personality = this.pilotPersonalities[participant.pilotId as keyof typeof this.pilotPersonalities];
+    const personality = this.pilotPersonalities[participant.pilotId as keyof typeof this.pilotPersonalities] || {
+      name: participant.pilotName || "Unknown Pilot",
+      traits: ["BALANCED"],
+      dialogues: ["Engaging target!", "Moving to position!", "Roger that!"]
+    };
     const randomAction = Math.random();
     
     // Higher chance of communication early in battle

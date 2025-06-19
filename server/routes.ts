@@ -282,5 +282,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Training routes
+  app.post("/api/pilots/:pilotId/training", async (req, res) => {
+    try {
+      const pilotId = parseInt(req.params.pilotId);
+      const { trainingType } = req.body;
+      
+      if (!trainingType || !['reaction', 'accuracy', 'tactical', 'teamwork'].includes(trainingType)) {
+        return res.status(400).json({ error: "Invalid training type" });
+      }
+
+      const pilot = await storage.startPilotTraining(pilotId, trainingType);
+      if (!pilot) {
+        return res.status(404).json({ error: "Pilot not found" });
+      }
+
+      res.json(pilot);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start training" });
+    }
+  });
+
+  app.post("/api/pilots/:pilotId/complete-training", async (req, res) => {
+    try {
+      const pilotId = parseInt(req.params.pilotId);
+      const pilot = await storage.completePilotTraining(pilotId);
+      
+      if (!pilot) {
+        return res.status(404).json({ error: "Pilot not found or not in training" });
+      }
+
+      res.json(pilot);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to complete training" });
+    }
+  });
+
+  app.post("/api/teams/:teamId/spend-credits", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const { amount } = req.body;
+      
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ error: "Invalid amount" });
+      }
+
+      const team = await storage.spendCredits(teamId, amount);
+      if (!team) {
+        return res.status(400).json({ error: "Insufficient credits or team not found" });
+      }
+
+      res.json(team);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to spend credits" });
+    }
+  });
+
   return httpServer;
 }
