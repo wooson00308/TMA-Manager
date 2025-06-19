@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { CyberButton } from '@/components/ui/CyberButton';
 import type { Pilot, Mech } from '@shared/schema';
