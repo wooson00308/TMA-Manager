@@ -244,48 +244,62 @@
   background: #6b7280;
 }
 
-/* Scene-specific scrolling */
+/* Scene-specific scrolling - Fixed for all zoom levels */
 .pilot-grid-container {
-  max-height: 60vh;
+  max-height: calc(100vh - 350px);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #4b5563 #1f2937;
 }
 
 .mech-grid-container {
-  max-height: 50vh;
+  max-height: calc(100vh - 300px);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #4b5563 #1f2937;
 }
 
 .battle-log-container {
-  max-height: 40vh;
+  max-height: calc(100vh - 400px);
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #4b5563 #1f2937;
 }
 
-/* Mobile responsive scrolling */
+/* Enhanced responsive scrolling for all zoom levels */
 @media (max-width: 768px) {
   .scene-transition {
     padding-right: 2px;
+    height: calc(100vh - 180px);
   }
   
   .content-container {
-    max-height: calc(100vh - 150px);
-  }
-  
-  .scrollable-content {
     max-height: calc(100vh - 200px);
   }
   
+  .scrollable-content {
+    max-height: calc(100vh - 250px);
+  }
+  
   .pilot-grid-container {
-    max-height: 50vh;
+    max-height: calc(100vh - 280px);
   }
   
   .mech-grid-container {
-    max-height: 40vh;
+    max-height: calc(100vh - 250px);
+  }
+}
+
+/* Ensure scrolling works at any zoom level */
+@media (min-height: 400px) {
+  .pilot-grid-container {
+    min-height: 300px;
+  }
+}
+
+@media (min-height: 600px) {
+  .pilot-grid-container {
+    min-height: 400px;
   }
 }
 

@@ -22,6 +22,7 @@ export function ScoutingScene() {
   const [activeTab, setActiveTab] = useState<'current' | 'recruit' | 'training'>('current');
   const [currentPage, setCurrentPage] = useState(1);
   const [recruitPage, setRecruitPage] = useState(1);
+  const [trainingInProgress, setTrainingInProgress] = useState<{[key: number]: string}>({});
   const itemsPerPage = 6;
 
   const queryClient = useQueryClient();
@@ -74,20 +75,52 @@ export function ScoutingScene() {
     alert(`${pilot.name} (${pilot.callsign})을 영입했습니다!`);
   };
 
+  const trainingMutation = useMutation({
+    mutationFn: async ({ pilotId, trainingType }: { pilotId: number, trainingType: string }) => {
+      // Simulate API call for training
+      return new Promise(resolve => setTimeout(resolve, 1000));
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/pilots/active'] });
+    },
+  });
+
   const handleTraining = (pilotId: number, trainingType: string) => {
     const pilot = (currentPilots as any[])?.find((p: any) => p.id === pilotId);
     if (!pilot) return;
 
     const trainingEffects: Record<string, any> = {
-      '전투훈련': { accuracy: 2, reaction: 1 },
-      '전술교육': { tactical: 2, teamwork: 1 },
-      '기체조작': { reaction: 2, accuracy: 1 },
-      '팀워크': { teamwork: 2, tactical: 1 }
+      '전투훈련': { accuracy: '+2', reaction: '+1', cost: 500, duration: '1주', description: '실전 시뮬레이션' },
+      '전술교육': { tactical: '+2', teamwork: '+1', cost: 600, duration: '1주', description: '전략 이론 학습' },
+      '기체조작': { reaction: '+2', accuracy: '+1', cost: 550, duration: '1주', description: '메카 조작 숙련' },
+      '팀워크': { teamwork: '+2', tactical: '+1', cost: 450, duration: '1주', description: '협동 작전 훈련' }
     };
 
     const effects = trainingEffects[trainingType] || {};
-    console.log(`${pilot.name} (${pilot.callsign})이 ${trainingType}을 완료했습니다:`, effects);
-    alert(`${pilot.name}의 ${trainingType}이 완료되었습니다!`);
+    
+    // Set training in progress
+    setTrainingInProgress(prev => ({ ...prev, [pilotId]: trainingType }));
+    
+    // Start training with timeout to simulate completion
+    trainingMutation.mutate({ pilotId, trainingType });
+    
+    setTimeout(() => {
+      setTrainingInProgress(prev => {
+        const updated = { ...prev };
+        delete updated[pilotId];
+        return updated;
+      });
+      
+      const improvementText = Object.entries(effects)
+        .filter(([key]) => !['cost', 'duration', 'description'].includes(key))
+        .map(([stat, value]) => `${stat}: ${value}`)
+        .join(', ');
+      
+      alert(`${pilot.name}의 ${trainingType}이 완료되었습니다!\n능력치 향상: ${improvementText}\n소요 시간: ${effects.duration}`);
+    }, 2000);
+    
+    // Show training start message
+    alert(`${pilot.name}이 ${trainingType}을 시작했습니다!\n${effects.description} - ${effects.duration} 소요\n비용: ${effects.cost} 크레딧`);
   };
 
   // Pagination helpers
@@ -286,17 +319,30 @@ export function ScoutingScene() {
                           variant="secondary"
                           onClick={() => handleTraining(pilot.id, '전투훈련')}
                           className="text-xs py-1"
+                          disabled={trainingInProgress[pilot.id] !== undefined}
                         >
-                          전투 훈련
+                          {trainingInProgress[pilot.id] === '전투훈련' ? '🎯 훈련중...' : '전투 훈련'}
                         </CyberButton>
                         <CyberButton
                           variant="secondary"
                           onClick={() => handleTraining(pilot.id, '전술교육')}
                           className="text-xs py-1"
+                          disabled={trainingInProgress[pilot.id] !== undefined}
                         >
-                          전술 교육
+                          {trainingInProgress[pilot.id] === '전술교육' ? '📚 교육중...' : '전술 교육'}
                         </CyberButton>
                       </div>
+                      
+                      {trainingInProgress[pilot.id] && (
+                        <div className="mt-2 p-2 bg-blue-900/30 border border-blue-400/50 rounded">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-blue-300">{trainingInProgress[pilot.id]} 진행중</span>
+                            <div className="w-16 h-1 bg-gray-700 rounded overflow-hidden">
+                              <div className="h-full bg-blue-400 animate-pulse"></div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

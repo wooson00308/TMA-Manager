@@ -113,10 +113,8 @@ export function GameShell() {
         </nav>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-          <div className="max-h-full">
-            <CurrentSceneComponent />
-          </div>
+        <main className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ height: 'calc(100vh - 160px)' }}>
+          <CurrentSceneComponent />
         </main>
       </div>
 
