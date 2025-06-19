@@ -33,7 +33,7 @@ export function GameShell() {
     }
   }, [playerTeam, initializePlayerTeam]);
 
-  const CurrentSceneComponent = sceneComponents[currentScene] || HubScene;
+  const CurrentSceneComponent = sceneComponents[currentScene];
 
   const navigationItems = [
     { id: 'hub', icon: 'fas fa-home', label: '사령부', description: '시즌 개요 및 팀 현황' },
@@ -113,7 +113,7 @@ export function GameShell() {
 
         {/* Main Content Area */}
         <main className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ height: 'calc(100vh - 160px)' }}>
-          <CurrentSceneComponent setScene={setScene} />
+          <CurrentSceneComponent />
         </main>
       </div>
 

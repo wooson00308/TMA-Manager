@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
 import { wsManager } from '@/lib/websocket';
-import { OfflineGameShell } from '@/components/OfflineGameShell';
+import { GameShell } from '@/components/GameShell';
 import type { Pilot, Mech } from '@shared/schema';
 
 export default function Game() {

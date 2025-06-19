@@ -1,146 +1,76 @@
 import { useState, useEffect } from 'react';
+import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
+import { ASCIIBattlefield } from '@/components/ui/ASCIIBattlefield';
 import { CyberButton } from '@/components/ui/CyberButton';
+import { wsManager } from '@/lib/websocket';
 
-interface BattleSceneProps {
-  setScene: (scene: string) => void;
-}
-
-export function BattleScene({ setScene }: BattleSceneProps) {
-  const { currentBattle, setBattle, addBattleLog, clearBattleHistory } = useBattleStore();
+export function BattleScene() {
+  const { setScene } = useGameStore();
+  const { currentBattle, isConnected, battleHistory, addBattleLog, setBattle } = useBattleStore();
+  
   const [battleStatus, setBattleStatus] = useState<'preparing' | 'active' | 'completed'>('preparing');
   const [winner, setWinner] = useState<string | null>(null);
-  const [currentTurn, setCurrentTurn] = useState(1);
 
   useEffect(() => {
-    // Clear previous battle history and start new offline battle
-    clearBattleHistory();
-    
-    const startOfflineBattle = () => {
-      // Create mock battle state for offline mode
-      const mockBattleState = {
-        id: `offline_battle_${Date.now()}`,
-        phase: 'active' as const,
-        turn: 1,
-        participants: [
-          {
-            pilotId: 1,
-            mechId: 12,
-            position: { x: 1, y: 1 },
-            hp: 100,
-            status: 'active' as const
-          },
-          {
-            pilotId: 2,
-            mechId: 13,
-            position: { x: 1, y: 2 },
-            hp: 100,
-            status: 'active' as const
-          },
-          {
-            pilotId: 3,
-            mechId: 14,
-            position: { x: 1, y: 3 },
-            hp: 100,
-            status: 'active' as const
-          },
-          {
-            pilotId: 101,
-            mechId: 15,
-            position: { x: 8, y: 1 },
-            hp: 100,
-            status: 'active' as const
-          },
-          {
-            pilotId: 102,
-            mechId: 16,
-            position: { x: 8, y: 2 },
-            hp: 100,
-            status: 'active' as const
-          },
-          {
-            pilotId: 103,
-            mechId: 17,
-            position: { x: 8, y: 3 },
-            hp: 100,
-            status: 'active' as const
-          }
-        ],
-        log: [
-          {
-            timestamp: Date.now(),
-            type: 'system' as const,
-            message: '오프라인 전투 시뮬레이션이 시작되었습니다.',
-          }
-        ]
-      };
-      
-      setBattle(mockBattleState);
+    // Set up WebSocket listeners for battle updates
+    const handleBattleStarted = (data: any) => {
+      setBattle(data.state);
       setBattleStatus('active');
       addBattleLog({
         timestamp: Date.now(),
         type: 'system',
-        message: 'Trinity Squad vs Enemy Team - 전투 개시!',
+        message: 'Battle commenced. All units report ready.',
       });
-      
-      // Start offline battle simulation
-      simulateOfflineBattle();
     };
-    
-    setTimeout(startOfflineBattle, 1000);
-  }, [setBattle, addBattleLog, clearBattleHistory]);
 
-  const simulateOfflineBattle = () => {
-    const battleActions = [
-      { type: 'movement' as const, pilot: 'Sasha', message: 'Knight 기체로 전진 개시!' },
-      { type: 'communication' as const, pilot: 'Mei', message: '적 기체 3시 방향에서 확인!' },
-      { type: 'attack' as const, pilot: 'Alex', message: 'River 기체로 화력 지원!' },
-      { type: 'movement' as const, pilot: 'Enemy Alpha', message: '측면 기동으로 우회 공격!' },
-      { type: 'attack' as const, pilot: 'Sasha', message: '근접 전투 개시! 타격 성공!' },
-      { type: 'communication' as const, pilot: 'Enemy Beta', message: '타겟 변경, 집중 공격!' },
-      { type: 'attack' as const, pilot: 'Mei', message: 'Arbiter 시스템으로 정밀 사격!' },
-      { type: 'movement' as const, pilot: 'Alex', message: '포지션 재조정 중...' },
-      { type: 'attack' as const, pilot: 'Enemy Gamma', message: '반격 개시!' },
-      { type: 'communication' as const, pilot: 'Sasha', message: '대형 유지하며 밀어붙여!' },
-      { type: 'attack' as const, pilot: 'Mei', message: '적 핵심 기체 타격!' },
-      { type: 'communication' as const, pilot: 'Alex', message: '승리가 보인다!' },
-      { type: 'system' as const, pilot: '', message: 'Trinity Squad 승리!' }
-    ];
-    
-    let actionIndex = 0;
-    
-    const executeNextAction = () => {
-      if (actionIndex >= battleActions.length || battleStatus === 'completed') {
-        // Battle completed
-        setBattleStatus('completed');
-        setWinner('Trinity Squad');
-        addBattleLog({
-          timestamp: Date.now(),
-          type: 'system',
-          message: '전투 완료! Trinity Squad이 승리했습니다!',
-        });
-        return;
+    const handleBattleUpdate = (data: any) => {
+      if (data.update.type === 'TURN_UPDATE') {
+        // Update battle state
+        if (currentBattle) {
+          const updatedBattle = {
+            ...currentBattle,
+            turn: data.update.turn,
+            participants: data.update.participants
+          };
+          setBattle(updatedBattle);
+        }
+
+        // Add recent logs
+        if (data.update.recentLogs) {
+          data.update.recentLogs.forEach((log: any) => addBattleLog(log));
+        }
       }
-      
-      const action = battleActions[actionIndex];
-      
+    };
+
+    const handleBattleComplete = (data: any) => {
+      setBattleStatus('completed');
+      setWinner(data.winner);
       addBattleLog({
         timestamp: Date.now(),
-        type: action.type,
-        message: action.message,
-        speaker: action.pilot || undefined,
+        type: 'system',
+        message: `Battle concluded. Winner: ${data.winner === 'team1' ? 'Trinity Squad' : 'Enemy Forces'}`,
       });
-      
-      setCurrentTurn(Math.floor(actionIndex / 2) + 1);
-      actionIndex++;
-      
-      // Schedule next action
-      setTimeout(executeNextAction, 1500 + Math.random() * 1000);
     };
-    
-    // Start simulation after initial delay
-    setTimeout(executeNextAction, 2000);
-  };
+
+    const handlePhaseChange = (data: any) => {
+      if (data.phase === 'active') {
+        setBattleStatus('active');
+      }
+    };
+
+    wsManager.on('BATTLE_STARTED', handleBattleStarted);
+    wsManager.on('BATTLE_UPDATE', handleBattleUpdate);
+    wsManager.on('BATTLE_COMPLETE', handleBattleComplete);
+    wsManager.on('PHASE_CHANGE', handlePhaseChange);
+
+    return () => {
+      wsManager.off('BATTLE_STARTED', handleBattleStarted);
+      wsManager.off('BATTLE_UPDATE', handleBattleUpdate);
+      wsManager.off('BATTLE_COMPLETE', handleBattleComplete);
+      wsManager.off('PHASE_CHANGE', handlePhaseChange);
+    };
+  }, [currentBattle, addBattleLog, setBattle]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -173,7 +103,7 @@ export function BattleScene({ setScene }: BattleSceneProps) {
     <div className="scene-transition">
       <div className="mb-4">
         <h2 className="text-2xl font-orbitron font-bold text-green-400 mb-2">BATTLE SIMULATION</h2>
-        <p className="text-gray-400">오프라인 전투 관찰 및 전술 분석</p>
+        <p className="text-gray-400">Real-time combat observation and tactical analysis</p>
       </div>
 
       {/* Battle Status Header */}
@@ -190,96 +120,179 @@ export function BattleScene({ setScene }: BattleSceneProps) {
                 {battleStatus === 'completed' && 'BATTLE CONCLUDED'}
               </div>
               {battleStatus === 'active' && (
-                <div className="text-sm text-gray-400">
-                  Turn {currentTurn}
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-xs text-green-400">LIVE</span>
                 </div>
               )}
             </div>
-            {winner && (
-              <div className="text-green-400 font-bold mt-1">
-                Winner: {winner}
+            {currentBattle && (
+              <div className="text-sm text-gray-400 mt-1">
+                Turn {currentBattle.turn} • Phase: {currentBattle.phase}
               </div>
             )}
           </div>
-          <div className="text-right">
-            <div className="text-sm text-gray-400">Trinity Squad vs Enemy Team</div>
-            <div className="text-xs text-gray-500">오프라인 모드</div>
+
+          <div className="flex items-center space-x-4">
+            <div className={`text-right ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+              <div className="text-sm font-semibold">
+                {isConnected ? 'NEURAL LINK ACTIVE' : 'CONNECTION LOST'}
+              </div>
+              <div className="text-xs">Battle System Status</div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Battle Grid */}
+      <div className="grid grid-cols-3 gap-4 h-96">
+        {/* ASCII Battlefield */}
+        <div className="col-span-2">
+          <ASCIIBattlefield battleState={currentBattle} />
+        </div>
+
+        {/* Combat Log */}
+        <div className="cyber-border bg-slate-800 p-4">
+          <h3 className="text-pink-400 font-semibold mb-3">COMM LOG</h3>
+          <div className="space-y-2 text-xs overflow-auto h-64">
+            {battleHistory.length === 0 ? (
+              <div className="text-gray-500 text-center py-8">
+                <div className="mb-2">
+                  <i className="fas fa-radio text-2xl"></i>
+                </div>
+                <div>Awaiting communication...</div>
+              </div>
+            ) : (
+              battleHistory.slice(-15).map((log, index) => (
+                <div key={index} className={`${getLogTypeColor(log.type)}`}>
+                  <span className="text-gray-400">
+                    [{new Date(log.timestamp).toLocaleTimeString()}]
+                  </span>
+                  {log.speaker && (
+                    <span className="font-semibold"> {log.speaker}:</span>
+                  )}
+                  <span className="ml-1">{log.message}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Unit Status Panel */}
       {currentBattle && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Participants Status */}
-          <div className="cyber-border p-4 bg-slate-800">
-            <h3 className="text-lg font-bold text-green-400 mb-3">Unit Status</h3>
-            <div className="space-y-2">
-              {currentBattle.participants.map((participant, index) => (
-                <div key={index} className="flex items-center justify-between p-2 bg-slate-700 rounded">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-sm font-mono">
-                      {participant.pilotId < 100 ? 'Trinity' : 'Enemy'} #{participant.pilotId}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      Mech {participant.mechId}
-                    </div>
+        <div className="mt-4 grid grid-cols-3 gap-4">
+          {currentBattle.participants.slice(0, 3).map((participant, index) => (
+            <div key={index} className="cyber-border p-3 bg-slate-800">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <div className="text-green-400 font-semibold">
+                    PILOT-{index + 1}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="text-sm">HP: {participant.hp}%</div>
-                    <div className={`text-sm ${getStatusColor(participant.status)}`}>
-                      {participant.status.toUpperCase()}
-                    </div>
+                  <div className="text-xs text-gray-400">
+                    Position: {participant.position.x}-{participant.position.y}
                   </div>
                 </div>
-              ))}
+                <div className={`text-sm font-bold ${getStatusColor(participant.status)}`}>
+                  {participant.status.toUpperCase()}
+                </div>
+              </div>
+              
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Hull Integrity:</span>
+                  <span className={`font-semibold ${
+                    participant.hp > 70 ? 'text-green-400' :
+                    participant.hp > 30 ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    {participant.hp}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded h-1">
+                  <div 
+                    className={`h-1 rounded transition-all duration-300 ${
+                      participant.hp > 70 ? 'bg-green-400' :
+                      participant.hp > 30 ? 'bg-yellow-400' : 'bg-red-400'
+                    }`}
+                    style={{ width: `${participant.hp}%` }}
+                  ></div>
+                </div>
+              </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* Battle Completion Actions */}
+      {battleStatus === 'completed' && (
+        <div className="mt-6 cyber-border p-4 bg-slate-800">
+          <div className="text-center mb-4">
+            <h3 className="text-2xl font-orbitron font-bold text-yellow-400 mb-2">
+              BATTLE CONCLUDED
+            </h3>
+            {winner && (
+              <div className={`text-lg font-semibold ${
+                winner === 'team1' ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {winner === 'team1' ? 'VICTORY ACHIEVED' : 'MISSION FAILED'}
+              </div>
+            )}
           </div>
 
-          {/* Battle Log */}
-          <div className="cyber-border p-4 bg-slate-800">
-            <h3 className="text-lg font-bold text-green-400 mb-3">Combat Log</h3>
-            <div className="h-64 overflow-y-auto space-y-1">
-              {useBattleStore.getState().battleHistory.slice(-10).map((log, index) => (
-                <div key={index} className="text-sm p-2 bg-slate-700 rounded">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      {log.speaker && (
-                        <span className="font-bold text-blue-400">[{log.speaker}] </span>
-                      )}
-                      <span className={getLogTypeColor(log.type)}>
-                        {log.message}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-500 ml-2">
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </div>
-                  </div>
+          <div className="grid grid-cols-2 gap-4">
+            <CyberButton onClick={handleViewAnalysis}>
+              <div className="text-center">
+                <div className="text-pink-400 font-semibold mb-1">
+                  <i className="fas fa-chart-line mr-2"></i>VIEW ANALYSIS
                 </div>
-              ))}
-            </div>
+                <div className="text-xs text-gray-400">Detailed battle report</div>
+              </div>
+            </CyberButton>
+
+            <CyberButton onClick={handleReturnToHub}>
+              <div className="text-center">
+                <div className="text-pink-400 font-semibold mb-1">
+                  <i className="fas fa-home mr-2"></i>RETURN TO HUB
+                </div>
+                <div className="text-xs text-gray-400">Command center</div>
+              </div>
+            </CyberButton>
           </div>
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex space-x-4">
-        <CyberButton variant="secondary" onClick={handleReturnToHub}>
-          사령부로 돌아가기
-        </CyberButton>
-        
-        {battleStatus === 'completed' && (
-          <CyberButton onClick={handleViewAnalysis}>
-            전투 분석 보기
-          </CyberButton>
-        )}
-        
-        {battleStatus === 'active' && (
-          <div className="cyber-border px-4 py-2 bg-green-900">
-            <div className="text-green-400 font-bold">전투 진행 중...</div>
+      {/* Preparing Phase Actions */}
+      {battleStatus === 'preparing' && (
+        <div className="mt-6 cyber-border p-4 bg-slate-800">
+          <div className="text-center">
+            <h3 className="text-lg font-orbitron font-semibold text-green-400 mb-2">
+              AWAITING DEPLOYMENT
+            </h3>
+            <p className="text-gray-400 mb-4">
+              Complete formation setup and proceed through ban/pick phase to begin battle
+            </p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <CyberButton onClick={() => setScene('formation')}>
+                <div className="text-center">
+                  <div className="text-pink-400 font-semibold mb-1">
+                    <i className="fas fa-cogs mr-2"></i>FORMATION
+                  </div>
+                  <div className="text-xs text-gray-400">Configure team setup</div>
+                </div>
+              </CyberButton>
+
+              <CyberButton onClick={() => setScene('banpick')}>
+                <div className="text-center">
+                  <div className="text-pink-400 font-semibold mb-1">
+                    <i className="fas fa-chess mr-2"></i>BAN/PICK
+                  </div>
+                  <div className="text-xs text-gray-400">Strategic selection</div>
+                </div>
+              </CyberButton>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
