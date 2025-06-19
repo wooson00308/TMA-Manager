@@ -91,6 +91,173 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     };
   };
 
+  // 다양한 AI 행동 결정 시스템
+  const determineAIAction = (actor: any, battleState: any, actorInfo: PilotInfo) => {
+    const isLowHP = actor.hp < 30;
+    const isCriticalHP = actor.hp < 15;
+    const allies = battleState.participants.filter((p: any) => {
+      const info = getPilotInfo(p.pilotId);
+      return info.team === actorInfo.team && p.status === 'active' && p.pilotId !== actor.pilotId;
+    });
+    const enemies = battleState.participants.filter((p: any) => {
+      const info = getPilotInfo(p.pilotId);
+      return info.team !== actorInfo.team && p.status === 'active';
+    });
+    
+    const damagedAllies = allies.filter((ally: any) => ally.hp < 50);
+    const nearbyEnemies = enemies.filter((enemy: any) => 
+      Math.abs(enemy.position.x - actor.position.x) <= 2 &&
+      Math.abs(enemy.position.y - actor.position.y) <= 2
+    );
+
+    const random = Math.random();
+    
+    // 파일럿별 성격 특성
+    const personalities: { [key: string]: any } = {
+      'S': { aggressive: 0.8, tactical: 0.6, supportive: 0.4 },
+      'M': { aggressive: 0.4, tactical: 0.9, supportive: 0.8 },
+      'A': { aggressive: 0.9, tactical: 0.3, supportive: 0.5 },
+      'E': { aggressive: 0.6, tactical: 0.5, supportive: 0.2 }
+    };
+    const personality = personalities[actorInfo.initial] || personalities['E'];
+
+    // 위급 상황 - 후퇴
+    if (isCriticalHP && random < 0.6) {
+      const retreatPos = calculateRetreatPosition(actor.position, actorInfo.team, enemies);
+      return {
+        type: 'RETREAT',
+        actor,
+        newPosition: retreatPos,
+        message: `${actorInfo.name}: "긴급 후퇴! 재정비 필요!"`
+      };
+    }
+
+    // 지원 행동
+    if (personality.supportive > 0.6 && damagedAllies.length > 0 && random < 0.25) {
+      const targetAlly = damagedAllies[0];
+      return {
+        type: 'SUPPORT',
+        actor,
+        target: targetAlly,
+        message: `${actorInfo.name}: "지원 나간다! 버텨!"`
+      };
+    }
+
+    // 방어 태세
+    if (nearbyEnemies.length >= 2 && random < 0.2) {
+      return {
+        type: 'DEFEND',
+        actor,
+        message: `${actorInfo.name}: "방어 태세! 견고하게!"`
+      };
+    }
+
+    // 정찰/이동
+    if (personality.tactical > 0.7 && random < 0.3) {
+      const scoutPos = calculateScoutPosition(actor.position, actorInfo.team, enemies);
+      return {
+        type: 'SCOUT',
+        actor,
+        newPosition: scoutPos,
+        message: `${actorInfo.name}: "정찰 이동! 상황 파악!"`
+      };
+    }
+
+    // 특수 능력
+    if (battleState.turn > 3 && random < 0.15) {
+      const abilities = ['오버드라이브', '정밀 조준', '일제 사격', '은폐 기동'];
+      const ability = abilities[Math.floor(Math.random() * abilities.length)];
+      return {
+        type: 'SPECIAL',
+        actor,
+        ability,
+        message: `${actorInfo.name}: "${ability} 발동!"`
+      };
+    }
+
+    // 공격 (기본 행동)
+    if (enemies.length > 0 && random < 0.8) {
+      const target = selectBestTarget(enemies, actor, personality);
+      return {
+        type: 'ATTACK',
+        actor,
+        target,
+        message: `${actorInfo.name}: "타겟 확인! 공격 개시!"`
+      };
+    }
+
+    // 전술 이동
+    const tacticalPos = calculateTacticalPosition(actor.position, actorInfo.team, enemies);
+    return {
+      type: 'MOVE',
+      actor,
+      newPosition: tacticalPos,
+      message: `${actorInfo.name}: "포지션 조정!"`
+    };
+  };
+
+  const calculateRetreatPosition = (pos: any, team: string, enemies: any[]) => {
+    const safeDirection = team === 'ally' ? -2 : 2;
+    return {
+      x: Math.max(1, Math.min(15, pos.x + safeDirection)),
+      y: Math.max(1, Math.min(11, pos.y + (Math.random() > 0.5 ? -1 : 1)))
+    };
+  };
+
+  const calculateScoutPosition = (pos: any, team: string, enemies: any[]) => {
+    const scoutDirection = team === 'ally' ? 2 : -2;
+    return {
+      x: Math.max(1, Math.min(15, pos.x + scoutDirection)),
+      y: Math.max(1, Math.min(11, pos.y))
+    };
+  };
+
+  const calculateTacticalPosition = (pos: any, team: string, enemies: any[]) => {
+    if (enemies.length === 0) {
+      const direction = team === 'ally' ? 1 : -1;
+      return {
+        x: Math.max(1, Math.min(15, pos.x + direction)),
+        y: Math.max(1, Math.min(11, pos.y + (Math.random() > 0.5 ? 1 : -1)))
+      };
+    }
+
+    const nearestEnemy = enemies.reduce((prev: any, current: any) => {
+      const prevDist = Math.abs(prev.position.x - pos.x) + Math.abs(prev.position.y - pos.y);
+      const currDist = Math.abs(current.position.x - pos.x) + Math.abs(current.position.y - pos.y);
+      return currDist < prevDist ? current : prev;
+    });
+
+    const optimalX = Math.floor((pos.x + nearestEnemy.position.x) / 2);
+    const optimalY = Math.floor((pos.y + nearestEnemy.position.y) / 2);
+
+    return {
+      x: Math.max(1, Math.min(15, optimalX)),
+      y: Math.max(1, Math.min(11, optimalY))
+    };
+  };
+
+  const selectBestTarget = (enemies: any[], attacker: any, personality: any) => {
+    if (personality.aggressive > 0.7) {
+      // 공격적 성격: 가장 약한 적 우선
+      return enemies.reduce((prev: any, current: any) => 
+        current.hp < prev.hp ? current : prev
+      );
+    } else if (personality.tactical > 0.7) {
+      // 전술적 성격: 거리와 HP 고려
+      return enemies.reduce((prev: any, current: any) => {
+        const prevScore = prev.hp + (Math.abs(prev.position.x - attacker.position.x) + Math.abs(prev.position.y - attacker.position.y)) * 3;
+        const currScore = current.hp + (Math.abs(current.position.x - attacker.position.x) + Math.abs(current.position.y - attacker.position.y)) * 3;
+        return currScore < prevScore ? current : prev;
+      });
+    }
+    // 기본: 가장 가까운 적
+    return enemies.reduce((prev: any, current: any) => {
+      const prevDist = Math.abs(prev.position.x - attacker.position.x) + Math.abs(prev.position.y - attacker.position.y);
+      const currDist = Math.abs(current.position.x - attacker.position.x) + Math.abs(current.position.y - attacker.position.y);
+      return currDist < prevDist ? current : prev;
+    });
+  };
+
   // Canvas 애니메이션 렌더링
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -375,21 +542,19 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           const nextTurn = prev + 1;
           
           if (nextTurn <= 10) {
-            // 향상된 AI 전투 시뮬레이션
+            // 다양한 AI 행동 시뮬레이션
             const activeUnits = battle.participants.filter(p => p.status === 'active');
-            if (activeUnits.length >= 2) {
-              const attacker = activeUnits[Math.floor(Math.random() * activeUnits.length)];
-              const attackerInfo = getPilotInfo(attacker.pilotId);
-              const targets = activeUnits.filter(p => {
-                const targetInfo = getPilotInfo(p.pilotId);
-                return attackerInfo.team !== targetInfo.team;
-              });
+            if (activeUnits.length >= 1) {
+              const actor = activeUnits[Math.floor(Math.random() * activeUnits.length)];
+              const actorInfo = getPilotInfo(actor.pilotId);
               
-              if (targets.length > 0) {
-                // 전략적 타겟 선택 (낮은 HP 우선)
-                const target = targets.reduce((prev, current) => 
-                  current.hp < prev.hp ? current : prev
-                );
+              // AI 행동 결정 로직
+              const aiAction = determineAIAction(actor, battle, actorInfo);
+              
+              // AI 행동 처리
+              if (aiAction.type === 'ATTACK' && aiAction.target) {
+                const target = aiAction.target;
+                const attacker = aiAction.actor;
                 const targetInfo = getPilotInfo(target.pilotId);
                 
                 // 지형 효과 계산
@@ -409,9 +574,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 let weaponType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
                 
                 // 파일럿별 선호 무기
-                if (attackerInfo.initial === 'S') weaponType = 'laser'; // Sasha - 레이저
-                else if (attackerInfo.initial === 'M') weaponType = 'missile'; // Mente - 미사일
-                else if (attackerInfo.initial === 'A') weaponType = 'beam'; // Azuma - 빔
+                if (actorInfo.initial === 'S') weaponType = 'laser'; // Sasha - 레이저
+                else if (actorInfo.initial === 'M') weaponType = 'missile'; // Mente - 미사일
+                else if (actorInfo.initial === 'A') weaponType = 'beam'; // Azuma - 빔
                 
                 const attackEffect: AttackEffect = {
                   id: `${Date.now()}-${Math.random()}`,
@@ -428,33 +593,33 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 
                 // 공격자 지형 보너스
                 if (attackerTerrain?.type === 'elevation') {
-                  finalDamage += Math.floor(baseDamage * 0.2); // 고지대에서 20% 증가
+                  finalDamage += Math.floor(baseDamage * 0.2);
                 }
                 
                 // 방어자 지형 보너스
                 if (targetTerrain?.type === 'cover') {
-                  finalDamage = Math.floor(finalDamage * 0.8); // 엄폐물에서 20% 감소
+                  finalDamage = Math.floor(finalDamage * 0.8);
                 }
                 
                 // 위험지대 효과
                 if (targetTerrain?.type === 'hazard') {
-                  finalDamage += 5; // 위험지대에서 추가 데미지
+                  finalDamage += 5;
                 }
                 
                 const newLog = {
                   timestamp: Date.now(),
                   type: 'attack' as const,
-                  message: `${attackerInfo.name}이(가) ${targetInfo.name}을(를) ${weaponType === 'laser' ? '레이저' : weaponType === 'missile' ? '미사일' : '빔'}로 공격! ${finalDamage} 데미지!${
+                  message: aiAction.message + ` ${finalDamage} 데미지!${
                     attackerTerrain?.type === 'elevation' ? ' [고지대 보너스]' : ''
                   }${targetTerrain?.type === 'cover' ? ' [엄폐 방어]' : ''}${
                     targetTerrain?.type === 'hazard' ? ' [위험지대 피해]' : ''
                   }`,
-                  speaker: attackerInfo.name
+                  speaker: actorInfo.name
                 };
                 
                 addBattleLog(newLog);
                 
-                // HP 업데이트 및 지형 지속 효과
+                // HP 업데이트
                 const updatedParticipants = battle.participants.map(p => {
                   if (p.pilotId === target.pilotId) {
                     return {
@@ -463,29 +628,6 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                       status: p.hp - finalDamage <= 0 ? 'destroyed' as const : p.status
                     };
                   }
-                  
-                  // 위험지대에 있는 모든 유닛에게 지속 피해
-                  const unitTerrain = terrainFeatures.find(t => 
-                    t.x === p.position.x && t.y === p.position.y
-                  );
-                  if (unitTerrain?.type === 'hazard' && p.status === 'active') {
-                    const hazardDamage = 5;
-                    const newHp = Math.max(0, p.hp - hazardDamage);
-                    if (hazardDamage > 0) {
-                      const hazardLog = {
-                        timestamp: Date.now() + 100,
-                        type: 'system' as const,
-                        message: `${getPilotInfo(p.pilotId).name}이(가) 위험지대에서 ${hazardDamage} 피해를 받았습니다!`
-                      };
-                      setTimeout(() => addBattleLog(hazardLog), 500);
-                    }
-                    return {
-                      ...p,
-                      hp: newHp,
-                      status: newHp <= 0 ? 'destroyed' as const : p.status
-                    };
-                  }
-                  
                   return p;
                 });
                 
@@ -494,6 +636,98 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                   turn: nextTurn,
                   participants: updatedParticipants,
                   log: [...battle.log, newLog]
+                });
+              }
+              
+              // 다른 AI 행동들 처리
+              else if (aiAction.type === 'SUPPORT' && aiAction.target) {
+                const supportLog = {
+                  timestamp: Date.now(),
+                  type: 'system' as const,
+                  message: aiAction.message,
+                  speaker: actorInfo.name
+                };
+                addBattleLog(supportLog);
+                
+                // 지원 효과 (HP 회복)
+                const updatedParticipants = battle.participants.map(p => {
+                  if (p.pilotId === aiAction.target.pilotId) {
+                    return { ...p, hp: Math.min(100, p.hp + 15) };
+                  }
+                  return p;
+                });
+                
+                setBattle({
+                  ...battle,
+                  turn: nextTurn,
+                  participants: updatedParticipants,
+                  log: [...battle.log, supportLog]
+                });
+              }
+              
+              else if (aiAction.type === 'RETREAT' || aiAction.type === 'SCOUT' || aiAction.type === 'MOVE') {
+                // 이동 애니메이션
+                setAnimatingUnits(new Set([actor.pilotId]));
+                setTimeout(() => setAnimatingUnits(new Set()), 1000);
+                
+                const moveLog = {
+                  timestamp: Date.now(),
+                  type: 'movement' as const,
+                  message: aiAction.message,
+                  speaker: actorInfo.name
+                };
+                addBattleLog(moveLog);
+                
+                // 위치 업데이트
+                const updatedParticipants = battle.participants.map(p => {
+                  if (p.pilotId === actor.pilotId && aiAction.newPosition) {
+                    return { ...p, position: aiAction.newPosition };
+                  }
+                  return p;
+                });
+                
+                setBattle({
+                  ...battle,
+                  turn: nextTurn,
+                  participants: updatedParticipants,
+                  log: [...battle.log, moveLog]
+                });
+              }
+              
+              else if (aiAction.type === 'SPECIAL') {
+                const specialLog = {
+                  timestamp: Date.now(),
+                  type: 'system' as const,
+                  message: aiAction.message,
+                  speaker: actorInfo.name
+                };
+                addBattleLog(specialLog);
+                
+                // 특수 능력 효과는 시각적으로만 표현
+                setAnimatingUnits(new Set([actor.pilotId]));
+                setTimeout(() => setAnimatingUnits(new Set()), 2000);
+                
+                setBattle({
+                  ...battle,
+                  turn: nextTurn,
+                  log: [...battle.log, specialLog]
+                });
+              }
+              
+              else {
+                // 기본 행동 (대화, 방어 등)
+                const actionLog = {
+                  timestamp: Date.now(),
+                  type: 'communication' as const,
+                  message: aiAction.message,
+                  speaker: actorInfo.name
+                };
+                addBattleLog(actionLog);
+                
+                setBattle({
+                  ...battle,
+                  turn: nextTurn,
+                  log: [...battle.log, actionLog]
                 });
               }
             }
