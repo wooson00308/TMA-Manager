@@ -73,10 +73,12 @@ export function MatchPrepScene() {
         // 전투 상태 업데이트 리스너
         const handleBattleUpdate = (data: any) => {
           console.log('Battle update received:', data);
-          console.log('Update keys:', Object.keys(data));
-          if (data.update) {
-            console.log('Setting battle state from update:', data.update);
-            setBattle(data.update);
+          if (data.update && data.update.battleState) {
+            console.log('Setting battle state from update:', data.update.battleState);
+            setBattle(data.update.battleState);
+          } else if (data.battleState) {
+            console.log('Setting battle state directly:', data.battleState);
+            setBattle(data.battleState);
           }
         };
 

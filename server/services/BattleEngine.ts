@@ -54,7 +54,12 @@ export class BattleEngine {
         {
           timestamp: Date.now(),
           type: "system",
-          message: "Battle initialization complete. All systems online.",
+          message: "전투 시스템 초기화 완료. 모든 유닛 대기 중.",
+        },
+        {
+          timestamp: Date.now() + 1000,
+          type: "system", 
+          message: "전술 분석 시작. 교전 준비 완료.",
         }
       ]
     };
@@ -86,12 +91,13 @@ export class BattleEngine {
         }
       });
 
-      // Send battle update
+      // Send complete battle state update
       onUpdate({
         type: "TURN_UPDATE",
-        turn: battleState.turn,
-        participants: battleState.participants,
-        recentLogs: battleState.log.slice(-3)
+        battleState: {
+          ...battleState,
+          log: battleState.log // 전체 로그 포함
+        }
       });
 
     }, 2000); // 2 second intervals
@@ -106,7 +112,7 @@ export class BattleEngine {
         battleState.log.push({
           timestamp,
           type: "movement",
-          message: `${action.pilotName} repositioning to sector ${action.newPosition.x}-${action.newPosition.y}`,
+          message: action.dialogue || `포지션 이동 중`,
           speaker: action.pilotName
         });
         break;
@@ -125,7 +131,7 @@ export class BattleEngine {
         battleState.log.push({
           timestamp,
           type: "attack",
-          message: `${action.pilotName}: "${action.dialogue}" [${damage} damage dealt]`,
+          message: action.dialogue || `공격 실행`,
           speaker: action.pilotName
         });
         break;
@@ -134,7 +140,7 @@ export class BattleEngine {
         battleState.log.push({
           timestamp,
           type: "communication",
-          message: `${action.pilotName}: "${action.dialogue}"`,
+          message: action.dialogue || `통신 중`,
           speaker: action.pilotName
         });
         break;

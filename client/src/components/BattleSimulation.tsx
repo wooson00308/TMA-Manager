@@ -350,7 +350,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 });
                 
                 return (
-                  <div key={index} className="flex">
+                  <div key={`${entry.timestamp}-${index}`} className="flex">
                     <span className="text-gray-500 mr-2 font-mono text-xs">
                       [{timeStr}]
                     </span>
