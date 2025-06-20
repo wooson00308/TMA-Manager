@@ -46,6 +46,11 @@ function startLoop() {
     currentState = processGameTick(currentState, pilots, terrainFeatures);
     const msg: StateUpdateMessage = { type: "STATE_UPDATE", state: currentState };
     self.postMessage(msg);
+
+    // Automatically halt the loop once the battle has finished.
+    if (currentState.phase === "completed") {
+      stopLoop();
+    }
   }, tickMs);
 }
 

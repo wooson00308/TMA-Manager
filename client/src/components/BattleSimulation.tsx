@@ -58,6 +58,13 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   // Phase B: leverage Web Worker for game loop when simulation is active
   useGameLoopWorker(battle, isSimulating && !isCountingDown);
 
+  // Stop simulation locally when battle ends to prevent further unit actions.
+  useEffect(() => {
+    if (battle.phase === "completed") {
+      setIsSimulating(false);
+    }
+  }, [battle.phase]);
+
   const startSimulation = () => {
     setCurrentTick(0);
     setIsSimulating(true);

@@ -138,6 +138,11 @@ export function processGameTick(
   pilots: Pilot[],
   terrainFeatures: TerrainFeature[]
 ): BattleState {
+  // If the battle is already marked as completed, do not process further ticks.
+  if (battleState.phase === "completed") {
+    return battleState;
+  }
+
   const newState = {
     ...battleState,
     log: [...battleState.log],
