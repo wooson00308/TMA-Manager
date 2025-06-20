@@ -605,7 +605,9 @@ export function NewMatchPrepScene() {
                       cardStyle = 'border-red-500 bg-red-500/20';
                       statusOverlay = '✓ 적군';
                     } else if (isClickable) {
-                      cardStyle = isBanTurn ? 'ban-turn' : 'pick-turn';
+                      cardStyle = isBanTurn 
+                        ? 'border-white/80 bg-white/5 hover:border-red-400 hover:bg-red-900/20' 
+                        : 'border-white/80 bg-white/5 hover:border-cyan-400 hover:bg-cyan-400/10';
                     } else {
                       cardStyle = 'border-gray-600 bg-gray-800/50 opacity-50 cursor-not-allowed';
                     }
