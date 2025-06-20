@@ -51,20 +51,6 @@ export function NewMatchPrepScene() {
   const [showMechDetails, setShowMechDetails] = useState<Mech | null>(null);
   const [mechFilter, setMechFilter] = useState<'all' | 'knight' | 'river' | 'arbiter' | 'custom'>('all');
 
-  // WebSocket message handler for battle initialization
-  useEffect(() => {
-    const handleWebSocketMessage = (data: any) => {
-      if (data.type === 'BATTLE_STARTED') {
-        setBattle(data.state);
-        setCurrentPhase('battle');
-        console.log('Battle started:', data);
-      }
-    };
-
-    wsManager.on('message', handleWebSocketMessage);
-    return () => wsManager.off('message', handleWebSocketMessage);
-  }, [setBattle]);
-
   // 사용 가능한 파일럿 조회
   const { data: availablePilots = [] } = useQuery<Pilot[]>({
     queryKey: ['/api/pilots/active'],
@@ -277,16 +263,46 @@ export function NewMatchPrepScene() {
         }))
       };
 
-      // Use WebSocket communication instead of REST API
-      if (wsManager.isConnected()) {
-        wsManager.send({
-          type: 'START_BATTLE',
-          formation1,
-          formation2
-        });
-      } else {
-        throw new Error('WebSocket connection not available');
-      }
+      const response = await fetch('/api/battle/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formation1, formation2 }),
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+      const result = await response.json();
+      
+      setBattle({
+        id: result.battleId.toString(),
+        phase: 'active',
+        turn: 1,
+        participants: [
+          ...formation1.pilots.map((p, i) => ({
+            pilotId: p.pilot.id,
+            mechId: p.mech.id,
+            position: { x: 2 + i * 2, y: 6 },
+            hp: p.mech.hp || 100,
+            status: 'active' as const
+          })),
+          ...formation2.pilots.map((p, i) => ({
+            pilotId: p.pilot.id,
+            mechId: p.mech.id,
+            position: { x: 10 + i * 2, y: 6 },
+            hp: p.mech.hp || 100,
+            status: 'active' as const
+          }))
+        ],
+        log: [{
+          timestamp: Date.now(),
+          type: 'system',
+          message: '전투 시스템 초기화 완료. 전투가 시작됩니다!',
+        }]
+      });
+
+      setTimeout(() => {
+        wsManager.startBattle(formation1, formation2);
+      }, 500);
 
       setCurrentPhase('battle');
 

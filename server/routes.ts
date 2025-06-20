@@ -4,8 +4,6 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertPilotSchema, insertFormationSchema, type BattleState } from "@shared/schema";
 import { BattleEngine } from "./services/BattleEngine";
-import { AISystem } from "./services/AISystem";
-import { GameEngine } from "./services/GameEngine";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -13,7 +11,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket server for real-time battle updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   const battleEngine = new BattleEngine();
-  const gameEngine = new GameEngine();
   const activeBattles = new Map<string, BattleState>();
 
   wss.on('connection', (ws: WebSocket) => {
@@ -27,8 +24,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           case 'START_BATTLE':
             const battleId = `battle_${Date.now()}`;
             const battleState = await battleEngine.initializeBattle(message.formation1, message.formation2);
-            // Set battle to active phase immediately
-            battleState.phase = 'active';
             activeBattles.set(battleId, battleState);
             
             ws.send(JSON.stringify({
@@ -36,28 +31,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
               battleId,
               state: battleState
             }));
-            break;
 
-          case 'TICK_UPDATE':
-            const battle = activeBattles.get(message.battleId);
-            if (battle && battle.phase === 'active') {
-              // AI가 행동 결정 및 처리 (서버에서만)
-              const aiResults = gameEngine.processAITurn(battle);
-              
-              // 업데이트된 상태를 클라이언트에 전송
-              if (aiResults.length > 0) {
-                const updatedBattle = aiResults[aiResults.length - 1].battleState;
-                activeBattles.set(message.battleId, updatedBattle);
-                
+            // Start battle simulation
+            battleEngine.runBattle(battleState, (update) => {
+              if (ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({
                   type: 'BATTLE_UPDATE',
-                  battleId: message.battleId,
-                  state: updatedBattle,
-                  effects: aiResults.flatMap(result => result.effects),
-                  gameOver: aiResults.find(r => r.gameOver)?.gameOver
+                  battleId,
+                  update
                 }));
               }
-            }
+            });
             break;
 
           case 'JOIN_BATTLE':
@@ -428,29 +412,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return recommendations.length > 0 ? recommendations : ["현재 팀 상태 양호"];
   }
 
-  // AI Decision endpoint for server-side game logic
-  app.post("/api/ai/decision", async (req, res) => {
-    try {
-      const { battleState, currentTick } = req.body;
-      
-      if (!battleState) {
-        return res.status(400).json({ error: "Battle state required" });
-      }
-
-      // Process AI decisions using GameEngine
-      const aiResults = gameEngine.processAITurn(battleState);
-      
-      res.json({
-        success: true,
-        results: aiResults,
-        tick: currentTick
-      });
-    } catch (error) {
-      console.error('AI decision error:', error);
-      res.status(500).json({ error: "Failed to process AI decision" });
-    }
-  });
-
   app.get("/api/pilots/recruitable2", async (req, res) => {
     try {
       const recruitablePilots = [
@@ -700,24 +661,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(team);
     } catch (error) {
       res.status(500).json({ error: "Failed to spend credits" });
-    }
-  });
-
-  // AI 결정 요청 엔드포인트
-  app.post("/api/battle/ai-decision", async (req, res) => {
-    try {
-      const { participant, battleState, team } = req.body;
-      const aiSystem = new AISystem();
-      
-      const decision = aiSystem.makeAdvancedDecision(participant, battleState, team);
-      res.json(decision);
-    } catch (error) {
-      console.error('Error making AI decision:', error);
-      
-      // 폴백으로 간단한 AI 사용
-      const aiSystem = new AISystem();
-      const fallbackDecision = aiSystem.makeSimpleDecision(req.body.participant, req.body.battleState, req.body.team);
-      res.json(fallbackDecision);
     }
   });
 
