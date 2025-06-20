@@ -241,9 +241,29 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
           {/* Bottom Battle Log */}
           <div className="h-32 bg-black/50 border-t-2 border-gray-600/50 p-3">
-            <div className="flex items-center space-x-2 mb-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <h4 className="text-gray-200 font-bold text-sm">전투 기록</h4>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <h4 className="text-gray-200 font-bold text-sm">전투 기록</h4>
+              </div>
+              <div className="flex items-center space-x-4 text-xs">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
+                  <span className="text-green-300">엄폐물: 방어+20%</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-purple-500" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
+                  <span className="text-purple-300">고지대: 공격+20%</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-red-500"></div>
+                  <span className="text-red-300">장애물: 차단</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  <span className="text-yellow-300">독성: -5HP</span>
+                </div>
+              </div>
             </div>
             <div
               ref={logContainerRef}
