@@ -81,7 +81,11 @@ export function BattleScene() {
     }
   };
 
-  const getLogTypeColor = (type: string) => {
+  const getLogTypeColor = (type: string, speaker?: string) => {
+    // Prioritise team colouring if speaker is present
+    if (speaker) {
+      return speaker.startsWith('Enemy') ? 'text-red-400' : 'text-green-400';
+    }
     switch (type) {
       case 'communication': return 'text-green-400';
       case 'attack': return 'text-red-400';
@@ -198,7 +202,7 @@ export function BattleScene() {
               </div>
             ) : (
               battleHistory.slice(-15).map((log, index) => (
-                <div key={index} className={`${getLogTypeColor(log.type)}`}>
+                <div key={index} className={`${getLogTypeColor(log.type, log.speaker)}`}>
                   <span className="text-gray-400">
                     [{new Date(log.timestamp).toLocaleTimeString()}]
                   </span>
