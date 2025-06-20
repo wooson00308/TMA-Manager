@@ -1,5 +1,6 @@
 import { type BattleState, type Pilot, type Mech } from "@shared/schema";
 import { storage } from "../storage";
+import { PathfindingService } from "./PathfindingService";
 
 interface AIDecision {
   type: "MOVE" | "ATTACK" | "COMMUNICATE" | "DEFEND" | "SUPPORT" | "SCOUT" | "RETREAT" | "SPECIAL";
@@ -11,6 +12,8 @@ interface AIDecision {
 }
 
 export class AISystem {
+  private pathfinding = new PathfindingService();
+
   async makeSimpleDecision(participant: any, battleState: BattleState, team: string): Promise<AIDecision> {
     // 실제 파일럿 데이터 조회
     const pilot = await storage.getPilot(participant.pilotId);
@@ -31,6 +34,13 @@ export class AISystem {
       const isAlly = p.pilotId < 100;
       return isEnemy ? isAlly : !isAlly;
     }).filter(p => p.status === 'active');
+
+    // 모든 점유된 위치 (아군 + 적군)
+    const occupiedPositions = battleState.participants
+      .filter(p => p.status === 'active' && p.pilotId !== participant.pilotId)
+      .map(p => p.position);
+    
+    const enemyPositions = enemies.map(e => e.position);
 
     // 근처 적 확인
     const nearbyEnemies = enemies.filter(enemy =>
@@ -104,13 +114,20 @@ export class AISystem {
 
     // 상황별 AI 결정
     if (isLowHP && randomAction < 0.7) {
-      // 체력이 낮으면 후퇴
+      // 체력이 낮으면 후퇴 - A* 패스파인딩으로 안전한 경로 찾기
+      const retreatPosition = this.pathfinding.findTacticalPosition(
+        participant.position,
+        enemyPositions,
+        allies.map(a => a.position),
+        true // 엄폐물 우선
+      );
+      
       const retreatDialogue = personality.dialogues.retreat[Math.floor(Math.random() * personality.dialogues.retreat.length)];
       return {
         type: "RETREAT",
         pilotName,
         dialogue: retreatDialogue,
-        newPosition: this.calculateRetreatPosition(participant.position, team, enemies)
+        newPosition: retreatPosition
       };
     }
 
@@ -127,83 +144,65 @@ export class AISystem {
     }
 
     if (allies.some(ally => ally.hp < 30) && randomAction < personality.supportive) {
-      // 지원적 성향과 동료가 위험하면 지원
-      const supportDialogue = personality.dialogues.support[Math.floor(Math.random() * personality.dialogues.support.length)];
-      return {
-        type: "SUPPORT",
-        pilotName,
-        dialogue: supportDialogue,
-        newPosition: this.calculateTacticalPosition(participant.position, team, enemies, allies)
-      };
+      // 지원적 성향과 동료가 위험하면 지원 - 부상당한 동료에게 최적 경로로 이동
+      const injuredAlly = allies.find(ally => ally.hp < 30);
+      if (injuredAlly) {
+        const supportPath = this.pathfinding.findPath(
+          participant.position,
+          injuredAlly.position,
+          occupiedPositions,
+          enemyPositions,
+          3
+        );
+        
+        const supportPosition = supportPath.length > 0 ? supportPath[0] : 
+          this.pathfinding.findTacticalPosition(participant.position, enemyPositions, allies.map(a => a.position), false);
+        
+        const supportDialogue = personality.dialogues.support[Math.floor(Math.random() * personality.dialogues.support.length)];
+        return {
+          type: "SUPPORT",
+          pilotName,
+          dialogue: supportDialogue,
+          newPosition: supportPosition
+        };
+      }
     }
 
     if (randomAction < personality.tactical) {
-      // 전술적 성향이면 정찰
+      // 전술적 성향이면 정찰 - 적에게 가까운 고지대나 엄폐물로 이동
+      const scoutPosition = this.pathfinding.findTacticalPosition(
+        participant.position,
+        enemyPositions,
+        allies.map(a => a.position),
+        false // 고지대 우선
+      );
+      
       const scoutDialogue = personality.dialogues.scout[Math.floor(Math.random() * personality.dialogues.scout.length)];
       return {
         type: "SCOUT",
         pilotName,
         dialogue: scoutDialogue,
-        newPosition: this.calculateScoutPosition(participant.position, team, enemies)
+        newPosition: scoutPosition
       };
     }
 
-    // 기본 이동
+    // 기본 이동 - A* 패스파인딩으로 전술적 위치 찾기
+    const tacticalPosition = this.pathfinding.findTacticalPosition(
+      participant.position,
+      enemyPositions,
+      allies.map(a => a.position),
+      false
+    );
+    
     return {
       type: "MOVE",
       pilotName,
-      newPosition: this.calculateNewPosition(participant.position, team)
+      newPosition: tacticalPosition
     };
   }
 
-  private calculateNewPosition(currentPos: { x: number; y: number }, team: string): { x: number; y: number } {
-    const direction = team === 'ally' ? 1 : -1;
-    return {
-      x: Math.max(0, Math.min(15, currentPos.x + (Math.random() - 0.5) * 4)),
-      y: Math.max(0, Math.min(9, currentPos.y + direction * (Math.random() * 2)))
-    };
-  }
-
-  private calculateRetreatPosition(currentPos: { x: number; y: number }, team: string, enemies: any[]): { x: number; y: number } {
-    const direction = team === 'ally' ? -1 : 1;
-    return {
-      x: Math.max(0, Math.min(15, currentPos.x + (Math.random() - 0.5) * 2)),
-      y: Math.max(0, Math.min(9, currentPos.y + direction * 2))
-    };
-  }
-
-  private calculateScoutPosition(currentPos: { x: number; y: number }, team: string, enemies: any[]): { x: number; y: number } {
-    if (enemies.length === 0) return this.calculateNewPosition(currentPos, team);
-    
-    const nearestEnemy = enemies.reduce((nearest, enemy) => {
-      const dist = Math.abs(enemy.position.x - currentPos.x) + Math.abs(enemy.position.y - currentPos.y);
-      const nearestDist = Math.abs(nearest.position.x - currentPos.x) + Math.abs(nearest.position.y - currentPos.y);
-      return dist < nearestDist ? enemy : nearest;
-    });
-
-    const dx = nearestEnemy.position.x - currentPos.x;
-    const dy = nearestEnemy.position.y - currentPos.y;
-    
-    return {
-      x: Math.max(0, Math.min(15, currentPos.x + Math.sign(dx))),
-      y: Math.max(0, Math.min(9, currentPos.y + Math.sign(dy)))
-    };
-  }
-
-  private calculateTacticalPosition(currentPos: { x: number; y: number }, team: string, enemies: any[], allies: any[]): { x: number; y: number } {
-    // 부상당한 동료 근처로 이동
-    const injuredAlly = allies.find(ally => ally.hp < 30);
-    if (injuredAlly) {
-      const dx = injuredAlly.position.x - currentPos.x;
-      const dy = injuredAlly.position.y - currentPos.y;
-      return {
-        x: Math.max(0, Math.min(15, currentPos.x + Math.sign(dx))),
-        y: Math.max(0, Math.min(9, currentPos.y + Math.sign(dy)))
-      };
-    }
-    
-    return this.calculateNewPosition(currentPos, team);
-  }
+  // 기존 랜덤 기반 위치 계산 메서드들을 A* 패스파인딩으로 대체
+  // PathfindingService에서 모든 이동 로직 처리
 
   private selectBestTarget(enemies: any[], attacker: any): any {
     return enemies.reduce((best, enemy) => {
