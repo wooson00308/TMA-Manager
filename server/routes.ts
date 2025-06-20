@@ -27,6 +27,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           case 'START_BATTLE':
             const battleId = `battle_${Date.now()}`;
             const battleState = await battleEngine.initializeBattle(message.formation1, message.formation2);
+            // Set battle to active phase immediately
+            battleState.phase = 'active';
             activeBattles.set(battleId, battleState);
             
             ws.send(JSON.stringify({
@@ -425,6 +427,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     return recommendations.length > 0 ? recommendations : ["현재 팀 상태 양호"];
   }
+
+  // AI Decision endpoint for server-side game logic
+  app.post("/api/ai/decision", async (req, res) => {
+    try {
+      const { battleState, currentTick } = req.body;
+      
+      if (!battleState) {
+        return res.status(400).json({ error: "Battle state required" });
+      }
+
+      // Process AI decisions using GameEngine
+      const aiResults = gameEngine.processAITurn(battleState);
+      
+      res.json({
+        success: true,
+        results: aiResults,
+        tick: currentTick
+      });
+    } catch (error) {
+      console.error('AI decision error:', error);
+      res.status(500).json({ error: "Failed to process AI decision" });
+    }
+  });
 
   app.get("/api/pilots/recruitable2", async (req, res) => {
     try {
