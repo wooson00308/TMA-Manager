@@ -1,10 +1,13 @@
 import { processGameTick } from "../logic/GameLoop";
-import type { BattleState } from "@shared/schema";
+import type { BattleState, Pilot } from "@shared/schema";
+import type { TerrainFeature } from "@shared/domain/types";
 
 interface InitMessage {
   type: "INIT";
   payload: {
     state: BattleState;
+    pilots: Pilot[];
+    terrainFeatures: TerrainFeature[];
     tickMs?: number;
   };
 }
@@ -31,6 +34,8 @@ interface StateUpdateMessage {
 declare const self: any;
 
 let currentState: BattleState | null = null;
+let pilots: Pilot[] = [];
+let terrainFeatures: TerrainFeature[] = [];
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let tickMs = 1000; // default 1s tick – can be overridden by INIT
 
@@ -38,7 +43,7 @@ function startLoop() {
   if (intervalId !== null || !currentState) return;
   intervalId = setInterval(() => {
     if (!currentState) return;
-    currentState = processGameTick(currentState);
+    currentState = processGameTick(currentState, pilots, terrainFeatures);
     const msg: StateUpdateMessage = { type: "STATE_UPDATE", state: currentState };
     self.postMessage(msg);
   }, tickMs);
@@ -56,6 +61,8 @@ self.onmessage = (evt: MessageEvent<InboundMessage>) => {
   switch (type) {
     case "INIT":
       currentState = evt.data.payload.state;
+      pilots = evt.data.payload.pilots;
+      terrainFeatures = evt.data.payload.terrainFeatures;
       tickMs = evt.data.payload.tickMs ?? tickMs;
       break;
     case "START":

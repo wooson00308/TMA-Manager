@@ -1,5 +1,17 @@
 import { create } from 'zustand';
-import { type GameScene, type Pilot, type Mech, type Team, type Formation } from '@shared/schema';
+import { type GameScene, type TerrainFeature, type PilotInfo } from '@shared/domain/types';
+import { immer } from 'zustand/middleware/immer';
+import { apiRequest } from '@/lib/queryClient';
+import type { Pilot, Mech, Team, Formation } from '@shared/schema';
+
+// Hardcoded terrain data (can be moved to server config later)
+const TFM_TERRAIN_FEATURES: TerrainFeature[] = [
+  { x: 4, y: 3, type: 'cover', effect: '방어력 +20%' },
+  { x: 8, y: 5, type: 'elevation', effect: '사거리 +1' },
+  { x: 12, y: 7, type: 'obstacle', effect: '이동 제한' },
+  { x: 6, y: 9, type: 'hazard', effect: '턴당 HP -5' },
+  { x: 10, y: 2, type: 'cover', effect: '방어력 +20%' },
+];
 
 interface GameState {
   currentScene: GameScene;
@@ -8,6 +20,7 @@ interface GameState {
   playerTeam: Team | null;
   pilots: Pilot[];
   mechs: Mech[];
+  terrainFeatures: TerrainFeature[];
   activeFormation: Formation | null;
   enemyTeams: Team[];
   
@@ -19,6 +32,7 @@ interface GameState {
   
   // Actions
   setScene: (scene: GameScene) => void;
+  initializeGameData: () => Promise<void>;
   setPlayerTeam: (team: Team) => void;
   setPilots: (pilots: Pilot[]) => void;
   setMechs: (mechs: Mech[]) => void;
@@ -26,44 +40,98 @@ interface GameState {
   setEnemyTeams: (teams: Team[]) => void;
   setSelectedMechs: (mechs: { player: Mech[]; enemy: Mech[] }) => void;
   initializePlayerTeam: () => Promise<void>;
+  getPilotInfo: (pilotId: number) => PilotInfo;
 }
 
-export const useGameStore = create<GameState>((set, get) => ({
-  currentScene: 'hub',
-  currentSeason: 3,
-  currentWeek: 7,
-  playerTeam: null,
-  pilots: [],
-  mechs: [],
-  activeFormation: null,
-  enemyTeams: [],
-  selectedMechs: {
-    player: [],
-    enemy: []
-  },
+export const useGameStore = create<GameState>()(
+  immer((set, get) => ({
+    currentScene: 'hub',
+    currentSeason: 3,
+    currentWeek: 8,
+    playerTeam: null,
+    pilots: [],
+    mechs: [],
+    terrainFeatures: TFM_TERRAIN_FEATURES,
+    activeFormation: null,
+    enemyTeams: [],
+    selectedMechs: {
+      player: [],
+      enemy: [],
+    },
 
-  setScene: (scene) => set({ currentScene: scene }),
-  setPlayerTeam: (team) => set({ playerTeam: team }),
-  setPilots: (pilots) => set({ pilots }),
-  setMechs: (mechs) => set({ mechs }),
-  setActiveFormation: (formation) => set({ activeFormation: formation }),
-  setEnemyTeams: (teams) => set({ enemyTeams: teams }),
-  setSelectedMechs: (mechs) => set({ selectedMechs: mechs }),
-  
-  initializePlayerTeam: async () => {
-    try {
-      // Fetch all teams and set Trinity Squad as player team
-      const response = await fetch('/api/teams');
-      const teams = await response.json();
-      
-      const trinitySquad = teams.find((team: Team) => team.name === 'Trinity Squad');
-      const otherTeams = teams.filter((team: Team) => team.name !== 'Trinity Squad');
-      
-      if (trinitySquad) {
-        set({ playerTeam: trinitySquad, enemyTeams: otherTeams });
+    setScene: (scene) => set({ currentScene: scene }),
+    
+    initializeGameData: async () => {
+      try {
+        const [pilotsRes, mechsRes, teamsRes] = await Promise.all([
+          apiRequest('GET', '/api/pilots'),
+          apiRequest('GET', '/api/mechs'),
+          apiRequest('GET', '/api/teams'),
+        ]);
+
+        const pilots = await pilotsRes.json();
+        const mechs = await mechsRes.json();
+        const teams = await teamsRes.json();
+
+        set({ 
+          pilots, 
+          mechs, 
+          enemyTeams: teams.filter((t: Team) => t.id !== 1), // Assuming player is team 1
+          playerTeam: teams.find((t: Team) => t.id === 1) || null
+        });
+
+      } catch (error) {
+        console.error("Failed to initialize game data", error);
       }
-    } catch (error) {
-      console.error('Failed to initialize player team:', error);
+    },
+
+    setPlayerTeam: (team) => set({ playerTeam: team }),
+    setPilots: (pilots) => set({ pilots }),
+    setMechs: (mechs) => set({ mechs }),
+    setActiveFormation: (formation) => set({ activeFormation: formation }),
+    setEnemyTeams: (teams) => set({ enemyTeams: teams }),
+    setSelectedMechs: (mechs) => set({ selectedMechs: mechs }),
+    
+    initializePlayerTeam: async () => {
+      if (get().playerTeam) return;
+
+      try {
+        const res = await apiRequest('GET', '/api/teams/1');
+        const playerTeam = await res.json();
+        
+        const pilotsRes = await apiRequest('GET', '/api/pilots');
+        const pilots = await pilotsRes.json();
+
+        set({ 
+          playerTeam,
+          pilots,
+        });
+      } catch (error) {
+        console.error("Failed to initialize player team:", error);
+      }
+    },
+    getPilotInfo: (pilotId: number): PilotInfo => {
+      const { pilots } = get();
+      const found = pilots.find(p => p.id === pilotId);
+      if (found) {
+        const isEnemy = (found as any).team !== 'ally';
+        return {
+          id: found.id,
+          name: found.name,
+          callsign: found.callsign,
+          team: isEnemy ? 'enemy' : 'ally',
+          initial: isEnemy ? 'E' : found.name.charAt(0).toUpperCase()
+        };
+      }
+      
+      const isEnemy = pilotId >= 100;
+      return {
+        id: pilotId,
+        name: isEnemy ? `Enemy ${pilotId}` : `Pilot ${pilotId}`,
+        callsign: isEnemy ? `E${pilotId}` : `P${pilotId}`,
+        team: isEnemy ? 'enemy' : 'ally',
+        initial: isEnemy ? 'E' : String.fromCharCode(65 + (pilotId % 26))
+      };
     }
-  },
-}));
+  }))
+);

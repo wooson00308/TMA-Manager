@@ -7,8 +7,8 @@ import { GameShell } from '@/components/GameShell';
 import type { Pilot, Mech } from '@shared/schema';
 
 export default function Game() {
-  const { setPilots, setMechs } = useGameStore();
-  const { setConnected } = useBattleStore();
+  const { setPilots, setMechs, initializeGameData } = useGameStore();
+  const { setConnected, isConnected } = useBattleStore();
 
   // Fetch initial game data
   const { data: pilots } = useQuery<Pilot[]>({
@@ -18,6 +18,10 @@ export default function Game() {
   const { data: mechs } = useQuery<Mech[]>({
     queryKey: ['/api/mechs/available'],
   });
+
+  useEffect(() => {
+    initializeGameData();
+  }, [initializeGameData]);
 
   // Initialize WebSocket connection
   useEffect(() => {

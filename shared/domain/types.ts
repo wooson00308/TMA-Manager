@@ -32,18 +32,21 @@ export type PilotTrait =
   | "ROOKIE"
   | "GENIUS";
 
+export type BattleParticipant = {
+  pilotId: number;
+  mechId: number;
+  position: { x: number; y: number };
+  hp: number;
+  status: "active" | "damaged" | "destroyed";
+  lastActionTime?: number;
+};
+
 // Runtime battle state that is streamed between client and server
 export type BattleState = {
   id: string;
   phase: "preparation" | "active" | "completed";
   turn: number;
-  participants: Array<{
-    pilotId: number;
-    mechId: number;
-    position: { x: number; y: number };
-    hp: number;
-    status: "active" | "damaged" | "destroyed";
-  }>;
+  participants: BattleParticipant[];
   log: Array<{
     timestamp: number;
     type: "movement" | "attack" | "communication" | "system";
@@ -51,6 +54,29 @@ export type BattleState = {
     speaker?: string;
   }>;
 };
+
+export interface PilotInfo {
+  id: number;
+  name: string;
+  callsign: string;
+  team: "ally" | "enemy";
+  initial: string;
+}
+
+export interface TerrainFeature {
+  x: number;
+  y: number;
+  type: "cover" | "obstacle" | "elevation" | "hazard";
+  effect: string;
+}
+
+export interface AttackEffect {
+  id:string;
+  from: { x: number; y: number };
+  to: { x: number; y: number };
+  startTime: number;
+  type: "laser" | "missile" | "beam";
+}
 
 // Recon data passed from scouting analysis to match-prep scene
 export type ReconData = {
