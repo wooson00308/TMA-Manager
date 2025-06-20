@@ -151,7 +151,7 @@ export class SimpleBattleEngine {
         victim.status = 'destroyed';
         victim.hp = 0;
         
-        const pilot = await storage.getPilot(victim.pilotId >= 100 ? victim.pilotId - 100 : victim.pilotId);
+        const pilot = await storage.getPilot(victim.pilotId);
         const victimName = pilot ? pilot.name : `Unit-${victim.pilotId}`;
         
         console.log(`${victimName} (${victim.pilotId}) 격파됨!`);
