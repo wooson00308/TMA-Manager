@@ -34,7 +34,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       
       return () => clearTimeout(timer);
     } else if (isCountingDown && countdown === 0) {
-      setIsSimulating(false);
+      setIsCountingDown(false);
       setIsSimulating(true);
       addBattleLog({
         type: 'system',
