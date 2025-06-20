@@ -503,204 +503,119 @@ export function NewMatchPrepScene() {
         {/* 챔피언 선택 단계 */}
         {currentPhase === 'champion_select' && (
           <div className="space-y-6">
-            {/* 밴/픽 현황 */}
-            <div className="tfm-panel rounded-xl p-6 phase-transition">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* 아군 */}
-                <div>
-                  <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center">
-                    <span className="mr-2">🟦</span>
-                    Trinity Squad
-                  </h3>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-sm text-gray-400 mb-2">밴 ({championSelect.playerBans.length}/2)</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {Array.from({ length: 2 }, (_, i) => {
-                          const bannedMech = championSelect.playerBans[i];
-                          return (
-                            <div
-                              key={i}
-                              className={`aspect-square rounded-lg border-2 ${
-                                bannedMech 
-                                  ? 'border-red-500 bg-red-500/20' 
-                                  : 'border-dashed border-gray-600'
-                              } p-2 flex items-center justify-center`}
-                            >
-                              {bannedMech ? (
-                                <div className="text-center">
-                                  <div className="text-lg">{getMechRoleIcon(bannedMech.type)}</div>
-                                  <div className="text-xs font-bold truncate">{bannedMech.name}</div>
-                                </div>
-                              ) : (
-                                <div className="text-gray-500 text-2xl">🚫</div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-400 mb-2">픽 ({championSelect.selectedMechs.player.length}/3)</div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {Array.from({ length: 3 }, (_, i) => {
-                          const selectedMech = championSelect.selectedMechs.player[i];
-                          return (
-                            <div
-                              key={i}
-                              className={`aspect-square rounded-lg border-2 ${
-                                selectedMech 
-                                  ? 'border-blue-500 bg-blue-500/20' 
-                                  : 'border-dashed border-gray-600'
-                              } p-2 flex items-center justify-center`}
-                            >
-                              {selectedMech ? (
-                                <div className="text-center">
-                                  <div className="text-lg">{getMechRoleIcon(selectedMech.type)}</div>
-                                  <div className="text-xs font-bold truncate">{selectedMech.name}</div>
-                                  <div className="text-xs text-yellow-400">{getMechRating(selectedMech)}</div>
-                                </div>
-                              ) : (
-                                <div className="text-gray-500 text-lg">+</div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+            {/* 밴/픽 현황 요약 */}
+            <div className="tfm-panel rounded-xl p-4 phase-transition">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-blue-400">🟦 Trinity Squad</span>
+                    <span className="text-sm text-gray-400">밴: {championSelect.playerBans.length}/2, 픽: {championSelect.selectedMechs.player.length}/3</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-red-400">🟥 Steel Ravens</span>
+                    <span className="text-sm text-gray-400">밴: {championSelect.enemyBans.length}/2, 픽: {championSelect.selectedMechs.enemy.length}/3</span>
                   </div>
                 </div>
-
-                {/* 적군 */}
-                <div>
-                  <h3 className="text-lg font-bold text-red-400 mb-4 flex items-center">
-                    <span className="mr-2">🟥</span>
-                    Steel Ravens
-                  </h3>
-                  <div className="space-y-3">
-                    <div>
-                      <div className="text-sm text-gray-400 mb-2">밴 ({championSelect.enemyBans.length}/2)</div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {Array.from({ length: 2 }, (_, i) => {
-                          const bannedMech = championSelect.enemyBans[i];
-                          return (
-                            <div
-                              key={i}
-                              className={`aspect-square rounded-lg border-2 ${
-                                bannedMech 
-                                  ? 'border-red-500 bg-red-500/20' 
-                                  : 'border-dashed border-gray-600'
-                              } p-2 flex items-center justify-center`}
-                            >
-                              {bannedMech ? (
-                                <div className="text-center">
-                                  <div className="text-lg">{getMechRoleIcon(bannedMech.type)}</div>
-                                  <div className="text-xs font-bold truncate">{bannedMech.name}</div>
-                                </div>
-                              ) : (
-                                <div className="text-gray-500 text-2xl">🚫</div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-gray-400 mb-2">픽 ({championSelect.selectedMechs.enemy.length}/3)</div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {Array.from({ length: 3 }, (_, i) => {
-                          const selectedMech = championSelect.selectedMechs.enemy[i];
-                          return (
-                            <div
-                              key={i}
-                              className={`aspect-square rounded-lg border-2 ${
-                                selectedMech 
-                                  ? 'border-red-500 bg-red-500/20' 
-                                  : 'border-dashed border-gray-600'
-                              } p-2 flex items-center justify-center`}
-                            >
-                              {selectedMech ? (
-                                <div className="text-center">
-                                  <div className="text-lg">{getMechRoleIcon(selectedMech.type)}</div>
-                                  <div className="text-xs font-bold truncate">{selectedMech.name}</div>
-                                  <div className="text-xs text-yellow-400">{getMechRating(selectedMech)}</div>
-                                </div>
-                              ) : (
-                                <div className="text-gray-500 text-lg">+</div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
+                <div className="text-sm text-cyan-400">
+                  {getCurrentSequenceInfo().description}
                 </div>
               </div>
             </div>
 
-            {/* 메크 선택 그리드 */}
+            {/* 통합 메크 선택 그리드 */}
             {championSelect.turnCount <= 10 && (
-              <div className="bg-slate-800/50 rounded-xl border border-cyan-400/20 p-6">
-                <h3 className="text-lg font-bold text-gray-300 mb-4">
-                  사용 가능한 챔피언을 선택하세요
-                </h3>
-                
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-96 overflow-y-auto">
-                  {(availableMechs as Mech[])
-                    .filter((mech: Mech) => 
-                      !championSelect.playerBans.some(banned => banned.id === mech.id) &&
-                      !championSelect.enemyBans.some(banned => banned.id === mech.id) &&
-                      !championSelect.selectedMechs.player.some(picked => picked.id === mech.id) &&
-                      !championSelect.selectedMechs.enemy.some(picked => picked.id === mech.id)
-                    )
-                    .map((mech: Mech) => {
+              <div className="tfm-panel rounded-xl p-6 phase-transition">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-300">
+                    챔피언 선택
+                  </h3>
+                  <div className="text-sm text-cyan-400">
+                    {(() => {
                       const currentSequence = championSelectSequence[championSelect.turnCount - 1];
                       const isPlayerTurn = currentSequence?.team === 'player';
-                      const isBanTurn = currentSequence?.action === 'ban';
-                      
-                      return (
-                        <button
-                          key={mech.id}
-                          onClick={() => handleMechAction(mech)}
-                          onMouseEnter={() => setShowMechDetails(mech)}
-                          onMouseLeave={() => setShowMechDetails(null)}
-                          disabled={!isPlayerTurn}
-                          className={`aspect-[3/4] rounded-lg border-2 p-3 champion-card ${
-                            isPlayerTurn
-                              ? isBanTurn
-                                ? 'ban-turn'
-                                : 'pick-turn'
-                              : 'border-gray-600 bg-gray-800/50 opacity-50 cursor-not-allowed'
-                          }`}
-                        >
-                          <div className="text-center h-full flex flex-col justify-between">
-                            <div>
-                              <div className="text-2xl mb-1">{getMechRoleIcon(mech.type)}</div>
-                              <div className="font-bold text-white text-sm truncate">{mech.name}</div>
-                              <div className="text-xs text-gray-400">{mech.type}</div>
-                            </div>
-                            
-                            <div className="space-y-1">
-                              <div className="text-lg font-bold text-yellow-400">{getMechRating(mech)}</div>
-                              <div className="grid grid-cols-2 gap-1 text-xs">
-                                <div className="bg-red-500/20 px-1 py-0.5 rounded">
-                                  ⚔️ {mech.firepower}
-                                </div>
-                                <div className="bg-blue-500/20 px-1 py-0.5 rounded">
-                                  🛡️ {mech.armor}
-                                </div>
-                                <div className="bg-green-500/20 px-1 py-0.5 rounded">
-                                  💚 {mech.hp}
-                                </div>
-                                <div className="bg-yellow-500/20 px-1 py-0.5 rounded">
-                                  ⚡ {mech.speed}
-                                </div>
+                      return isPlayerTurn ? '플레이어 턴' : 'AI 턴';
+                    })()}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-96 overflow-y-auto">
+                  {(availableMechs as Mech[]).map((mech: Mech) => {
+                    const currentSequence = championSelectSequence[championSelect.turnCount - 1];
+                    const isPlayerTurn = currentSequence?.team === 'player';
+                    const isBanTurn = currentSequence?.action === 'ban';
+                    
+                    // 메크 상태 확인
+                    const isPlayerBanned = championSelect.playerBans.some(banned => banned.id === mech.id);
+                    const isEnemyBanned = championSelect.enemyBans.some(banned => banned.id === mech.id);
+                    const isPlayerPicked = championSelect.selectedMechs.player.some(picked => picked.id === mech.id);
+                    const isEnemyPicked = championSelect.selectedMechs.enemy.some(picked => picked.id === mech.id);
+                    
+                    // 클릭 가능 여부
+                    const isClickable = isPlayerTurn && !isPlayerBanned && !isEnemyBanned && !isPlayerPicked && !isEnemyPicked;
+                    
+                    // 카드 스타일 결정
+                    let cardStyle = '';
+                    let statusOverlay = '';
+                    
+                    if (isPlayerBanned || isEnemyBanned) {
+                      cardStyle = 'border-gray-500 bg-gray-800/80 opacity-50';
+                      statusOverlay = '🚫 밴됨';
+                    } else if (isPlayerPicked) {
+                      cardStyle = 'border-blue-500 bg-blue-500/20';
+                      statusOverlay = '✓ 아군';
+                    } else if (isEnemyPicked) {
+                      cardStyle = 'border-red-500 bg-red-500/20';
+                      statusOverlay = '✓ 적군';
+                    } else if (isClickable) {
+                      cardStyle = isBanTurn ? 'ban-turn' : 'pick-turn';
+                    } else {
+                      cardStyle = 'border-gray-600 bg-gray-800/50 opacity-50 cursor-not-allowed';
+                    }
+                    
+                    return (
+                      <button
+                        key={mech.id}
+                        onClick={() => isClickable ? handleMechAction(mech) : null}
+                        onMouseEnter={() => setShowMechDetails(mech)}
+                        onMouseLeave={() => setShowMechDetails(null)}
+                        disabled={!isClickable}
+                        className={`aspect-[3/4] rounded-lg border-2 p-3 champion-card relative ${cardStyle}`}
+                      >
+                        {/* 상태 오버레이 */}
+                        {statusOverlay && (
+                          <div className="absolute top-1 left-1 right-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded text-center">
+                            {statusOverlay}
+                          </div>
+                        )}
+                        
+                        <div className="text-center h-full flex flex-col justify-between">
+                          <div>
+                            <div className="text-2xl mb-1">{getMechRoleIcon(mech.type)}</div>
+                            <div className="font-bold text-white text-sm truncate">{mech.name}</div>
+                            <div className="text-xs text-gray-400">{mech.type}</div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <div className="text-lg font-bold text-yellow-400">{getMechRating(mech)}</div>
+                            <div className="grid grid-cols-2 gap-1 text-xs">
+                              <div className="bg-red-500/20 px-1 py-0.5 rounded">
+                                ⚔️ {mech.firepower}
+                              </div>
+                              <div className="bg-blue-500/20 px-1 py-0.5 rounded">
+                                🛡️ {mech.armor}
+                              </div>
+                              <div className="bg-green-500/20 px-1 py-0.5 rounded">
+                                💚 {mech.hp}
+                              </div>
+                              <div className="bg-yellow-500/20 px-1 py-0.5 rounded">
+                                ⚡ {mech.speed}
                               </div>
                             </div>
                           </div>
-                        </button>
-                      );
-                    })}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
