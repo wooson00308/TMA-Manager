@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useBattleStore } from '@/stores/battleStore';
 import { wsManager } from '@/lib/websocket';
 
@@ -58,13 +58,13 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const [isCountingDown, setIsCountingDown] = useState(true);
   const [animatingUnits, setAnimatingUnits] = useState<Set<number>>(new Set());
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
-  const [terrainFeatures] = useState<TerrainFeature[]>([
+  const terrainFeatures = useState<TerrainFeature[]>(() => [
     { x: 4, y: 3, type: 'cover', effect: '방어력 +20%' },
     { x: 8, y: 5, type: 'elevation', effect: '사거리 +1' },
     { x: 12, y: 7, type: 'obstacle', effect: '이동 제한' },
     { x: 6, y: 9, type: 'hazard', effect: '턴당 HP -5' },
     { x: 10, y: 2, type: 'cover', effect: '방어력 +20%' },
-  ]);
+  ])[0];
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const { addBattleLog, setBattle } = useBattleStore();
@@ -99,7 +99,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     { id: 103, name: "Enemy Gamma", callsign: "타겟-γ", team: "enemy", initial: "G" }
   ];
 
-  const getPilotInfo = (pilotId: number): PilotInfo => {
+  const getPilotInfo = useCallback((pilotId: number): PilotInfo => {
     return pilots.find(p => p.id === pilotId) || {
       id: pilotId,
       name: `Unknown-${pilotId}`,
@@ -107,7 +107,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       team: pilotId >= 100 ? 'enemy' : 'ally',
       initial: 'U'
     };
-  };
+  }, []);
 
   // WebSocket 메시지 처리
   useEffect(() => {
@@ -156,7 +156,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
     wsManager.on('message', handleWebSocketMessage);
     return () => wsManager.off('message', handleWebSocketMessage);
-  }, [setBattle, addBattleLog]);
+  }, []); // 빈 의존성 배열로 변경
 
   // 서버에 틱 업데이트 요청 (UI만 처리)
   useEffect(() => {
@@ -175,7 +175,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     return () => clearInterval(tickInterval);
   }, [battle, isSimulating]);
 
-  // Canvas 렌더링 (UI만)
+  // Canvas 렌더링 (독립적인 애니메이션 루프)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -183,7 +183,11 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    let isRunning = true;
+
     const render = () => {
+      if (!isRunning) return;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // 격자 그리기
@@ -260,9 +264,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         ctx.fillText(pilotInfo.initial, x, y + 4);
       });
 
-      // 공격 효과 렌더링
+      // 공격 효과 렌더링 (state 변경 없이)
       const currentTime = Date.now();
-      setAttackEffects(prev => prev.filter(effect => {
+      const validEffects = attackEffects.filter(effect => {
         const elapsed = currentTime - effect.startTime;
         if (elapsed > 1000) return false;
         
@@ -284,7 +288,12 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         ctx.stroke();
         
         return true;
-      }));
+      });
+
+      // 만료된 효과 정리 (스로틀링으로 성능 최적화)
+      if (validEffects.length !== attackEffects.length && Math.random() < 0.1) {
+        setAttackEffects(validEffects);
+      }
 
       animationFrameRef.current = requestAnimationFrame(render);
     };
@@ -292,11 +301,12 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     render();
 
     return () => {
+      isRunning = false;
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [battle, animatingUnits, attackEffects, terrainFeatures]);
+  }, []);  // 한 번만 실행
 
   const startSimulation = () => {
     setCurrentTick(0);
