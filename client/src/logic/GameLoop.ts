@@ -57,7 +57,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
       type: 'RETREAT',
       actor,
       newPosition: retreatPos,
-      message: `${actorInfo.name}: "긴급 후퇴! 재정비 필요!"`
+      message: `긴급 후퇴! 재정비 필요!`
     };
   }
 
@@ -67,7 +67,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
       type: 'SUPPORT',
       actor,
       target: targetAlly,
-      message: `${actorInfo.name}: "지원 나간다! 버텨!"`
+      message: `지원 나간다! 버텨!`
     };
   }
 
@@ -75,7 +75,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
     return {
       type: 'DEFEND',
       actor,
-      message: `${actorInfo.name}: "방어 태세! 견고하게!"`
+      message: `방어 태세! 견고하게!`
     };
   }
 
@@ -85,7 +85,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
       type: 'SCOUT',
       actor,
       newPosition: scoutPos,
-      message: `${actorInfo.name}: "정찰 이동! 상황 파악!"`
+      message: `정찰 이동! 상황 파악!`
     };
   }
 
@@ -96,7 +96,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
       type: 'SPECIAL',
       actor,
       ability,
-      message: `${actorInfo.name}: "${ability} 발동!"`
+      message: `${ability} 발동!`
     };
   }
 
@@ -106,7 +106,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
       type: 'ATTACK',
       actor,
       target,
-      message: `${actorInfo.name}: "타겟 확인! 공격 개시!"`
+      message: `타겟 확인! 공격 개시!`
     };
   }
 
@@ -115,7 +115,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
     type: 'MOVE',
     actor,
     newPosition: tacticalPos,
-    message: `${actorInfo.name}: "포지션 조정!"`
+    message: `포지션 조정!`
   };
 };
 

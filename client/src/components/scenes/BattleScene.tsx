@@ -91,6 +91,12 @@ export function BattleScene() {
     }
   };
 
+  // Additional helper – colour-code the speaker based on allegiance
+  const getSpeakerColor = (speaker?: string) => {
+    if (!speaker) return 'text-gray-300';
+    return speaker.startsWith('Enemy') ? 'text-red-400' : 'text-green-400';
+  };
+
   const handleReturnToHub = () => {
     setScene('hub');
   };
@@ -197,7 +203,7 @@ export function BattleScene() {
                     [{new Date(log.timestamp).toLocaleTimeString()}]
                   </span>
                   {log.speaker && (
-                    <span className="font-semibold"> {log.speaker}:</span>
+                    <span className={`font-semibold ${getSpeakerColor(log.speaker)}`}> {log.speaker}:</span>
                   )}
                   <span className="ml-1">{log.message}</span>
                 </div>
