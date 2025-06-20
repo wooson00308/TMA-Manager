@@ -21,6 +21,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const logContainerRef = useRef<HTMLDivElement>(null);
   const { addBattleLog } = useBattleStore();
   const terrainFeatures = useGameStore(state => state.terrainFeatures);
   const getPilotInfo = useGameStore(state => state.getPilotInfo);
@@ -64,6 +65,13 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       setIsSimulating(false);
     }
   }, [battle.phase]);
+
+  // Auto-scroll combat log to the bottom whenever a new entry is added.
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [battle.log]);
 
   const startSimulation = () => {
     setCurrentTick(0);
@@ -125,28 +133,68 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
       <div className="p-6">
         <div className="bg-gray-900 rounded border border-gray-600 p-4 mb-6">
-          <h4 className="text-md font-semibold text-gray-300 mb-3">전장 맵 (2D 탑뷰)</h4>
-          <div className="flex justify-center relative">
-            <CanvasRenderer
-              ref={canvasRef}
-              width={640}
-              height={480}
-              className="border border-gray-600 bg-gray-800 rounded"
-            />
-            
-            {/* 카운트다운 오버레이 */}
-            {isCountingDown && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded">
-                <div className="text-center">
-                  <div className="text-8xl font-bold text-cyan-400 animate-pulse mb-4">
-                    {countdown > 0 ? countdown : "START!"}
-                  </div>
-                  <div className="text-xl text-white">
-                    전투 시작 준비 중...
+          <h4 className="text-md font-semibold text-gray-300 mb-4">전장 상황</h4>
+          {/* Battlefield & Log side-by-side on large screens */}
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Map */}
+            <div className="relative flex-shrink-0">
+              <CanvasRenderer
+                ref={canvasRef}
+                width={640}
+                height={480}
+                className="border border-gray-600 bg-gray-800 rounded"
+              />
+
+              {/* 카운트다운 오버레이 */}
+              {isCountingDown && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded">
+                  <div className="text-center">
+                    <div className="text-8xl font-bold text-cyan-400 animate-pulse mb-4">
+                      {countdown > 0 ? countdown : "START!"}
+                    </div>
+                    <div className="text-xl text-white">
+                      전투 시작 준비 중...
+                    </div>
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Combat Log */}
+            <div className="flex-1 lg:max-w-xs">
+              <h5 className="font-semibold text-gray-300 mb-2 lg:mt-0">실시간 전투 기록</h5>
+              <div
+                ref={logContainerRef}
+                className="bg-gray-800 rounded h-[480px] overflow-y-auto custom-scrollbar p-2"
+              >
+                {(battle.log || []).map((logEntry, index) => (
+                  <div
+                    key={index}
+                    className="p-2 border-b border-gray-700 last:border-b-0 text-sm"
+                  >
+                    <span className="font-mono text-xs text-gray-500 mr-2">
+                      {new Date(logEntry.timestamp).toLocaleTimeString()}
+                    </span>
+                    {logEntry.speaker && (
+                      <span className="font-semibold text-yellow-300">[{logEntry.speaker}] </span>
+                    )}
+                    <span
+                      className={
+                        logEntry.type === "system"
+                          ? "text-cyan-400"
+                          : logEntry.type === "attack"
+                          ? "text-red-300"
+                          : logEntry.type === "movement"
+                          ? "text-blue-300"
+                          : "text-gray-300"
+                      }
+                    >
+                      {logEntry.message}
+                    </span>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
           </div>
           
           <div className="grid grid-cols-2 gap-4 mt-4 text-xs">
@@ -292,30 +340,6 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 })}
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="border-t border-cyan-400/20 p-4">
-        <h4 className="text-md font-semibold text-gray-300 mb-3">실시간 전투 기록</h4>
-        <div className="bg-gray-900 rounded max-h-32 overflow-y-auto custom-scrollbar">
-          {(battle.log || []).slice(-8).map((logEntry, index) => (
-            <div key={index} className="p-2 border-b border-gray-700 last:border-b-0">
-              <div className={`text-sm ${
-                logEntry.type === 'system' ? 'text-cyan-400' :
-                logEntry.type === 'attack' ? 'text-red-300' :
-                logEntry.type === 'movement' ? 'text-blue-300' :
-                'text-gray-300'
-              }`}>
-                <span className="font-mono text-xs text-gray-500 mr-2">
-                  {new Date(logEntry.timestamp).toLocaleTimeString()}
-                </span>
-                {logEntry.speaker && (
-                  <span className="font-semibold text-yellow-300">[{logEntry.speaker}]</span>
-                )}
-                {logEntry.message}
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
