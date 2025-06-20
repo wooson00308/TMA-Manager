@@ -217,191 +217,47 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     };
   };
 
-  // 유틸리티 기반 AI 결정 시스템
-  const determineAIAction = (actor: any, battleState: any, actorInfo: PilotInfo) => {
-    // 파일럿과 메크 스탯 가져오기 (실제 데이터 활용)
-    const pilotStats = {
-      rating: 75 + (actor.pilotId % 25), // 기본 레이팅 + 변동
-      reaction: 60 + (actor.pilotId % 40),
-      accuracy: 65 + (actor.pilotId % 35),
-      tactical: 70 + (actor.pilotId % 30),
-      teamwork: 55 + (actor.pilotId % 45)
+  // 전진 위치 계산
+  const calculateAdvancePosition = (currentPos: {x: number, y: number}, targetPos: {x: number, y: number}, team: string) => {
+    const dx = targetPos.x - currentPos.x;
+    const dy = targetPos.y - currentPos.y;
+    
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance === 0) return currentPos;
+    
+    // 한 칸씩 접근
+    const stepX = dx === 0 ? 0 : dx > 0 ? 1 : -1;
+    const stepY = dy === 0 ? 0 : dy > 0 ? 1 : -1;
+    
+    const newPos = {
+      x: Math.max(0, Math.min(14, currentPos.x + stepX)),
+      y: Math.max(0, Math.min(9, currentPos.y + stepY))
     };
     
-    const mechStats = {
-      firepower: 60 + (actor.mechId % 40),
-      armor: 65 + (actor.mechId % 35),
-      speed: 70 + (actor.mechId % 30),
-      hp: 80 + (actor.mechId % 20),
-      range: 3 + (actor.mechId % 3)
-    };
-
-    const isLowHP = actor.hp < 30;
-    const isCriticalHP = actor.hp < 15;
-    const allies = battleState.participants.filter((p: any) => {
-      const info = getPilotInfo(p.pilotId);
-      return info.team === actorInfo.team && p.status === 'active' && p.pilotId !== actor.pilotId;
-    });
-    const enemies = battleState.participants.filter((p: any) => {
-      const info = getPilotInfo(p.pilotId);
-      return info.team !== actorInfo.team && p.status === 'active';
-    });
-    
-    const damagedAllies = allies.filter((ally: any) => ally.hp < 50);
-    const nearbyEnemies = enemies.filter((enemy: any) => 
-      manhattanDistance(enemy.position, actor.position) <= mechStats.range
-    );
-
-    // 지형 분석
-    const currentTerrain = terrainFeatures.find(t => t.x === actor.position.x && t.y === actor.position.y);
-    const nearbyTerrain = terrainFeatures.filter(t => 
-      manhattanDistance(t, actor.position) <= 3
+    // 장애물 검사
+    const hasObstacle = terrainFeatures.some(t => 
+      t.x === newPos.x && t.y === newPos.y && t.type === 'obstacle'
     );
     
-    // 유틸리티 계산
-    const utilities = {
-      attack: 0,
-      defend: 0,
-      support: 0,
-      reposition: 0,
-      retreat: 0,
-      scout: 0
-    };
-
-    // 공격 유틸리티
-    if (enemies.length > 0) {
-      const bestTarget = enemies.reduce((best: any, current: any) => {
-        const distToBest = manhattanDistance(best.position, actor.position);
-        const distToCurrent = manhattanDistance(current.position, actor.position);
-        
-        const bestInRange = distToBest <= Number(mechStats.range);
-        const currentInRange = distToCurrent <= Number(mechStats.range);
-        
-        if (currentInRange && !bestInRange) return current;
-        if (!currentInRange && bestInRange) return best;
-        
-        const bestScore = best.hp + distToBest * 5;
-        const currentScore = current.hp + distToCurrent * 5;
-        
-        return currentScore < bestScore ? current : best;
-      });
+    if (hasObstacle) {
+      // 우회 경로 찾기
+      const alternatives = [
+        { x: currentPos.x + stepX, y: currentPos.y },
+        { x: currentPos.x, y: currentPos.y + stepY },
+        { x: currentPos.x - stepX, y: currentPos.y },
+        { x: currentPos.x, y: currentPos.y - stepY }
+      ].filter(pos => 
+        pos.x >= 0 && pos.x < 15 && pos.y >= 0 && pos.y < 10 &&
+        !terrainFeatures.some(t => t.x === pos.x && t.y === pos.y && t.type === 'obstacle')
+      );
       
-      const distance = manhattanDistance(bestTarget.position, actor.position);
-      const attackAccuracy = Math.min(0.9, pilotStats.accuracy / 100 + (mechStats.range - distance) * 0.1);
-      const damageExpected = mechStats.firepower * attackAccuracy;
-      utilities.attack = damageExpected * (1 - (isLowHP ? 0.3 : 0)) * (pilotStats.rating / 100);
+      return alternatives.length > 0 ? alternatives[0] : currentPos;
     }
-
-    // 방어 유틸리티
-    if (nearbyEnemies.length >= 2) {
-      utilities.defend = nearbyEnemies.length * 20 * (mechStats.armor / 100) * (currentTerrain?.type === 'cover' ? 1.5 : 1);
-    }
-
-    // 지원 유틸리티
-    if (damagedAllies.length > 0) {
-      utilities.support = damagedAllies.length * 25 * (pilotStats.teamwork / 100);
-    }
-
-    // 재배치 유틸리티
-    const coverPositions = nearbyTerrain.filter(t => t.type === 'cover' || t.type === 'elevation');
-    if (coverPositions.length > 0) {
-      utilities.reposition = 30 * (pilotStats.tactical / 100) * (mechStats.speed / 100);
-    }
-
-    // 후퇴 유틸리티
-    if (isCriticalHP) {
-      utilities.retreat = 80 * (1 - pilotStats.rating / 200);
-    }
-
-    // 정찰 유틸리티
-    if (pilotStats.tactical > 70 && !nearbyEnemies.length) {
-      utilities.scout = 20 * (pilotStats.tactical / 100);
-    }
-
-    // 최고 유틸리티 행동 선택
-    const bestAction = Object.entries(utilities).reduce((best, [action, utility]) => 
-      utility > best.utility ? {action, utility} : best, {action: 'attack', utility: 0});
-
-    const personality = {
-      aggressive: Math.max(0.1, Math.min(0.9, (pilotStats.rating + pilotStats.reaction) / 200)),
-      tactical: Math.max(0.1, Math.min(0.9, pilotStats.tactical / 100)),
-      supportive: Math.max(0.1, Math.min(0.9, pilotStats.teamwork / 100))
-    };
-    const random = Math.random();
-
-    // 유틸리티 기반 행동 결정
-    switch (bestAction.action) {
-      case 'attack':
-        if (enemies.length > 0) {
-          const target = enemies.reduce((best: any, current: any) => {
-            const distToBest = manhattanDistance(best.position, actor.position);
-            const distToCurrent = manhattanDistance(current.position, actor.position);
-            return distToCurrent < distToBest ? current : best;
-          });
-          return {
-            type: 'ATTACK',
-            actor,
-            target,
-            message: `${actorInfo.name}: "타겟 확인! 공격 개시!"`
-          };
-        }
-        break;
-        
-      case 'retreat':
-        const retreatPos = calculateRetreatPosition(actor.position, actorInfo.team, enemies);
-        return {
-          type: 'RETREAT',
-          actor,
-          newPosition: retreatPos,
-          message: `${actorInfo.name}: "긴급 후퇴! 재정비 필요!"`
-        };
-        
-      case 'support':
-        if (damagedAllies.length > 0) {
-          return {
-            type: 'SUPPORT',
-            actor,
-            target: damagedAllies[0],
-            message: `${actorInfo.name}: "지원 나간다! 버텨!"`
-          };
-        }
-        break;
-        
-      case 'reposition':
-        if (coverPositions.length > 0) {
-          const bestCover = coverPositions.reduce((best, pos) => {
-            const distanceFromCurrent = manhattanDistance(pos, actor.position);
-            const avgDistanceFromEnemies = enemies.length > 0 ? 
-              enemies.reduce((sum: number, enemy: any) => sum + manhattanDistance(pos, enemy.position), 0) / enemies.length : 5;
-            
-            const score = avgDistanceFromEnemies - distanceFromCurrent * 0.5;
-            return !best || score > best.score ? {pos, score} : best;
-          }, null as any)?.pos;
-          
-          if (bestCover) {
-            const pathTo = findPathAStar(actor.position, bestCover, 
-              terrainFeatures.filter(t => t.type === 'obstacle').map(t => ({x: t.x, y: t.y}))
-            );
-            return {
-              type: 'MOVE',
-              actor,
-              newPosition: pathTo,
-              message: `${actorInfo.name}: "전술적 재배치!"`
-            };
-          }
-        }
-        break;
-    }
-
-    // 기본 행동: 적에게 접근하거나 전술적 이동
-    const tacticalPosition = calculateTacticalPosition(actor.position, actorInfo.team, enemies);
-    return {
-      type: 'MOVE',
-      actor,
-      newPosition: tacticalPosition,
-      message: `${actorInfo.name}: "포지션 조정!"`
-    };
+    
+    return newPos;
   };
+
+  // 클라이언트는 이제 서버의 AI 시스템만 사용합니다.
 
   const calculateRetreatPosition = (pos: any, team: string, enemies: any[]) => {
     const safeDirection = team === 'ally' ? -2 : 2;
@@ -762,11 +618,74 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           return currentTime - lastActionTime > cooldownTime;
         });
 
-        // 모든 사용 가능한 유닛들이 병렬로 행동 계획 수립
+        // 병렬 행동 계획 수립 및 실행
         const parallelActions = availableUnits.map(actor => {
           const actorInfo = getPilotInfo(actor.pilotId);
-          const aiAction = determineAIAction(actor, battle, actorInfo);
-          return { actor, actorInfo, action: aiAction };
+          
+          // 간단한 AI 로직으로 임시 대체 (서버 AI 시스템은 별도 구현)
+          const enemies = (battle.participants || []).filter((p: BattleParticipant) => {
+            const info = getPilotInfo(p.pilotId);
+            return info.team !== actorInfo.team && p.status === 'active';
+          });
+          
+          const allies = (battle.participants || []).filter((p: BattleParticipant) => {
+            const info = getPilotInfo(p.pilotId);
+            return info.team === actorInfo.team && p.status === 'active' && p.pilotId !== actor.pilotId;
+          });
+          
+          // 기본 AI 결정 로직
+          let action;
+          if (actor.hp < 25) {
+            // 후퇴
+            action = {
+              type: 'MOVE',
+              actor,
+              newPosition: { x: Math.max(0, actor.position.x - 1), y: actor.position.y },
+              message: `${actorInfo.name}: "후퇴!"`
+            };
+          } else if (enemies.length > 0) {
+            // 공격 또는 접근
+            const closestEnemy = enemies.reduce((closest, enemy) => {
+              const distToClosest = manhattanDistance(actor.position, closest.position);
+              const distToEnemy = manhattanDistance(actor.position, enemy.position);
+              return distToEnemy < distToClosest ? enemy : closest;
+            });
+            
+            const distance = manhattanDistance(actor.position, closestEnemy.position);
+            if (distance <= 3) {
+              action = {
+                type: 'ATTACK',
+                actor,
+                target: closestEnemy,
+                message: `${actorInfo.name}: "공격!"`
+              };
+            } else {
+              // 접근
+              const dx = closestEnemy.position.x - actor.position.x;
+              const dy = closestEnemy.position.y - actor.position.y;
+              const stepX = dx === 0 ? 0 : dx > 0 ? 1 : -1;
+              const stepY = dy === 0 ? 0 : dy > 0 ? 1 : -1;
+              
+              action = {
+                type: 'MOVE',
+                actor,
+                newPosition: {
+                  x: Math.max(0, Math.min(14, actor.position.x + stepX)),
+                  y: Math.max(0, Math.min(9, actor.position.y + stepY))
+                },
+                message: `${actorInfo.name}: "접근 중!"`
+              };
+            }
+          } else {
+            action = {
+              type: 'MOVE',
+              actor,
+              newPosition: actor.position,
+              message: `${actorInfo.name}: "대기 중"`
+            };
+          }
+          
+          return { actor, actorInfo, action };
         });
 
         // 모든 행동을 동시에 실행 (병렬 처리)
@@ -978,72 +897,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         });
       }
       
-      // 매 틱마다 전투 종료 조건 확인
-      setCurrentTick(prev => {
-        const nextTick = prev + 1;
-        
-        // 생존 유닛 체크
-        const currentAllies = (battle.participants || []).filter(p => {
-          const info = getPilotInfo(p.pilotId);
-          return info.team === 'ally' && p.status === 'active';
-        });
-        const currentEnemies = (battle.participants || []).filter(p => {
-          const info = getPilotInfo(p.pilotId);
-          return info.team === 'enemy' && p.status === 'active';
-        });
-
-        // 즉시 승리 조건: 한 팀 전멸
-        if (currentAllies.length === 0 || currentEnemies.length === 0) {
-          setIsSimulating(false);
-          const winner = currentAllies.length > 0 ? '아군' : '적군';
-          const victoryLog = {
-            timestamp: Date.now(),
-            type: 'system' as const,
-            message: `🎉 전투 종료! ${winner} 승리! (${currentAllies.length}vs${currentEnemies.length})`,
-          };
-          addBattleLog(victoryLog);
-          
-          setBattle({
-            ...battle,
-            phase: 'completed' as const,
-            log: [...(battle.log || []), victoryLog]
-          });
-          return nextTick;
-        }
-        
-        // 시간 제한 조건: 3분 후 무승부 또는 점수 승부
-        if (nextTick > 180) {
-          setIsSimulating(false);
-          let winner;
-          let message;
-          
-          if (currentAllies.length > currentEnemies.length) {
-            winner = '아군';
-            message = `⏰ 시간 종료! ${winner} 승리! (생존자 수: ${currentAllies.length}vs${currentEnemies.length})`;
-          } else if (currentEnemies.length > currentAllies.length) {
-            winner = '적군';
-            message = `⏰ 시간 종료! ${winner} 승리! (생존자 수: ${currentAllies.length}vs${currentEnemies.length})`;
-          } else {
-            message = `⏰ 시간 종료! 무승부! (생존자 수: ${currentAllies.length}vs${currentEnemies.length})`;
-          }
-          
-          const timeoutLog = {
-            timestamp: Date.now(),
-            type: 'system' as const,
-            message,
-          };
-          addBattleLog(timeoutLog);
-          
-          setBattle({
-            ...battle,
-            phase: 'completed' as const,
-            log: [...(battle.log || []), timeoutLog]
-          });
-        }
-        
-        return nextTick;
-      });
-    }, 1000); // 1초마다 틱 실행
+      // 틱 증가
+      setCurrentTick(prev => prev + 1);
+    }, 1000);
 
     return () => clearInterval(tickInterval);
   }, [battle, isSimulating, addBattleLog, setBattle, terrainFeatures]);

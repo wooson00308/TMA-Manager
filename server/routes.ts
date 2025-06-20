@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertPilotSchema, insertFormationSchema, type BattleState } from "@shared/schema";
 import { BattleEngine } from "./services/BattleEngine";
+import { AISystem } from "./services/AISystem";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -661,6 +662,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(team);
     } catch (error) {
       res.status(500).json({ error: "Failed to spend credits" });
+    }
+  });
+
+  // AI 결정 요청 엔드포인트
+  app.post("/api/battle/ai-decision", async (req, res) => {
+    try {
+      const { participant, battleState, team } = req.body;
+      const aiSystem = new AISystem();
+      
+      const decision = aiSystem.makeAdvancedDecision(participant, battleState, team);
+      res.json(decision);
+    } catch (error) {
+      console.error('Error making AI decision:', error);
+      
+      // 폴백으로 간단한 AI 사용
+      const aiSystem = new AISystem();
+      const fallbackDecision = aiSystem.makeSimpleDecision(req.body.participant, req.body.battleState, req.body.team);
+      res.json(fallbackDecision);
     }
   });
 

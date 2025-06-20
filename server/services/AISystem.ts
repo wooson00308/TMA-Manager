@@ -2,15 +2,351 @@ import { type BattleState } from "@shared/schema";
 import { PilotService } from "./PilotService";
 
 interface AIDecision {
-  type: "MOVE" | "ATTACK" | "COMMUNICATE" | "DEFEND" | "SUPPORT" | "SCOUT" | "RETREAT" | "SPECIAL";
+  type: "MOVE" | "ATTACK" | "COMMUNICATE" | "DEFEND" | "SUPPORT" | "SCOUT" | "RETREAT" | "SPECIAL" | "ADVANCE";
   pilotName: string;
   dialogue?: string;
   newPosition?: { x: number; y: number };
   targetIndex?: number;
   actionData?: any;
+  actor?: any;
+  target?: any;
+  message?: string;
+}
+
+interface TerrainFeature {
+  x: number;
+  y: number;
+  type: 'cover' | 'elevation' | 'hazard' | 'obstacle';
+}
+
+interface PilotStats {
+  rating: number;
+  accuracy: number;
+  tactical: number;
+  teamwork: number;
+  reaction: number;
+}
+
+interface MechStats {
+  firepower: number;
+  armor: number;
+  speed: number;
+  range: number;
 }
 
 export class AISystem {
+  private terrainFeatures: TerrainFeature[] = [
+    { x: 3, y: 2, type: 'cover' },
+    { x: 8, y: 3, type: 'elevation' },
+    { x: 11, y: 6, type: 'cover' },
+    { x: 5, y: 7, type: 'hazard' },
+    { x: 2, y: 8, type: 'obstacle' },
+    { x: 12, y: 1, type: 'obstacle' },
+    { x: 7, y: 5, type: 'elevation' }
+  ];
+
+  // A* 경로탐색 구현
+  private findPath(start: {x: number, y: number}, goal: {x: number, y: number}): {x: number, y: number}[] {
+    const openSet: any[] = [{ ...start, g: 0, h: this.heuristic(start, goal), f: this.heuristic(start, goal), parent: null }];
+    const closedSet: any[] = [];
+    
+    while (openSet.length > 0) {
+      openSet.sort((a, b) => a.f - b.f);
+      const current = openSet.shift()!;
+      
+      if (current.x === goal.x && current.y === goal.y) {
+        const path: {x: number, y: number}[] = [];
+        let node = current;
+        while (node) {
+          path.unshift({ x: node.x, y: node.y });
+          node = node.parent;
+        }
+        return path.slice(1); // 현재 위치 제외
+      }
+      
+      closedSet.push(current);
+      
+      const neighbors = this.getNeighbors(current);
+      for (const neighbor of neighbors) {
+        if (closedSet.some(n => n.x === neighbor.x && n.y === neighbor.y)) continue;
+        if (this.isObstacle(neighbor.x, neighbor.y)) continue;
+        
+        const tentativeG = current.g + 1;
+        const existingNode = openSet.find(n => n.x === neighbor.x && n.y === neighbor.y);
+        
+        if (!existingNode) {
+          openSet.push({
+            x: neighbor.x,
+            y: neighbor.y,
+            g: tentativeG,
+            h: this.heuristic(neighbor, goal),
+            f: tentativeG + this.heuristic(neighbor, goal),
+            parent: current
+          });
+        } else if (tentativeG < existingNode.g) {
+          existingNode.g = tentativeG;
+          existingNode.f = tentativeG + existingNode.h;
+          existingNode.parent = current;
+        }
+      }
+    }
+    
+    return []; // 경로를 찾을 수 없음
+  }
+
+  private heuristic(a: {x: number, y: number}, b: {x: number, y: number}): number {
+    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+  }
+
+  private getNeighbors(pos: {x: number, y: number}): {x: number, y: number}[] {
+    return [
+      { x: pos.x + 1, y: pos.y },
+      { x: pos.x - 1, y: pos.y },
+      { x: pos.x, y: pos.y + 1 },
+      { x: pos.x, y: pos.y - 1 }
+    ].filter(p => p.x >= 0 && p.x < 15 && p.y >= 0 && p.y < 10);
+  }
+
+  private isObstacle(x: number, y: number): boolean {
+    return this.terrainFeatures.some(t => t.x === x && t.y === y && t.type === 'obstacle');
+  }
+
+  // 유틸리티 기반 AI 결정 시스템
+  makeAdvancedDecision(participant: any, battleState: BattleState, team: string): AIDecision {
+    const pilotStats = this.getPilotStats(participant.pilotId);
+    const mechStats = this.getMechStats(participant.mechId);
+    
+    const enemies = team === "team1" 
+      ? battleState.participants.filter((p: any) => p.pilotId >= 100 && p.status === 'active')
+      : battleState.participants.filter((p: any) => p.pilotId < 100 && p.status === 'active');
+    
+    const allies = team === "team1"
+      ? battleState.participants.filter((p: any) => p.pilotId < 100 && p.status === 'active')
+      : battleState.participants.filter((p: any) => p.pilotId >= 100 && p.status === 'active');
+
+    const utilities = this.calculateUtilities(participant, enemies, allies, pilotStats, mechStats);
+    const bestAction = this.selectBestAction(utilities);
+    
+    return this.executeAction(bestAction, participant, enemies, allies, battleState, team, pilotStats, mechStats);
+  }
+
+  private getPilotStats(pilotId: number): PilotStats {
+    return {
+      rating: 75 + (pilotId % 25),
+      accuracy: 65 + (pilotId % 35),
+      tactical: 70 + (pilotId % 30),
+      teamwork: 60 + (pilotId % 40),
+      reaction: 80 + (pilotId % 20)
+    };
+  }
+
+  private getMechStats(mechId: number): MechStats {
+    return {
+      firepower: 60 + (mechId % 40),
+      armor: 65 + (mechId % 35),
+      speed: 70 + (mechId % 30),
+      range: 3 + (mechId % 3)
+    };
+  }
+
+  private calculateUtilities(participant: any, enemies: any[], allies: any[], pilotStats: PilotStats, mechStats: MechStats) {
+    const utilities = {
+      attack: 0,
+      defend: 0,
+      support: 0,
+      advance: 0,
+      retreat: 0,
+      scout: 0,
+      reposition: 0
+    };
+
+    const isLowHP = participant.hp < 50;
+    const isCriticalHP = participant.hp < 25;
+    
+    // 공격 유틸리티
+    if (enemies.length > 0) {
+      const closestEnemy = this.findClosestEnemy(participant, enemies);
+      const distance = this.manhattanDistance(participant.position, closestEnemy.position);
+      const inRange = distance <= mechStats.range;
+      
+      if (inRange) {
+        const attackAccuracy = Math.min(0.9, pilotStats.accuracy / 100);
+        const damageExpected = mechStats.firepower * attackAccuracy;
+        utilities.attack = damageExpected * (pilotStats.rating / 100) * (isLowHP ? 0.7 : 1.0);
+      }
+    }
+
+    // 전진 유틸리티
+    if (enemies.length > 0 && !isCriticalHP) {
+      const closestEnemy = this.findClosestEnemy(participant, enemies);
+      const distance = this.manhattanDistance(participant.position, closestEnemy.position);
+      const optimalRange = Math.floor(mechStats.range * 0.8);
+      
+      if (distance > optimalRange + 1) {
+        utilities.advance = 60 * (pilotStats.rating / 100) * (mechStats.speed / 100);
+      }
+    }
+
+    // 후퇴 유틸리티
+    if (isCriticalHP) {
+      utilities.retreat = 100 * (1 - pilotStats.rating / 200);
+    }
+
+    // 재배치 유틸리티
+    const currentTerrain = this.getTerrainAt(participant.position);
+    const nearbyGoodTerrain = this.terrainFeatures.filter(t => 
+      (t.type === 'cover' || t.type === 'elevation') &&
+      this.manhattanDistance(t, participant.position) <= 2
+    );
+    
+    if (nearbyGoodTerrain.length > 0 && !currentTerrain) {
+      utilities.reposition = 50 * (pilotStats.tactical / 100);
+    }
+
+    // 지원 유틸리티
+    const damagedAllies = allies.filter(ally => ally.hp < 50);
+    if (damagedAllies.length > 0) {
+      utilities.support = damagedAllies.length * 30 * (pilotStats.teamwork / 100);
+    }
+
+    return utilities;
+  }
+
+  private selectBestAction(utilities: any): string {
+    return Object.entries(utilities).reduce((best: any, [action, utility]) => 
+      (utility as number) > best.utility ? {action, utility} : best, {action: 'attack', utility: 0}).action;
+  }
+
+  private executeAction(action: string, participant: any, enemies: any[], allies: any[], battleState: BattleState, team: string, pilotStats: PilotStats, mechStats: MechStats): AIDecision {
+    const pilotName = this.getPilotName(participant.pilotId);
+    
+    switch (action) {
+      case 'attack':
+        if (enemies.length > 0) {
+          const target = this.selectBestTarget(enemies, participant);
+          return {
+            type: "ATTACK",
+            pilotName,
+            actor: participant,
+            target,
+            message: `${pilotName}: "타겟 확인! 공격 개시!"`
+          };
+        }
+        break;
+        
+      case 'advance':
+        if (enemies.length > 0) {
+          const closestEnemy = this.findClosestEnemy(participant, enemies);
+          const path = this.findPath(participant.position, closestEnemy.position);
+          const nextPosition = path.length > 0 ? path[0] : this.calculateSimpleAdvance(participant.position, closestEnemy.position);
+          
+          return {
+            type: "MOVE",
+            pilotName,
+            actor: participant,
+            newPosition: nextPosition,
+            message: `${pilotName}: "적에게 접근 중!"`
+          };
+        }
+        break;
+        
+      case 'retreat':
+        const retreatPosition = this.calculateRetreatPosition(participant.position, team, enemies);
+        return {
+          type: "RETREAT",
+          pilotName,
+          actor: participant,
+          newPosition: retreatPosition,
+          message: `${pilotName}: "후퇴!"`
+        };
+        
+      case 'reposition':
+        const bestCover = this.findBestCover(participant.position);
+        if (bestCover) {
+          const path = this.findPath(participant.position, bestCover);
+          const nextPosition = path.length > 0 ? path[0] : bestCover;
+          
+          return {
+            type: "MOVE",
+            pilotName,
+            actor: participant,
+            newPosition: nextPosition,
+            message: `${pilotName}: "유리한 위치로 이동!"`
+          };
+        }
+        break;
+        
+      case 'support':
+        const damagedAlly = allies.find(ally => ally.hp < 50);
+        if (damagedAlly) {
+          return {
+            type: "SUPPORT",
+            pilotName,
+            actor: participant,
+            target: damagedAlly,
+            message: `${pilotName}: "지원 사격!"`
+          };
+        }
+        break;
+    }
+    
+    // 기본 행동
+    return this.makeSimpleDecision(participant, battleState, team);
+  }
+
+  private findClosestEnemy(participant: any, enemies: any[]): any {
+    return enemies.reduce((closest, enemy) => {
+      const distToClosest = this.manhattanDistance(participant.position, closest.position);
+      const distToEnemy = this.manhattanDistance(participant.position, enemy.position);
+      return distToEnemy < distToClosest ? enemy : closest;
+    });
+  }
+
+  private findBestCover(position: {x: number, y: number}): {x: number, y: number} | null {
+    const coverPositions = this.terrainFeatures.filter(t => t.type === 'cover' || t.type === 'elevation');
+    if (coverPositions.length === 0) return null;
+    
+    return coverPositions.reduce((best, cover) => {
+      const distance = this.manhattanDistance(position, cover);
+      return !best || distance < this.manhattanDistance(position, best) ? cover : best;
+    }, null as any);
+  }
+
+  private calculateSimpleAdvance(current: {x: number, y: number}, target: {x: number, y: number}): {x: number, y: number} {
+    const dx = target.x - current.x;
+    const dy = target.y - current.y;
+    
+    const stepX = dx === 0 ? 0 : dx > 0 ? 1 : -1;
+    const stepY = dy === 0 ? 0 : dy > 0 ? 1 : -1;
+    
+    return {
+      x: Math.max(0, Math.min(14, current.x + stepX)),
+      y: Math.max(0, Math.min(9, current.y + stepY))
+    };
+  }
+
+  private getTerrainAt(position: {x: number, y: number}): TerrainFeature | null {
+    return this.terrainFeatures.find(t => t.x === position.x && t.y === position.y) || null;
+  }
+
+  private manhattanDistance(pos1: {x: number, y: number}, pos2: {x: number, y: number}): number {
+    return Math.abs(pos1.x - pos2.x) + Math.abs(pos1.y - pos2.y);
+  }
+
+  private getPilotName(pilotId: number): string {
+    const pilotNames: { [key: number]: string } = {
+      1: "Sasha Volkov",
+      2: "Mei Chen", 
+      3: "Alex Rodriguez",
+      4: "Jin Watanabe",
+      5: "Elena Vasquez",
+      101: "Enemy Alpha",
+      102: "Enemy Beta", 
+      103: "Enemy Gamma"
+    };
+    return pilotNames[pilotId] || `Unit-${pilotId}`;
+  }
+
   makeSimpleDecision(participant: any, battleState: BattleState, team: string): AIDecision {
     // 파일럿 이름 매핑
     const pilotNames: { [key: number]: string } = {
