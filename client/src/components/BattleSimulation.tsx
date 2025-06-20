@@ -150,10 +150,10 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       </div>
 
       {/* Main Battle View */}
-      <div className="flex h-[calc(100%-120px)]">
+      <div className="flex flex-1 overflow-hidden">
         {/* Battlefield */}
-        <div className="flex-1 p-6">
-          <div className="relative h-full bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl border border-gray-600 shadow-2xl overflow-hidden">
+        <div className="flex-1 p-6 flex flex-col">
+          <div className="relative flex-1 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl border border-gray-600 shadow-2xl overflow-hidden">
             {/* Battlefield Canvas */}
             <CanvasRenderer
               ref={canvasRef}
@@ -253,14 +253,14 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         {/* Side Panel */}
         <div className="w-96 border-l border-gray-600/50 bg-gradient-to-b from-gray-800/30 to-gray-900/30 backdrop-blur-sm flex flex-col">
           {/* Combat Log */}
-          <div className="flex-1 p-5">
+          <div className="flex-1 p-5 flex flex-col">
             <div className="flex items-center space-x-2 mb-4">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               <h5 className="text-sm font-semibold text-gray-200">실시간 전투 기록</h5>
             </div>
             <div
               ref={logContainerRef}
-              className="bg-black/40 backdrop-blur-sm rounded-xl h-full overflow-y-auto p-3 space-y-2 border border-gray-700/50"
+              className="bg-black/40 backdrop-blur-sm rounded-xl flex-1 overflow-y-auto p-3 space-y-2 border border-gray-700/50 custom-scrollbar"
             >
               {(battle.log || []).length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-500">
@@ -304,12 +304,12 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
 
           {/* Unit Status */}
-          <div className="border-t border-gray-600/50 p-5">
+          <div className="border-t border-gray-600/50 p-5 flex-shrink-0">
             <div className="flex items-center space-x-2 mb-4">
               <div className="w-2 h-2 bg-cyan-400 rounded-full"></div>
               <h5 className="text-sm font-semibold text-gray-200">유닛 상태</h5>
             </div>
-            <div className="max-h-64 overflow-y-auto space-y-3">
+            <div className="h-64 overflow-y-auto space-y-3 custom-scrollbar">
               {(battle.participants || []).map(participant => {
                 const pilot = getPilotInfo(participant.pilotId);
                 const isAlly = participant.team === 'team1';
