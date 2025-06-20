@@ -173,7 +173,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                             participant.hp > 70 ? 'bg-green-500' :
                             participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
-                          style={{ width: `${participant.hp}%` }}
+                          style={{ width: `${Math.min(participant.hp, 100)}%` }}
                         ></div>
                       </div>
                     </div>
@@ -316,7 +316,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                             participant.hp > 70 ? 'bg-green-500' :
                             participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
-                          style={{ width: `${participant.hp}%` }}
+                          style={{ width: `${Math.min(participant.hp, 100)}%` }}
                         ></div>
                       </div>
                     </div>
