@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
 import { CyberButton } from '@/components/ui/CyberButton';
-import BattleSimulation from '@/components/BattleSimulation';
+import { BattleSimulation } from '@/components/BattleSimulation';
 import { Pilot, Mech, Team } from '@shared/schema';
 import { wsManager } from '@/lib/websocket';
 
