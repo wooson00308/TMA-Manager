@@ -1,4 +1,5 @@
 import { BattleEngine } from "../services/BattleEngine";
+import { SimpleBattleEngine } from "../services/SimpleBattleEngine";
 import { storage } from "../storage";
 import { type BattleState } from "@shared/schema";
 
@@ -22,7 +23,9 @@ interface BattleTestScenario {
 
 export class BattleTestRunner {
   private battleEngine = new BattleEngine();
+  private simpleBattleEngine = new SimpleBattleEngine();
   private testResults: TestResult[] = [];
+  private useSimpleEngine = true; // 간단한 엔진 사용
 
   // 사전 정의된 테스트 시나리오들
   private scenarios: BattleTestScenario[] = [
@@ -107,7 +110,8 @@ export class BattleTestRunner {
     try {
       // 1. 전투 초기화 테스트
       logs.push("전투 초기화 중...");
-      const battleState = await this.battleEngine.initializeBattle(
+      const engine = this.useSimpleEngine ? this.simpleBattleEngine : this.battleEngine;
+      const battleState = await engine.initializeBattle(
         scenario.formation1, 
         scenario.formation2
       );
@@ -133,14 +137,19 @@ export class BattleTestRunner {
           reject(new Error(`테스트 타임아웃 (${scenario.timeoutMs || 60000}ms)`));
         }, scenario.timeoutMs || 60000);
 
-        this.battleEngine.runBattle(battleState, (update) => {
+        engine.runBattle(battleState, (update) => {
           turnCount++;
           logs.push(`턴 ${turnCount}: ${update.type}`);
           
           if (update.type === 'TURN_UPDATE') {
-            const activeAllies = update.participants.filter((p: any) => p.pilotId < 100 && p.status === 'active').length;
-            const activeEnemies = update.participants.filter((p: any) => p.pilotId >= 100 && p.status === 'active').length;
-            logs.push(`  활성 유닛 - 아군: ${activeAllies}, 적군: ${activeEnemies}`);
+            const activeAllies = update.participants.filter((p: any) => p.pilotId < 100 && p.status !== 'destroyed').length;
+            const activeEnemies = update.participants.filter((p: any) => p.pilotId >= 100 && p.status !== 'destroyed').length;
+            logs.push(`  생존 유닛 - 아군: ${activeAllies}, 적군: ${activeEnemies}`);
+            
+            // 상세 상태 로깅
+            update.participants.forEach((p: any) => {
+              logs.push(`    참가자 ${p.pilotId}: HP ${p.hp}, 상태 ${p.status}`);
+            });
           }
           
           if (update.type === 'BATTLE_COMPLETE') {

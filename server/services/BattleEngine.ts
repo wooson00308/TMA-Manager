@@ -123,13 +123,21 @@ export class BattleEngine {
         return;
       }
 
-      // 전투 종료 조건 확인
-      const allyCount = battleState.participants.filter(p => p.pilotId < 100 && p.status === 'active').length;
-      const enemyCount = battleState.participants.filter(p => p.pilotId >= 100 && p.status === 'active').length;
+      // 전투 종료 조건 확인 (destroyed가 아닌 모든 유닛 카운트)
+      const allyCount = battleState.participants.filter(p => p.pilotId < 100 && p.status !== 'destroyed').length;
+      const enemyCount = battleState.participants.filter(p => p.pilotId >= 100 && p.status !== 'destroyed').length;
+      
+      console.log(`승리 조건 체크 - 아군: ${allyCount}명, 적군: ${enemyCount}명`);
+      
+      // 각 참가자 상태 로깅
+      battleState.participants.forEach(p => {
+        console.log(`참가자 ${p.pilotId}: HP ${p.hp}, 상태 ${p.status}`);
+      });
 
       if (allyCount === 0 || enemyCount === 0) {
         battleState.phase = 'completed';
         const winner = allyCount > 0 ? 'team1' : 'team2';
+        console.log(`전투 종료! 승자: ${winner}`);
         
         onUpdate({
           type: 'BATTLE_COMPLETE',
@@ -149,9 +157,9 @@ export class BattleEngine {
       
       console.log(`턴 ${battleState.turn} 시작`);
 
-      // 모든 참가자의 AI 결정 생성 (병렬 처리)
-      const activeParticipants = battleState.participants.filter(p => p.status === 'active');
-      console.log(`활성 참가자: ${activeParticipants.length}명`);
+      // 모든 참가자의 AI 결정 생성 (destroyed가 아닌 모든 유닛 - damaged도 행동 가능)
+      const activeParticipants = battleState.participants.filter(p => p.status !== 'destroyed');
+      console.log(`행동 가능 참가자: ${activeParticipants.length}명 (destroyed 제외)`);
       
       const aiDecisions = await Promise.all(
         activeParticipants.map(async (participant) => {
@@ -201,39 +209,30 @@ export class BattleEngine {
             const attackerMech = await storage.getMech(participant.mechId);
             const targetMech = await storage.getMech(target.mechId);
             
-            // 테스트용 매우 높은 데미지 (확실한 전투 종료)
-            let damage = targetMech ? Math.floor(targetMech.hp * 0.4) : 50; // 타겟 HP의 40%
-            
-            // 추가 랜덤 데미지
-            damage += Math.floor(Math.random() * 30) + 20;
-
-            // 최소 데미지 보장
-            damage = Math.max(30, damage);
+            // 테스트용 치명적 데미지 (한 방에 격파)
+            let damage = target.hp + 10; // 현재 HP보다 높은 데미지로 확실한 격파
             target.hp = Math.max(0, target.hp - damage);
 
             if (target.hp <= 0) {
               target.status = 'destroyed';
               target.hp = 0;
-            } else if (target.hp < (targetMech?.hp ? targetMech.hp * 0.3 : 30)) {
-              target.status = 'damaged';
-            }
-
-            recentLogs.push({
-              timestamp: Date.now(),
-              type: 'attack',
-              message: decision.dialogue || `${pilotName}이(가) 공격했습니다!`,
-              speaker: pilotName
-            });
-
-            if (target.hp === 0) {
               const targetPilot = await storage.getPilot(target.pilotId >= 100 ? target.pilotId - 100 : target.pilotId);
               const targetName = targetPilot ? targetPilot.name : `Unit-${target.pilotId}`;
+              console.log(`${targetName} (${target.pilotId}) 격파됨! HP: ${target.hp}, Status: ${target.status}`);
               recentLogs.push({
                 timestamp: Date.now(),
                 type: 'system',
                 message: `${targetName}의 기체가 격파되었습니다!`
               });
-            }
+            } 
+            // damaged 상태 제거 - 전투 단순화
+
+            recentLogs.push({
+              timestamp: Date.now(),
+              type: 'attack',
+              message: decision.dialogue || `${pilotName}이(가) ${damage} 데미지를 입혔습니다! (타겟 HP: ${target.hp})`,
+              speaker: pilotName
+            });
           }
         }
         break;

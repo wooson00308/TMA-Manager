@@ -132,9 +132,9 @@ export class AISystem {
       };
     }
 
-    if (nearbyEnemies.length > 0 && randomAction < personality.aggressive) {
-      // 공격적 성향과 근처 적이 있으면 공격
-      const target = this.selectBestTarget(nearbyEnemies, participant);
+    // 테스트용: 적이 있으면 거리 상관없이 무조건 공격
+    if (enemies.length > 0 && randomAction < 0.8) {
+      const target = this.selectBestTarget(enemies, participant);
       if (target) {
         const attackDialogue = personality.dialogues.attack[Math.floor(Math.random() * personality.dialogues.attack.length)];
         const targetIndex = battleState.participants.findIndex(p => p.pilotId === target.pilotId);

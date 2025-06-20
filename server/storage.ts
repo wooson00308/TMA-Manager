@@ -72,6 +72,12 @@ export class MemStorage implements IStorage {
   }
 
   private initializeGameData() {
+    // 기존 damaged 상태 유닛들을 active로 재설정
+    this.pilots.forEach((pilot, id) => {
+      if (pilot.isActive) {
+        this.pilots.set(id, { ...pilot, isActive: true });
+      }
+    });
     // Initialize Trinity Squad pilots (5 active pilots)
     const trinityPilots: InsertPilot[] = [
       {
