@@ -3,39 +3,37 @@ import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosi
 import type { PilotInfo, TerrainFeature, BattleParticipant } from "@shared/domain/types";
 
 function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
-  const found = pilots.find(p => p.id === pilotId);
+  const found = pilots.find((p) => p.id === pilotId);
+
+  // Determine allegiance purely by convention: IDs >= 100 belong to enemy units.
+  const isEnemy = pilotId >= 100;
+
   if (found) {
-    const isEnemy = (found as any).team !== 'ally';
     return {
       id: found.id,
       name: found.name,
       callsign: found.callsign,
-      team: isEnemy ? 'enemy' : 'ally',
-      initial: isEnemy ? 'E' : found.name.charAt(0).toUpperCase()
+      team: isEnemy ? "enemy" : "ally",
+      initial: isEnemy ? "E" : found.name.charAt(0).toUpperCase(),
     };
   }
-  
-  const isEnemy = pilotId >= 100;
+
+  // Fallback placeholder when pilot data is missing from store
   return {
     id: pilotId,
     name: isEnemy ? `Enemy ${pilotId}` : `Pilot ${pilotId}`,
     callsign: isEnemy ? `E${pilotId}` : `P${pilotId}`,
-    team: isEnemy ? 'enemy' : 'ally',
-    initial: isEnemy ? 'E' : String.fromCharCode(65 + (pilotId % 26))
+    team: isEnemy ? "enemy" : "ally",
+    initial: isEnemy ? "E" : String.fromCharCode(65 + (pilotId % 26)),
   };
 };
 
 function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo) {
   const isLowHP = actor.hp < 30;
   const isCriticalHP = actor.hp < 15;
-  const allies = battleState.participants.filter((p: any) => {
-    const info = getPilotInfo(pilots, p.pilotId);
-    return info.team === actorInfo.team && p.status === 'active' && p.pilotId !== actor.pilotId;
-  });
-  const enemies = battleState.participants.filter((p: any) => {
-    const info = getPilotInfo(pilots, p.pilotId);
-    return info.team !== actorInfo.team && p.status === 'active';
-  });
+  const actorTeam = actor.team;
+  const allies = battleState.participants.filter((p: any) => p.team === actorTeam && p.status === 'active' && p.pilotId !== actor.pilotId);
+  const enemies = battleState.participants.filter((p: any) => p.team !== actorTeam && p.status === 'active');
   
   const damagedAllies = allies.filter((ally: any) => ally.hp < 50);
   const nearbyEnemies = enemies.filter((enemy: any) => 
@@ -54,7 +52,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
   const personality = personalities[actorInfo.initial] || personalities['E'];
 
   if (isCriticalHP && random < 0.6) {
-    const retreatPos = calculateRetreatPosition(actor.position, actorInfo.team, enemies);
+    const retreatPos = calculateRetreatPosition(actor.position, actorTeam, enemies);
     return {
       type: 'RETREAT',
       actor,
@@ -82,7 +80,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
   }
 
   if (personality.tactical > 0.7 && random < 0.3) {
-    const scoutPos = calculateScoutPosition(actor.position, actorInfo.team, enemies);
+    const scoutPos = calculateScoutPosition(actor.position, actorTeam, enemies);
     return {
       type: 'SCOUT',
       actor,
@@ -112,7 +110,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
     };
   }
 
-  const tacticalPos = calculateTacticalPosition(actor.position, actorInfo.team, enemies);
+  const tacticalPos = calculateTacticalPosition(actor.position, actorTeam, enemies);
   return {
     type: 'MOVE',
     actor,
@@ -121,23 +119,17 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
   };
 };
 
-function checkVictoryCondition(participants: any[], pilots: Pilot[]) {
-  const allies = participants.filter(p => {
-    const info = getPilotInfo(pilots, p.pilotId);
-    return info.team === 'ally' && p.status === 'active';
-  });
-  const enemies = participants.filter(p => {
-    const info = getPilotInfo(pilots, p.pilotId);
-    return info.team === 'enemy' && p.status === 'active';
-  });
-
+function checkVictoryCondition(participants: any[]) {
+  const allies = participants.filter((p: any) => p.team === "team1" && p.status === "active");
+  const enemies = participants.filter((p: any) => p.team === "team2" && p.status === "active");
+   
   if (allies.length === 0 || enemies.length === 0) {
     return {
       isGameOver: true,
       winner: allies.length > 0 ? 'ally' : 'enemy',
     };
   }
-
+ 
   return { isGameOver: false, winner: null };
 };
 
@@ -255,7 +247,7 @@ export function processGameTick(
       });
     }
 
-    const victoryCheck = checkVictoryCondition(newState.participants, pilots);
+    const victoryCheck = checkVictoryCondition(newState.participants);
     if (victoryCheck.isGameOver) {
       newState.phase = 'completed';
       newState.log.push({

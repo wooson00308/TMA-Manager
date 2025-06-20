@@ -253,15 +253,40 @@ export function NewMatchPrepScene() {
         }))
       };
       
-      const formation2 = {
-        teamId: 2,
-        pilots: championSelect.selectedMechs.enemy.slice(0, 3).map((mech, index) => ({
-          pilotId: 100 + index,
-          mechId: mech.id,
-          pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
-          mech
-        }))
-      };
+      let formation2;
+      if (selectedEnemyTeam) {
+        const res = await fetch(`/api/formations/team/${selectedEnemyTeam.id}/full`);
+        if (!res.ok) throw new Error("Failed to fetch enemy formation");
+        const data = await res.json();
+
+        const f = data.formation;
+        const pilotsArr = data.pilots as Pilot[];
+        const mechsArr = data.mechs as Mech[];
+
+        const pilots: any[] = [];
+        [1, 2, 3].forEach((idx) => {
+          const pid = f[`pilot${idx}Id`];
+          const mid = f[`mech${idx}Id`];
+          if (pid && mid) {
+            const pilot = pilotsArr.find((p: any) => p.id === pid) || { id: pid, name: `Enemy Pilot ${idx}`, callsign: `EN-${idx}` };
+            const mech = mechsArr.find((m: any) => m.id === mid) || { id: mid, name: `Enemy Mech ${idx}`, hp: 100, armor: 50, speed: 50, firepower: 50, range: 50 };
+            pilots.push({ pilotId: pid, mechId: mid, pilot, mech });
+          }
+        });
+
+        formation2 = { teamId: selectedEnemyTeam.id, pilots };
+      } else {
+        // Fallback: use previously selected enemy mechs and dummy pilots
+        formation2 = {
+          teamId: 2,
+          pilots: championSelect.selectedMechs.enemy.slice(0, 3).map((mech, index) => ({
+            pilotId: 100 + index,
+            mechId: mech.id,
+            pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
+            mech,
+          })),
+        };
+      }
 
       const response = await fetch('/api/battle/start', {
         method: 'POST',
@@ -281,17 +306,19 @@ export function NewMatchPrepScene() {
           ...formation1.pilots.map((p, i) => ({
             pilotId: p.pilot.id,
             mechId: p.mech.id,
+            team: 'team1' as const,
             position: { x: 2 + i * 2, y: 6 },
-            hp: p.mech.hp || 100,
-            status: 'active' as const
+            hp: (p.mech as any).hp || 100,
+            status: 'active' as const,
           })),
-          ...formation2.pilots.map((p, i) => ({
+          ...formation2.pilots.map((p: any, i: number) => ({
             pilotId: p.pilot.id,
             mechId: p.mech.id,
+            team: 'team2' as const,
             position: { x: 10 + i * 2, y: 6 },
-            hp: p.mech.hp || 100,
-            status: 'active' as const
-          }))
+            hp: (p.mech as any).hp || 100,
+            status: 'active' as const,
+          })),
         ],
         log: [{
           timestamp: Date.now(),

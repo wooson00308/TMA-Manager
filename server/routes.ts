@@ -586,6 +586,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Detailed formation with pilot & mech info (ally / enemy line-up)
+  app.get("/api/formations/team/:teamId/full", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const formation = await storage.getActiveFormation(teamId);
+
+      if (!formation) {
+        return res.status(404).json({ error: "Formation not found" });
+      }
+
+      // Collect pilot & mech IDs
+      const pilotIds: number[] = [
+        formation.pilot1Id,
+        formation.pilot2Id,
+        formation.pilot3Id,
+      ].filter((id): id is number => typeof id === "number");
+
+      const mechIds: number[] = [
+        formation.mech1Id,
+        formation.mech2Id,
+        formation.mech3Id,
+      ].filter((id): id is number => typeof id === "number");
+
+      // Fetch pilots & mechs in parallel
+      const pilots = await Promise.all(
+        pilotIds.map((pid) => storage.getPilot(pid)),
+      );
+
+      const mechs = await Promise.all(
+        mechIds.map((mid) => storage.getMech(mid)),
+      );
+
+      res.json({
+        formation,
+        pilots: pilots.filter(Boolean),
+        mechs: mechs.filter(Boolean),
+      });
+    } catch (error) {
+      console.error("Error fetching full formation:", error);
+      res.status(500).json({ error: "Failed to fetch full formation" });
+    }
+  });
+
   // Reconnaissance routes
   app.get("/api/recon/:enemyTeamId", async (req, res) => {
     try {
