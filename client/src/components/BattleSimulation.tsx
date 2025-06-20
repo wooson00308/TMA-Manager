@@ -124,7 +124,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               <div className="flex items-center space-x-2 bg-green-900/30 border border-green-400/50 rounded px-4 py-2">
                 <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
                 <span className="text-green-400 font-bold">LIVE</span>
-                <span className="text-white font-mono">{currentTick}s</span>
+                <span className="text-white font-mono">{currentTick}초</span>
               </div>
             )}
           </div>
@@ -218,11 +218,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               <div className="text-cyan-400 font-bold mb-2">전투 상황</div>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-300">턴:</span>
-                  <span className="text-white font-mono">{battle.turn || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">시간:</span>
+                  <span className="text-gray-300">경과시간:</span>
                   <span className="text-white font-mono">{currentTick}초</span>
                 </div>
                 <div className="flex justify-between">
