@@ -92,22 +92,56 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     setLastLogCount(battle.log.length);
     
     newLogs.forEach((log) => {
-      if (log.type === 'attack' && log.message.includes('공격')) {
-        // Find attacker and target from participants
-        const attacker = (battle.participants || []).find(p => 
-          log.message.includes(getPilotInfo(p.pilotId).name)
-        );
-        const targetMatch = log.message.match(/(\w+)에게/);
-        const target = targetMatch ? (battle.participants || []).find(p => 
-          getPilotInfo(p.pilotId).name.includes(targetMatch[1])
-        ) : null;
+      console.log('Battle log entry:', log); // Debug log
+      
+      // Look for any combat action (attack, movement, damage)
+      if (log.type === 'attack' || log.message.includes('공격') || log.message.includes('피해') || log.message.includes('데미지')) {
         
-        if (attacker && target) {
+        // Try to find participants involved in the action
+        const participants = battle.participants || [];
+        let attacker: any = null;
+        let target: any = null;
+        
+        // Find attacker - look for pilot names in the message
+        for (const participant of participants) {
+          const pilotInfo = getPilotInfo(participant.pilotId);
+          if (log.message.includes(pilotInfo.name) || log.message.includes(pilotInfo.callsign)) {
+            if (!attacker && (log.message.includes('공격') || log.message.includes('사격'))) {
+              attacker = participant;
+            }
+          }
+        }
+        
+        // Find target - look for "~에게" or "~를" patterns
+        const targetPatterns = [/(\S+)에게/, /(\S+)를/, /(\S+)이/];
+        for (const pattern of targetPatterns) {
+          const match = log.message.match(pattern);
+          if (match) {
+            const targetName = match[1];
+            target = participants.find(p => {
+              const info = getPilotInfo(p.pilotId);
+              return info.name.includes(targetName) || info.callsign.includes(targetName);
+            });
+            if (target) break;
+          }
+        }
+        
+        // If we still don't have both, use random participants for demo
+        if (!attacker && participants.length > 0) {
+          attacker = participants[0];
+        }
+        if (!target && participants.length > 1) {
+          target = participants[participants.length - 1];
+        }
+        
+        if (attacker && target && attacker !== target) {
+          console.log('Creating attack effect:', { attacker: getPilotInfo(attacker.pilotId).name, target: getPilotInfo(target.pilotId).name });
+          
           // Determine weapon type from message
           let weaponType: "laser" | "missile" | "beam" = "laser";
-          if (log.message.includes('미사일') || log.message.includes('로켓')) {
+          if (log.message.includes('미사일') || log.message.includes('로켓') || log.message.includes('폭발')) {
             weaponType = "missile";
-          } else if (log.message.includes('빔') || log.message.includes('플라즈마')) {
+          } else if (log.message.includes('빔') || log.message.includes('플라즈마') || log.message.includes('에너지')) {
             weaponType = "beam";
           }
           
@@ -117,14 +151,20 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             from: attacker.position,
             to: target.position,
             startTime: Date.now(),
-            type: weaponType,
-            targetHit: true
+            type: weaponType
           };
           
-          setAttackEffects(prev => [...prev, attackEffect]);
+          setAttackEffects(prev => {
+            console.log('Adding attack effect:', attackEffect);
+            return [...prev, attackEffect];
+          });
           
           // Animate attacking unit
-          setAnimatingUnits(prev => new Set([...prev, attacker.pilotId]));
+          setAnimatingUnits(prev => {
+            const newSet = new Set(prev);
+            newSet.add(attacker.pilotId);
+            return newSet;
+          });
           setTimeout(() => {
             setAnimatingUnits(prev => {
               const newSet = new Set(prev);
@@ -147,6 +187,37 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const startSimulation = () => {
     setCurrentTick(0);
     setIsSimulating(true);
+  };
+
+  // Test animation function
+  const testAnimation = () => {
+    if (!battle.participants || battle.participants.length < 2) return;
+    
+    const attacker = battle.participants[0];
+    const target = battle.participants[battle.participants.length - 1];
+    
+    const testEffect: AttackEffect = {
+      id: `test-${Date.now()}`,
+      from: attacker.position,
+      to: target.position,
+      startTime: Date.now(),
+      type: "missile"
+    };
+    
+    setAttackEffects(prev => [...prev, testEffect]);
+    setAnimatingUnits(prev => {
+      const newSet = new Set(prev);
+      newSet.add(attacker.pilotId);
+      return newSet;
+    });
+    
+    setTimeout(() => {
+      setAnimatingUnits(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(attacker.pilotId);
+        return newSet;
+      });
+    }, 1500);
   };
 
   if (!battle) {
@@ -197,6 +268,16 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 <span className="text-green-400 font-bold">LIVE</span>
                 <span className="text-white font-mono">{currentTick}초</span>
               </div>
+            )}
+
+            {/* Animation Test Button */}
+            {battle.participants && battle.participants.length >= 2 && (
+              <button
+                onClick={testAnimation}
+                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-bold transition-colors"
+              >
+                애니메이션 테스트
+              </button>
             )}
           </div>
 
