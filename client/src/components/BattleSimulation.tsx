@@ -379,12 +379,13 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
         {/* Center Battlefield */}
         <div className="flex-1 flex flex-col">
-          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center p-2 lg:p-4">
+          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center p-2 lg:p-4" style={{ maxHeight: 'calc(100vh - 300px)' }}>
             <CanvasRenderer
               ref={canvasRef}
               width={640}
               height={480}
               className="battlefield-canvas border border-gray-600/50 rounded-lg shadow-2xl"
+
             />
 
             {/* Countdown Overlay */}

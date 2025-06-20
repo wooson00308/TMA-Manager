@@ -301,6 +301,16 @@
     font-size: 0.6rem;
     opacity: 0.1;
   }
+  
+  /* Force canvas height reduction on mobile */
+  canvas {
+    max-height: 25vh !important;
+  }
+  
+  .battlefield-canvas {
+    height: auto !important;
+    max-height: 25vh !important;
+  }
 }
 
 @media (max-width: 640px) {
@@ -396,7 +406,7 @@
 @media (max-width: 768px) {
   .battlefield-canvas {
     aspect-ratio: 16/10;
-    max-height: 45vh;
+    max-height: 35vh !important;
     max-width: 95vw;
   }
 }
@@ -404,10 +414,11 @@
 /* Ultra-tall mobile screens (19.5:9 like Galaxy S24) */
 @media (max-width: 480px) {
   .battlefield-canvas {
-    aspect-ratio: 3/2;
-    max-height: 32vh;
-    max-width: 92vw;
-    min-height: 180px;
+    aspect-ratio: 3/2 !important;
+    max-height: 22vh !important;
+    max-width: 92vw !important;
+    min-height: 120px !important;
+    height: 22vh !important;
   }
   
   .mobile-battle-layout {
@@ -461,25 +472,30 @@
   }
 }
 
-/* Galaxy S24 specific optimization */
-@media (max-width: 430px) and (min-height: 800px) {
+/* Galaxy S24 and similar ultra-tall mobile screens */
+@media (max-width: 500px) and (min-height: 700px) {
   .battlefield-canvas {
-    max-height: 22vh;
-    aspect-ratio: 5/4;
-    min-height: 120px;
+    max-height: 20vh !important;
+    aspect-ratio: 4/3 !important;
+    min-height: 100px !important;
+    width: 85vw !important;
   }
   
   .mobile-unit-panel {
-    max-height: 40px;
+    max-height: 35px !important;
   }
   
   .battle-log-mobile {
-    max-height: 30px;
-    font-size: 0.5rem;
+    max-height: 25px !important;
+    font-size: 0.5rem !important;
   }
   
   .mobile-status-bar {
-    padding: 0.125rem 0.25rem;
+    padding: 0.125rem 0.25rem !important;
+  }
+  
+  .mobile-battle-layout {
+    max-height: calc(100vh - 90px) !important;
   }
 }
 
