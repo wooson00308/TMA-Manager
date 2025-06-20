@@ -64,18 +64,21 @@ export function NewMatchPrepScene() {
     enabled: true
   });
 
-  // 챔피언 선택 턴 순서 (TFM 스타일 2밴 3픽)
+  // 챔피언 선택 턴 순서 (TFM 스타일 2밴 3픽 스네이크 드래프트)
   const championSelectSequence = [
-    { turn: 'ban_player', action: 'ban', team: 'player', order: 1 },
-    { turn: 'ban_enemy', action: 'ban', team: 'enemy', order: 2 },
-    { turn: 'ban_enemy', action: 'ban', team: 'enemy', order: 3 },
-    { turn: 'ban_player', action: 'ban', team: 'player', order: 4 },
-    { turn: 'pick_player', action: 'pick', team: 'player', order: 1 },
-    { turn: 'pick_enemy', action: 'pick', team: 'enemy', order: 1 },
-    { turn: 'pick_enemy', action: 'pick', team: 'enemy', order: 2 },
-    { turn: 'pick_player', action: 'pick', team: 'player', order: 2 },
-    { turn: 'pick_player', action: 'pick', team: 'player', order: 3 },
-    { turn: 'pick_enemy', action: 'pick', team: 'enemy', order: 3 }
+    // 밴 단계 (각 팀 2개씩)
+    { turn: 1, action: 'ban', team: 'player', description: '1차 밴' },
+    { turn: 2, action: 'ban', team: 'enemy', description: '1차 밴' },
+    { turn: 3, action: 'ban', team: 'enemy', description: '2차 밴' },
+    { turn: 4, action: 'ban', team: 'player', description: '2차 밴' },
+    
+    // 픽 단계 (스네이크 드래프트: 1-1-2-2-2-1)
+    { turn: 5, action: 'pick', team: 'player', description: '1픽' },
+    { turn: 6, action: 'pick', team: 'enemy', description: '1픽' },
+    { turn: 7, action: 'pick', team: 'enemy', description: '2픽' },
+    { turn: 8, action: 'pick', team: 'player', description: '2픽' },
+    { turn: 9, action: 'pick', team: 'player', description: '3픽' },
+    { turn: 10, action: 'pick', team: 'enemy', description: '3픽' }
   ];
 
   const formations = [
@@ -133,12 +136,17 @@ export function NewMatchPrepScene() {
   // 챔피언 선택 단계: 메크 밴/픽
   const handleMechAction = (mech: Mech) => {
     const currentSequence = championSelectSequence[championSelect.turnCount - 1];
-    if (!currentSequence || currentSequence.team !== 'player') return;
+    if (!currentSequence || currentSequence.team !== 'player') {
+      console.log('Not player turn:', currentSequence);
+      return;
+    }
 
+    // 이미 밴/픽된 메크인지 확인
     if (championSelect.bannedMechs.some(m => m.id === mech.id) ||
         championSelect.selectedMechs.player.some(m => m.id === mech.id) ||
         championSelect.selectedMechs.enemy.some(m => m.id === mech.id)) {
-      return; // 이미 밴/픽된 메크
+      console.log('Mech already banned/picked:', mech.name);
+      return;
     }
 
     if (currentSequence.action === 'ban') {
@@ -147,6 +155,7 @@ export function NewMatchPrepScene() {
         bannedMechs: [...prev.bannedMechs, mech],
         turnCount: prev.turnCount + 1
       }));
+      console.log('Player banned:', mech.name);
     } else {
       setChampionSelect(prev => ({
         ...prev,
@@ -156,6 +165,7 @@ export function NewMatchPrepScene() {
         },
         turnCount: prev.turnCount + 1
       }));
+      console.log('Player picked:', mech.name);
     }
   };
 
@@ -173,7 +183,14 @@ export function NewMatchPrepScene() {
   // AI 적군 턴 처리
   useEffect(() => {
     const currentSequence = championSelectSequence[championSelect.turnCount - 1];
-    if (currentSequence && currentSequence.team === 'enemy' && championSelect.turnCount <= 10) {
+    
+    // AI 턴인지 확인하고, 시퀀스가 끝나지 않았는지 확인
+    if (currentSequence && 
+        currentSequence.team === 'enemy' && 
+        championSelect.turnCount <= championSelectSequence.length) {
+      
+      console.log('AI Turn:', currentSequence);
+      
       const timer = setTimeout(() => {
         const availableForAction = (availableMechs as Mech[]).filter((mech: Mech) => 
           !championSelect.bannedMechs.some(banned => banned.id === mech.id) &&
@@ -195,6 +212,7 @@ export function NewMatchPrepScene() {
               bannedMechs: [...prev.bannedMechs, selectedMech],
               turnCount: prev.turnCount + 1
             }));
+            console.log('AI banned:', selectedMech.name);
           } else {
             setChampionSelect(prev => ({
               ...prev,
@@ -204,13 +222,14 @@ export function NewMatchPrepScene() {
               },
               turnCount: prev.turnCount + 1
             }));
+            console.log('AI picked:', selectedMech.name);
           }
         }
       }, 2000);
 
       return () => clearTimeout(timer);
     }
-  }, [championSelect.turnCount, availableMechs]);
+  }, [championSelect.turnCount, availableMechs, championSelectSequence]);
 
   // 전투 시작
   const handleStartBattle = async () => {
@@ -293,7 +312,7 @@ export function NewMatchPrepScene() {
     
     return {
       phase: `${currentSequence.action}_${currentSequence.team}`,
-      description: `${teamText} ${currentSequence.order}${actionText}`
+      description: `${teamText} ${currentSequence.description}`
     };
   };
 
