@@ -53,6 +53,11 @@ export function BanPickScene() {
     enemyTeamName: '스틸 레이븐스'
   });
 
+  // Calculate helper variables
+  const isPlayerTurn = banPickState.phase.includes('player');
+  const isBanPhase = banPickState.phase.startsWith('ban_');
+  const isComplete = banPickState.phase === 'complete';
+
   // AI 자동 밴/픽 및 완료 체크
   useEffect(() => {
     if (banPickState.phase.includes('enemy') && banPickState.phase !== 'complete') {
@@ -86,6 +91,7 @@ export function BanPickScene() {
 
   // 디버그 정보 로그
   useEffect(() => {
+    const isComplete = banPickState.phase === 'complete';
     console.log('Ban/Pick State Debug:', {
       phase: banPickState.phase,
       isComplete,
@@ -93,7 +99,7 @@ export function BanPickScene() {
       enemyMechs: banPickState.selectedMechs.enemy.length,
       shouldShowButton: isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)
     });
-  }, [banPickState, isComplete]);
+  }, [banPickState]);
 
   const handleEnemyAction = () => {
     const availableMechs = mechs.filter(mech => 
@@ -149,10 +155,6 @@ export function BanPickScene() {
     );
   };
 
-  const isPlayerTurn = banPickState.phase.includes('player');
-  const isBanPhase = banPickState.phase.startsWith('ban_');
-  const isComplete = banPickState.phase === 'complete';
-
   const handleStartBattle = async () => {
     try {
       // Get the top 3 active pilots for the battle
@@ -187,10 +189,14 @@ export function BanPickScene() {
         mech3Id: banPickState.selectedMechs.player[2].id,
       };
 
+      // 랜덤 적군 파일럿 배정 (100-102 범위에서 선택)
+      const availableEnemyPilots = [100, 101, 102];
+      const shuffledEnemyPilots = [...availableEnemyPilots].sort(() => Math.random() - 0.5);
+      
       const enemyFormation = {
-        pilot1Id: 101, // Enemy pilot IDs
-        pilot2Id: 102,
-        pilot3Id: 103,
+        pilot1Id: shuffledEnemyPilots[0], // 랜덤 적군 파일럿
+        pilot2Id: shuffledEnemyPilots[1],
+        pilot3Id: shuffledEnemyPilots[2],
         mech1Id: banPickState.selectedMechs.enemy[0].id,
         mech2Id: banPickState.selectedMechs.enemy[1].id,
         mech3Id: banPickState.selectedMechs.enemy[2].id,
@@ -206,10 +212,10 @@ export function BanPickScene() {
           { pilotId: playerFormation.pilot1Id, mechId: playerFormation.mech1Id, position: { x: 2, y: 2 }, hp: 100, status: 'active' },
           { pilotId: playerFormation.pilot2Id, mechId: playerFormation.mech2Id, position: { x: 2, y: 4 }, hp: 100, status: 'active' },
           { pilotId: playerFormation.pilot3Id, mechId: playerFormation.mech3Id, position: { x: 2, y: 6 }, hp: 100, status: 'active' },
-          // Enemy team
-          { pilotId: 101, mechId: enemyFormation.mech1Id, position: { x: 12, y: 2 }, hp: 100, status: 'active' },
-          { pilotId: 102, mechId: enemyFormation.mech2Id, position: { x: 12, y: 4 }, hp: 100, status: 'active' },
-          { pilotId: 103, mechId: enemyFormation.mech3Id, position: { x: 12, y: 6 }, hp: 100, status: 'active' },
+          // Enemy team (랜덤 적군 파일럿 사용)
+          { pilotId: enemyFormation.pilot1Id, mechId: enemyFormation.mech1Id, position: { x: 12, y: 2 }, hp: 100, status: 'active' },
+          { pilotId: enemyFormation.pilot2Id, mechId: enemyFormation.mech2Id, position: { x: 12, y: 4 }, hp: 100, status: 'active' },
+          { pilotId: enemyFormation.pilot3Id, mechId: enemyFormation.mech3Id, position: { x: 12, y: 6 }, hp: 100, status: 'active' },
         ],
         log: [{
           timestamp: Date.now(),
@@ -231,6 +237,11 @@ export function BanPickScene() {
       alert('전투 시작 중 오류가 발생했습니다.');
     }
   };
+
+  // Calculate helper variables
+  const isPlayerTurn = banPickState.phase.includes('player');
+  const isBanPhase = banPickState.phase.startsWith('ban_');
+  const isComplete = banPickState.phase === 'complete';
 
   return (
     <div className="scene-transition">
