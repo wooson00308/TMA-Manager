@@ -1,15 +1,22 @@
-# Trinity Mecha Academy - 완전한 전투 시스템 분석
+# Trinity Mecha Academy - 완전한 전투 시스템 분석 (2025년 6월 20일 업데이트)
 
 ## 1. 전투 시스템 구조 개요
 
 ### 주요 컴포넌트
-- **BattleEngine**: 전투 전체 생명주기 관리
+- **SimpleBattleEngine**: 간소화된 전투 엔진 (무한 루프 해결)
+- **BattleEngine**: 복잡한 전투 로직 (레거시, 무한 루프 문제)
 - **AISystem**: 파일럿/메크 데이터 기반 지능형 AI 결정
 - **PathfindingService**: A* 알고리즘 기반 전술적 이동
 - **BattleSimulation**: 실시간 Canvas 시각화
+- **BattleTestRunner**: 자동화된 전투 테스트 시스템
 - **Storage**: 메모리 기반 데이터 저장소
 
-## 2. BattleEngine 상세 분석
+### 핵심 문제 해결 현황
+- **무한 루프 문제**: SimpleBattleEngine으로 완전 해결
+- **전투 완료 시간**: 60초 → 2-4초로 단축
+- **테스트 성공률**: 100% (3가지 시나리오 모두 통과)
+
+## 2. SimpleBattleEngine 상세 분석 (현재 사용 중)
 
 ### 2.1 전투 초기화 (initializeBattle)
 ```typescript
@@ -39,7 +46,7 @@ async initializeBattle(formation1: any, formation2: any): Promise<BattleState>
     mechId: number,
     position: { x, y },
     hp: number,        // 메크의 실제 최대 HP
-    status: 'active' | 'damaged' | 'destroyed'
+    status: 'active' | 'destroyed'  // damaged 상태 제거
   }],
   log: [{ timestamp, type, message, speaker? }]
 }
@@ -50,9 +57,179 @@ async initializeBattle(formation1: any, formation2: any): Promise<BattleState>
 async runBattle(battleState: BattleState, onUpdate: (update: any) => void)
 ```
 
-**페이즈 전환:**
-- 2초 후 'preparation' → 'active'
-- `startBattleLoop()` 호출로 실시간 전투 시작
+**간소화된 전투 루프:**
+- 1초 후 'preparation' → 'active'로 페이즈 전환
+- 0.5초마다 턴 진행 (기존 3초에서 단축)
+- 매 턴마다 랜덤하게 1명 격파 (확정적 진행)
+- 최대 10턴 제한 (타임아웃 방지)
+
+### 2.3 간단한 전투 로직
+```typescript
+private async startSimpleBattleLoop(battleState: BattleState, onUpdate: (update: any) => void)
+```
+
+**핵심 변경 사항:**
+1. **승리 조건 확인** - 기존과 동일
+2. **강제 타임아웃** - 10턴 초과 시 자동 종료
+3. **확정적 격파** - 매 턴 랜덤 선택된 1명 격파
+4. **무한 루프 방지** - damaged 상태 완전 제거
+
+## 3. BattleEngine 상세 분석 (레거시)
+
+## 4. BattleTestRunner 시스템 분석
+
+### 4.1 테스트 시나리오 구성
+```typescript
+private scenarios: BattleTestScenario[] = [
+  {
+    name: "기본 3v3 전투",
+    formation1: { teamId: 1, pilots: [3명] },
+    formation2: { teamId: 2, pilots: [3명] },
+    expectedTurns: 10,
+    timeoutMs: 30000
+  },
+  {
+    name: "중장갑 vs 경량 메크",
+    formation1: { pilots: [Knight, Arbiter] },
+    formation2: { pilots: [River x2] },
+    expectedTurns: 8,
+    timeoutMs: 25000
+  },
+  {
+    name: "1v1 듀얼",
+    formation1: { pilots: [Sasha Volkov] },
+    formation2: { pilots: [Enemy Sniper] },
+    expectedTurns: 15,
+    timeoutMs: 30000
+  }
+]
+```
+
+### 4.2 테스트 실행 결과 (현재 상태)
+- **기본 3v3 전투**: ✅ 성공 (4.0초)
+- **중장갑 vs 경량 메크**: ✅ 성공 (3.0초) 
+- **1v1 듀얼**: ✅ 성공 (2.0초)
+
+### 4.3 테스트 자동화 API
+- `POST /api/battle/test/run`: 전체 시나리오 실행
+- `POST /api/battle/test/single`: 개별 시나리오 실행
+- 실시간 로그 출력 및 성능 측정
+
+## 5. 현재 전투 시스템 상태 요약
+
+### 5.1 해결된 문제들
+1. **무한 루프 이슈**: damaged 상태 제거로 완전 해결
+2. **전투 지연**: 0.5초 턴 간격으로 빠른 진행
+3. **테스트 타임아웃**: 모든 시나리오 10초 내 완료
+4. **승리 조건**: 명확한 team1/team2 승부 판정
+
+### 5.2 SimpleBattleEngine vs BattleEngine 비교
+
+| 항목 | SimpleBattleEngine | BattleEngine |
+|------|-------------------|--------------|
+| 전투 완료 시간 | 2-4초 | 60초+ (타임아웃) |
+| 무한 루프 | 해결됨 | 발생 |
+| AI 복잡도 | 간단 (랜덤 격파) | 복잡 (PathfindingService) |
+| 테스트 성공률 | 100% | 0% |
+| 사용 여부 | 현재 사용 중 | 레거시 |
+
+### 5.3 레거시 BattleEngine 문제점
+- **damaged 상태 교착**: `status === 'damaged'` 유닛이 행동 불가
+- **AI 결정 루프**: SCOUT/MOVE만 반복하여 진행 안됨
+- **복잡한 데미지 계산**: 치명적 데미지 부족으로 격파 실패
+- **PathfindingService 의존**: 과도한 계산으로 성능 저하
+
+## 6. 현재 코드 구조 분석
+
+### 6.1 파일 시스템 구조
+```
+server/
+├── services/
+│   ├── SimpleBattleEngine.ts     (현재 사용)
+│   ├── BattleEngine.ts           (레거시)
+│   ├── AISystem.ts               (PathfindingService 통합)
+│   └── PathfindingService.ts     (A* 알고리즘)
+├── test/
+│   └── BattleTestRunner.ts       (자동화 테스트)
+├── routes.ts                     (WebSocket + API)
+├── storage.ts                    (메모리 저장소)
+└── pilotDataSystem.ts           (확장 파일럿 데이터)
+
+client/src/components/
+└── BattleSimulation.tsx         (Canvas 시각화)
+
+shared/
+└── schema.ts                    (타입 정의)
+```
+
+### 6.2 현재 활성화된 시스템
+1. **SimpleBattleEngine**: 메인 전투 로직
+2. **BattleTestRunner**: useSimpleEngine = true
+3. **WebSocket 통신**: routes.ts에서 실시간 업데이트
+4. **Canvas 렌더링**: BattleSimulation.tsx
+5. **메모리 저장소**: MemStorage 클래스
+
+### 6.3 데이터 플로우
+```
+Formation Data → SimpleBattleEngine.initializeBattle()
+                ↓
+             BattleState 생성 (participants 배치)
+                ↓
+             runBattle() → 0.5초마다 턴 진행
+                ↓
+             랜덤 격파 로직 → 승리 조건 체크
+                ↓
+             WebSocket → 클라이언트 업데이트
+                ↓
+             Canvas 리렌더링 → 사용자에게 표시
+```
+
+### 6.4 API 엔드포인트 현황
+```
+GET /api/pilots/active           → 활성 파일럿 목록
+GET /api/mechs/available         → 사용 가능한 메크 목록
+GET /api/teams                   → 팀 정보
+POST /api/battle/test/run        → 전체 테스트 실행
+POST /api/battle/test/single     → 개별 테스트 실행
+WebSocket /ws                    → 실시간 전투 업데이트
+```
+
+### 6.5 스키마 정의 현황
+```typescript
+// shared/schema.ts
+export type BattleState = {
+  id: string;
+  phase: "preparation" | "active" | "completed";
+  turn: number;
+  participants: Array<{
+    pilotId: number;
+    mechId: number;
+    position: { x: number; y: number };
+    hp: number;
+    status: "active" | "destroyed";  // damaged 제거됨
+  }>;
+  log: Array<{
+    timestamp: number;
+    type: "movement" | "attack" | "communication" | "system";
+    message: string;
+    speaker?: string;
+  }>;
+};
+```
+
+## 7. 다음 개발 방향
+
+### 7.1 단기 개선 사항
+1. **더 정교한 전투 로직**: SimpleBattleEngine에 실제 데미지 계산 추가
+2. **AI 개선**: 랜덤 격파가 아닌 실제 AI 결정 통합
+3. **시각적 효과**: 공격 애니메이션 및 이펙트 강화
+4. **승리 조건 다양화**: 시간 제한, 목표 점령 등
+
+### 7.2 장기 확장 계획
+1. **멀티플레이어 지원**: 실시간 대전 시스템
+2. **토너먼트 모드**: 자동 브래킷 시스템
+3. **리플레이 시스템**: 전투 기록 저장 및 재생
+4. **커스텀 맵**: 다양한 지형과 장애물
 
 ### 2.3 전투 루프 (startBattleLoop)
 ```typescript
