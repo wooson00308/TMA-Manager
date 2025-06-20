@@ -59,6 +59,23 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   // Phase B: leverage Web Worker for game loop when simulation is active
   useGameLoopWorker(battle, isSimulating && !isCountingDown);
 
+  // Timer logic for battle time tracking
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (isSimulating && !isCountingDown) {
+      timer = setInterval(() => {
+        setCurrentTick(prev => prev + 1);
+      }, 1000);
+    }
+    
+    return () => {
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
+  }, [isSimulating, isCountingDown]);
+
   // Stop simulation locally when battle ends to prevent further unit actions.
   useEffect(() => {
     if (battle.phase === "completed") {
