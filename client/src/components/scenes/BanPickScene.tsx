@@ -203,14 +203,14 @@ export function BanPickScene() {
         phase: 'preparation',
         turn: 0,
         participants: [
-          // Player team
-          { pilotId: playerFormation.pilot1Id, mechId: playerFormation.mech1Id, position: { x: 2, y: 2 }, hp: 100, status: 'active' },
-          { pilotId: playerFormation.pilot2Id, mechId: playerFormation.mech2Id, position: { x: 2, y: 4 }, hp: 100, status: 'active' },
-          { pilotId: playerFormation.pilot3Id, mechId: playerFormation.mech3Id, position: { x: 2, y: 6 }, hp: 100, status: 'active' },
-          // Enemy team
-          { pilotId: 101, mechId: enemyFormation.mech1Id, position: { x: 12, y: 2 }, hp: 100, status: 'active' },
-          { pilotId: 102, mechId: enemyFormation.mech2Id, position: { x: 12, y: 4 }, hp: 100, status: 'active' },
-          { pilotId: 103, mechId: enemyFormation.mech3Id, position: { x: 12, y: 6 }, hp: 100, status: 'active' },
+          // Player team (team1)
+          { pilotId: playerFormation.pilot1Id, mechId: playerFormation.mech1Id, team: 'team1' as const, position: { x: 2, y: 2 }, hp: 100, status: 'active' },
+          { pilotId: playerFormation.pilot2Id, mechId: playerFormation.mech2Id, team: 'team1' as const, position: { x: 2, y: 4 }, hp: 100, status: 'active' },
+          { pilotId: playerFormation.pilot3Id, mechId: playerFormation.mech3Id, team: 'team1' as const, position: { x: 2, y: 6 }, hp: 100, status: 'active' },
+          // Enemy team (team2)
+          { pilotId: 101, mechId: enemyFormation.mech1Id, team: 'team2' as const, position: { x: 12, y: 2 }, hp: 100, status: 'active' },
+          { pilotId: 102, mechId: enemyFormation.mech2Id, team: 'team2' as const, position: { x: 12, y: 4 }, hp: 100, status: 'active' },
+          { pilotId: 103, mechId: enemyFormation.mech3Id, team: 'team2' as const, position: { x: 12, y: 6 }, hp: 100, status: 'active' },
         ],
         log: [{
           timestamp: Date.now(),
