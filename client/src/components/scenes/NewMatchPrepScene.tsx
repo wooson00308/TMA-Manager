@@ -368,40 +368,69 @@ export function NewMatchPrepScene() {
         {/* 라인업 선택 단계 */}
         {currentPhase === 'lineup' && (
           <div className="space-y-8">
-            {/* 선발 라인업 */}
+            {/* 통합 파일럿 선택 */}
             <div className="tfm-panel rounded-xl p-6 phase-transition">
-              <h2 className="text-xl font-bold text-cyan-400 mb-6 flex items-center">
-                <span className="mr-3">👥</span>
-                선발 라인업 ({teamLineup.pilots.length}/3)
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-cyan-400 flex items-center">
+                  <span className="mr-3">👥</span>
+                  선발 라인업 ({teamLineup.pilots.length}/3)
+                </h2>
+                <div className="text-sm text-gray-400">
+                  {(availablePilots as Pilot[])?.length || 0}명 사용 가능
+                </div>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                {Array.from({ length: 3 }, (_, i) => {
-                  const pilot = teamLineup.pilots[i];
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto">
+                {(availablePilots as Pilot[])?.map((pilot: Pilot) => {
+                  const isSelected = teamLineup.pilots.some(p => p.id === pilot.id);
+                  const selectedIndex = teamLineup.pilots.findIndex(p => p.id === pilot.id);
+                  const canSelect = !isSelected && teamLineup.pilots.length < 3;
+                  
                   return (
-                    <div
-                      key={i}
-                      className={`aspect-[3/4] rounded-lg border-2 ${
-                        pilot 
-                          ? 'pilot-slot selected' 
-                          : 'border-dashed border-gray-600 bg-slate-800/30'
-                      } p-4 flex flex-col items-center justify-center relative`}
+                    <button
+                      key={pilot.id}
+                      onClick={() => isSelected ? handleRemovePilot(pilot.id) : handleSelectPilot(pilot)}
+                      disabled={!isSelected && teamLineup.pilots.length >= 3}
+                      className={`p-4 rounded-lg border-2 champion-card text-left relative ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-500/20'
+                          : canSelect
+                          ? 'border-gray-600 bg-slate-700 hover:border-cyan-400/50 hover:bg-slate-600'
+                          : 'border-gray-600 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                      }`}
                     >
-                      {pilot ? (
-                        <>
-                          <button
-                            onClick={() => handleRemovePilot(pilot.id)}
-                            className="absolute top-2 right-2 w-6 h-6 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center text-xs transition-colors"
-                          >
-                            ×
-                          </button>
-                          <div className="text-center">
-                            <div className="w-16 h-16 bg-cyan-400/20 rounded-full flex items-center justify-center mb-3">
-                              <span className="text-2xl">👤</span>
+                      {/* 선택 상태 오버레이 */}
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                          #{selectedIndex + 1}
+                        </div>
+                      )}
+                      
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-cyan-400/20 rounded-full flex items-center justify-center">
+                          <span className="text-xl">👤</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-white truncate">{pilot.name}</div>
+                          <div className="text-sm text-cyan-400">"{pilot.callsign}"</div>
+                          <div className="text-xs text-gray-400 mb-2">{pilot.dormitory}</div>
+                          
+                          <div className="grid grid-cols-2 gap-1 text-xs">
+                            <div className="bg-yellow-500/20 px-2 py-1 rounded">
+                              ⭐ {pilot.rating}
                             </div>
-                            <div className="font-bold text-cyan-400">{pilot.name}</div>
-                            <div className="text-sm text-gray-400">"{pilot.callsign}"</div>
-                            <div className="text-lg font-bold text-yellow-400 mt-2">{pilot.rating}</div>
+                            <div className="bg-red-500/20 px-2 py-1 rounded">
+                              ⚡ {pilot.reaction}
+                            </div>
+                            <div className="bg-blue-500/20 px-2 py-1 rounded">
+                              🎯 {pilot.accuracy}
+                            </div>
+                            <div className="bg-green-500/20 px-2 py-1 rounded">
+                              🧠 {pilot.tactical}
+                            </div>
+                          </div>
+                          
+                          {pilot.traits.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                               {pilot.traits.slice(0, 2).map((trait, idx) => (
                                 <span key={idx} className="px-2 py-1 bg-slate-600 text-xs rounded">
@@ -409,47 +438,13 @@ export function NewMatchPrepScene() {
                                 </span>
                               ))}
                             </div>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center text-gray-500">
-                          <div className="text-4xl mb-2">+</div>
-                          <div className="text-sm">파일럿 선택</div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    </button>
                   );
                 })}
               </div>
-
-              {/* 파일럿 목록 */}
-              {teamLineup.pilots.length < 3 && (
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-300 mb-4">사용 가능한 파일럿</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-80 overflow-y-auto">
-                    {(availablePilots as Pilot[])
-                      .filter((pilot: Pilot) => !teamLineup.pilots.some(p => p.id === pilot.id))
-                      .map((pilot: Pilot) => (
-                        <button
-                          key={pilot.id}
-                          onClick={() => handleSelectPilot(pilot)}
-                          className="p-3 bg-slate-700 hover:bg-slate-600 rounded-lg border border-gray-600 hover:border-cyan-400/50 champion-card text-left"
-                        >
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-cyan-400/20 rounded-full flex items-center justify-center">
-                              <span className="text-lg">👤</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-semibold text-white truncate">{pilot.name}</div>
-                              <div className="text-sm text-gray-400">"{pilot.callsign}"</div>
-                              <div className="text-lg font-bold text-yellow-400">{pilot.rating}</div>
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* 편성 전술 선택 */}
