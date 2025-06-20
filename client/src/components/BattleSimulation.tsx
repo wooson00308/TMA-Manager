@@ -104,6 +104,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const getPilotInfo = (pilotId: number): PilotInfo => {
     // 실제 파일럿 데이터에서 찾기
     const pilot = allPilots.find(p => p.id === pilotId);
+    console.log(`Looking for pilot ID ${pilotId}, found:`, pilot ? pilot.name : 'NOT FOUND');
+    console.log('Available pilots:', allPilots.map(p => ({ id: p.id, name: p.name })));
+    
     if (pilot) {
       const isEnemy = pilotId >= 100;
       return {
