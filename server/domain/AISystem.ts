@@ -1,6 +1,7 @@
 import { type BattleState } from "@shared/schema";
 import { PilotService } from "../services/PilotService";
 import { calculateRetreatPosition as sharedCalculateRetreatPosition, calculateScoutPosition as sharedCalculateScoutPosition, calculateTacticalPosition as sharedCalculateTacticalPosition, selectBestTarget as sharedSelectBestTarget } from "@shared/ai/utils";
+import { makeAIDecision } from "@shared/ai/decision";
 
 interface AIDecision {
   type: "MOVE" | "ATTACK" | "COMMUNICATE" | "DEFEND" | "SUPPORT" | "SCOUT" | "RETREAT" | "SPECIAL";
@@ -16,7 +17,19 @@ interface AIDecision {
 // such as persistence or transport are delegated to the application layer.
 export class AISystem {
   makeSimpleDecision(participant: any, battleState: BattleState, team: string): AIDecision {
-    // 파일럿 이름 매핑
+    // Delegate to the shared deterministic AI engine. We inject a lightweight
+    // helper that maps pilotId → initial required by the personality presets.
+
+    const sharedDecision = makeAIDecision(participant, battleState, team, {
+      getPilotInitial: (id: number) => {
+        if (id === 1) return "S";
+        if (id === 2) return "M";
+        if (id === 3) return "A";
+        return id >= 100 ? "E" : "A";
+      },
+    });
+
+    // Map shared decision -> server domain decision structure
     const pilotNames: { [key: number]: string } = {
       1: "Sasha Volkov",
       2: "Mei Chen",
@@ -29,126 +42,17 @@ export class AISystem {
     };
 
     const pilotName = pilotNames[participant.pilotId] || `Unit-${participant.pilotId}`;
-    const randomAction = Math.random();
-    const isCriticalHP = participant.hp < 15;
-    const isEarlyBattle = battleState.turn < 3;
-    const isMidBattle = battleState.turn >= 3 && battleState.turn <= 7;
-
-    const enemyTargets = team === "team1"
-      ? battleState.participants.filter((p: any) => p.pilotId >= 100 && p.status === "active")
-      : battleState.participants.filter((p: any) => p.pilotId < 100 && p.status === "active");
-
-    const allies = team === "team1"
-      ? battleState.participants.filter((p: any) => p.pilotId < 100 && p.status === "active")
-      : battleState.participants.filter((p: any) => p.pilotId >= 100 && p.status === "active");
-
-    const damagedAllies = allies.filter((ally: any) => ally.hp < 50);
-    const nearbyEnemies = enemyTargets.filter((enemy: any) =>
-      Math.abs(enemy.position.x - participant.position.x) <= 2 &&
-      Math.abs(enemy.position.y - participant.position.y) <= 2,
-    );
-
-    const personality = this.getPilotPersonality(participant.pilotId);
-    const getDialogue = (type: string) => {
-      const dialogues = personality.dialogues[type] || ["..."];
-      return dialogues[Math.floor(Math.random() * dialogues.length)];
-    };
-
-    if (isCriticalHP && randomAction < 0.7) {
-      return {
-        type: "RETREAT",
-        pilotName,
-        newPosition: this.calculateRetreatPosition(participant.position, team, enemyTargets),
-        dialogue: getDialogue("retreat"),
-      };
-    }
-
-    if (personality.supportive > 0.6 && damagedAllies.length && randomAction < 0.3) {
-      const targetAlly = damagedAllies[0];
-      return {
-        type: "SUPPORT",
-        pilotName,
-        targetIndex: battleState.participants.findIndex((p: any) => p === targetAlly),
-        dialogue: getDialogue("support"),
-        actionData: { supportType: "heal", amount: 15 },
-      };
-    }
-
-    if (nearbyEnemies.length >= 2 && randomAction < 0.25) {
-      return {
-        type: "DEFEND",
-        pilotName,
-        dialogue: "방어 태세!",
-        actionData: { defenseBonus: 0.5, duration: 2 },
-      };
-    }
-
-    if ((isEarlyBattle || personality.tactical > 0.7) && randomAction < 0.2) {
-      return {
-        type: "SCOUT",
-        pilotName,
-        newPosition: this.calculateScoutPosition(participant.position, team, enemyTargets),
-        dialogue: getDialogue("scout"),
-      };
-    }
-
-    if (isMidBattle && randomAction < 0.15) {
-      const abilities = ["오버드라이브", "정밀 조준", "일제 사격", "은폐 기동"];
-      const ability = abilities[Math.floor(Math.random() * abilities.length)];
-      return {
-        type: "SPECIAL",
-        pilotName,
-        dialogue: `${ability} 발동!`,
-        actionData: { abilityName: ability, effect: this.getSpecialEffect(ability) },
-      };
-    }
-
-    const personalityWeight = randomAction;
-    if (personality.aggressive > personalityWeight && enemyTargets.length) {
-      const target = this.selectBestTarget(enemyTargets, participant);
-      return {
-        type: "ATTACK",
-        pilotName,
-        targetIndex: battleState.participants.findIndex((p: any) => p === target),
-        dialogue: getDialogue("attack"),
-      };
-    }
-
-    if (personality.tactical > personalityWeight) {
-      return {
-        type: "MOVE",
-        pilotName,
-        newPosition: this.calculateTacticalPosition(participant.position, team, enemyTargets, allies),
-        dialogue: "전술적 이동!",
-      };
-    }
-
-    if (personality.supportive > personalityWeight && allies.length > 1) {
-      const weakestAlly = allies.reduce((prev: any, curr: any) => (curr.hp < prev.hp ? curr : prev));
-      return {
-        type: "SUPPORT",
-        pilotName,
-        targetIndex: battleState.participants.findIndex((p: any) => p === weakestAlly),
-        dialogue: getDialogue("support"),
-      };
-    }
-
-    if (enemyTargets.length && randomAction < 0.5) {
-      const target = enemyTargets[Math.floor(Math.random() * enemyTargets.length)];
-      return {
-        type: "ATTACK",
-        pilotName,
-        targetIndex: battleState.participants.findIndex((p: any) => p === target),
-        dialogue: getDialogue("attack"),
-      };
-    }
 
     return {
-      type: "MOVE",
+      type: sharedDecision.type,
       pilotName,
-      newPosition: this.calculateNewPosition(participant.position, team),
-      dialogue: "포지션 조정!",
-    };
+      dialogue: sharedDecision.message,
+      newPosition: sharedDecision.newPosition,
+      targetIndex: sharedDecision.targetId !== undefined
+        ? battleState.participants.findIndex((p: any) => p.pilotId === sharedDecision.targetId)
+        : undefined,
+      actionData: sharedDecision.ability ? { abilityName: sharedDecision.ability } : undefined,
+    } as AIDecision;
   }
 
   // Personality helper

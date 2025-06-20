@@ -3,6 +3,7 @@ import { useBattleStore } from '@/stores/battleStore';
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
 import CanvasRenderer from "@/presentation/CanvasRenderer";
 import { useBattleRender } from "@/hooks/useBattleRender";
+import { useGameLoopWorker } from "@/hooks/useGameLoopWorker";
 
 interface BattleParticipant {
   pilotId: number;
@@ -249,8 +250,17 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     getPilotInfo,
   });
 
+  // Phase B: leverage Web Worker for game loop when simulation is active
+  useGameLoopWorker(battle, isSimulating && !isCountingDown);
+
   // 실시간 틱 시뮬레이션 로직 - 1초 행동 간격
   useEffect(() => {
+    // Skip legacy in-component tick logic when Web Worker simulation is active
+    if (typeof Worker !== "undefined" && isSimulating && !isCountingDown) {
+      // Worker handles game ticks; do not run this effect.
+      return;
+    }
+
     if (!battle || !isSimulating || isCountingDown) return;
 
     const tickInterval = setInterval(() => {

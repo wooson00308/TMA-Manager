@@ -52,6 +52,46 @@ export function useBattleRender({
   getPilotInfo,
 }: UseBattleRenderParams) {
   const animationFrameRef = useRef<number>();
+  const terrainCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const needsTerrainRedrawRef = useRef<boolean>(true);
+
+  const resizeCanvas = React.useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+
+    canvas.style.width = `${rect.width}px`;
+    canvas.style.height = `${rect.height}px`;
+
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.resetTransform?.();
+      ctx.scale(dpr, dpr);
+    }
+
+    if (!terrainCanvasRef.current) {
+      terrainCanvasRef.current = document.createElement("canvas");
+    }
+    const terrainCanvas = terrainCanvasRef.current;
+    if (terrainCanvas) {
+      terrainCanvas.width = canvas.width;
+      terrainCanvas.height = canvas.height;
+    }
+
+    needsTerrainRedrawRef.current = true;
+  }, [canvasRef]);
+
+  useEffect(() => {
+    resizeCanvas();
+    const handler = debounce(resizeCanvas, 200);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
+  }, [resizeCanvas]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -65,77 +105,92 @@ export function useBattleRender({
     const drawBattleField = (timestamp: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Background gradient & grid
-      const gradient = ctx.createRadialGradient(320, 240, 0, 320, 240, 400);
-      gradient.addColorStop(0, "#1F2937");
-      gradient.addColorStop(1, "#111827");
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // 1) Draw cached static terrain layer
+      if (needsTerrainRedrawRef.current) {
+        const terrainCtx = terrainCanvasRef.current!.getContext("2d")!;
+        terrainCtx.save();
+        terrainCtx.resetTransform?.();
+        const dpr = window.devicePixelRatio || 1;
+        terrainCtx.scale(dpr, dpr);
 
-      ctx.strokeStyle = "#374151";
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i <= 16; i++) {
-        ctx.beginPath();
-        ctx.moveTo(i * 40, 0);
-        ctx.lineTo(i * 40, 480);
-        ctx.stroke();
-      }
-      for (let i = 0; i <= 12; i++) {
-        ctx.beginPath();
-        ctx.moveTo(0, i * 40);
-        ctx.lineTo(640, i * 40);
-        ctx.stroke();
-      }
+        terrainCtx.clearRect(0, 0, terrainCanvasRef.current!.width, terrainCanvasRef.current!.height);
 
-      // Terrain features
-      terrainFeatures.forEach((terrain) => {
-        const x = terrain.x * 40 + 20;
-        const y = terrain.y * 40 + 20;
+        const gradient = terrainCtx.createRadialGradient(320, 240, 0, 320, 240, 400);
+        gradient.addColorStop(0, "#1F2937");
+        gradient.addColorStop(1, "#111827");
+        terrainCtx.fillStyle = gradient;
+        terrainCtx.fillRect(0, 0, 640, 480);
 
-        ctx.save();
-        switch (terrain.type) {
-          case "cover":
-            ctx.fillStyle = "#059669";
-            ctx.fillRect(terrain.x * 40 + 5, terrain.y * 40 + 5, 30, 30);
-            ctx.fillStyle = "#10B981";
-            ctx.font = "12px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("🛡️", x, y + 4);
-            break;
-          case "elevation":
-            ctx.fillStyle = "#7C3AED";
-            ctx.beginPath();
-            ctx.moveTo(x, y - 15);
-            ctx.lineTo(x - 15, y + 10);
-            ctx.lineTo(x + 15, y + 10);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = "#A855F7";
-            ctx.font = "10px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("⬆️", x, y + 2);
-            break;
-          case "obstacle":
-            ctx.fillStyle = "#DC2626";
-            ctx.fillRect(terrain.x * 40 + 8, terrain.y * 40 + 8, 24, 24);
-            ctx.fillStyle = "#EF4444";
-            ctx.font = "12px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("🚫", x, y + 4);
-            break;
-          case "hazard":
-            ctx.fillStyle = "#F59E0B";
-            ctx.beginPath();
-            ctx.arc(x, y, 15, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.fillStyle = "#FBBF24";
-            ctx.font = "12px monospace";
-            ctx.textAlign = "center";
-            ctx.fillText("⚠️", x, y + 4);
-            break;
+        terrainCtx.strokeStyle = "#374151";
+        terrainCtx.lineWidth = 0.5;
+        for (let i = 0; i <= 16; i++) {
+          terrainCtx.beginPath();
+          terrainCtx.moveTo(i * 40, 0);
+          terrainCtx.lineTo(i * 40, 480);
+          terrainCtx.stroke();
         }
-        ctx.restore();
-      });
+        for (let i = 0; i <= 12; i++) {
+          terrainCtx.beginPath();
+          terrainCtx.moveTo(0, i * 40);
+          terrainCtx.lineTo(640, i * 40);
+          terrainCtx.stroke();
+        }
+
+        terrainFeatures.forEach((terrain) => {
+          const x = terrain.x * 40 + 20;
+          const y = terrain.y * 40 + 20;
+
+          terrainCtx.save();
+          switch (terrain.type) {
+            case "cover":
+              terrainCtx.fillStyle = "#059669";
+              terrainCtx.fillRect(terrain.x * 40 + 5, terrain.y * 40 + 5, 30, 30);
+              terrainCtx.fillStyle = "#10B981";
+              terrainCtx.font = "12px monospace";
+              terrainCtx.textAlign = "center";
+              terrainCtx.fillText("🛡️", x, y + 4);
+              break;
+            case "elevation":
+              terrainCtx.fillStyle = "#7C3AED";
+              terrainCtx.beginPath();
+              terrainCtx.moveTo(x, y - 15);
+              terrainCtx.lineTo(x - 15, y + 10);
+              terrainCtx.lineTo(x + 15, y + 10);
+              terrainCtx.closePath();
+              terrainCtx.fill();
+              terrainCtx.fillStyle = "#A855F7";
+              terrainCtx.font = "10px monospace";
+              terrainCtx.textAlign = "center";
+              terrainCtx.fillText("⬆️", x, y + 2);
+              break;
+            case "obstacle":
+              terrainCtx.fillStyle = "#DC2626";
+              terrainCtx.fillRect(terrain.x * 40 + 8, terrain.y * 40 + 8, 24, 24);
+              terrainCtx.fillStyle = "#EF4444";
+              terrainCtx.font = "12px monospace";
+              terrainCtx.textAlign = "center";
+              terrainCtx.fillText("🚫", x, y + 4);
+              break;
+            case "hazard":
+              terrainCtx.fillStyle = "#F59E0B";
+              terrainCtx.beginPath();
+              terrainCtx.arc(x, y, 15, 0, 2 * Math.PI);
+              terrainCtx.fill();
+              terrainCtx.fillStyle = "#FBBF24";
+              terrainCtx.font = "12px monospace";
+              terrainCtx.textAlign = "center";
+              terrainCtx.fillText("⚠️", x, y + 4);
+              break;
+          }
+          terrainCtx.restore();
+        });
+
+        terrainCtx.restore();
+        needsTerrainRedrawRef.current = false;
+      }
+
+      // Push the cached terrain onto the main ctx at start of frame
+      ctx.drawImage(terrainCanvasRef.current!, 0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
 
       // Attack / projectile effects
       const currentTime = Date.now();
@@ -311,4 +366,13 @@ export function useBattleRender({
       }
     };
   }, [battle, animatingUnits, attackEffects, terrainFeatures, getPilotInfo, setAttackEffects]);
+}
+
+// lightweight debounce helper (avoids external deps)
+function debounce(fn: () => void, wait: number) {
+  let t: ReturnType<typeof setTimeout> | null = null;
+  return () => {
+    if (t) clearTimeout(t);
+    t = setTimeout(fn, wait);
+  };
 } 
