@@ -611,12 +611,19 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       const activeUnits = (battle.participants || []).filter((p: BattleParticipant) => p.status === 'active');
       
       if (activeUnits.length >= 1) {
-        // 1초 쿨다운 시스템
+        // 80% 확률로 행동 (더 활발한 전투)
         const availableUnits = activeUnits.filter((unit: BattleParticipant) => {
           const lastActionTime = unit.lastActionTime || 0;
-          const cooldownTime = 1000; // 1초 쿨다운
-          return currentTime - lastActionTime > cooldownTime;
+          const cooldownTime = 600; // 0.6초 쿨다운으로 더 단축
+          const hasPassedCooldown = currentTime - lastActionTime > cooldownTime;
+          const actionChance = Math.random() < 0.8; // 80% 확률로 행동
+          return hasPassedCooldown && actionChance;
         });
+
+        // 디버깅: 유닛 행동 상태 확인
+        if (availableUnits.length > 0) {
+          console.log(`활성 유닛 ${activeUnits.length}개 중 ${availableUnits.length}개 행동 예정`);
+        }
 
         // 병렬 행동 계획 수립 및 실행
         const parallelActions = availableUnits.map(actor => {
@@ -633,14 +640,20 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             return info.team === actorInfo.team && p.status === 'active' && p.pilotId !== actor.pilotId;
           });
           
-          // 기본 AI 결정 로직
+          // 개선된 AI 결정 로직
           let action;
+          const randomFactor = Math.random();
+          
           if (actor.hp < 25) {
-            // 후퇴
+            // 후퇴 - 더 적극적인 후퇴 로직
+            const retreatDirection = actorInfo.team === 'ally' ? -1 : 1;
+            const newX = Math.max(0, Math.min(14, actor.position.x + retreatDirection));
+            const newY = Math.max(0, Math.min(9, actor.position.y + (Math.random() > 0.5 ? 1 : -1)));
+            
             action = {
               type: 'MOVE',
               actor,
-              newPosition: { x: Math.max(0, actor.position.x - 1), y: actor.position.y },
+              newPosition: { x: newX, y: newY },
               message: `${actorInfo.name}: "후퇴!"`
             };
           } else if (enemies.length > 0) {
@@ -652,7 +665,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             });
             
             const distance = manhattanDistance(actor.position, closestEnemy.position);
-            if (distance <= 3) {
+            
+            // 공격 범위 내라면 공격 (50% 확률)
+            if (distance <= 3 && randomFactor < 0.5) {
               action = {
                 type: 'ATTACK',
                 actor,
@@ -660,28 +675,50 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 message: `${actorInfo.name}: "공격!"`
               };
             } else {
-              // 접근
-              const dx = closestEnemy.position.x - actor.position.x;
-              const dy = closestEnemy.position.y - actor.position.y;
+              // 접근 - 더 다양한 이동 패턴
+              let dx = closestEnemy.position.x - actor.position.x;
+              let dy = closestEnemy.position.y - actor.position.y;
+              
+              // 30% 확률로 측면 공격 시도
+              if (randomFactor > 0.7) {
+                dx += Math.random() > 0.5 ? 1 : -1;
+                dy += Math.random() > 0.5 ? 1 : -1;
+              }
+              
               const stepX = dx === 0 ? 0 : dx > 0 ? 1 : -1;
               const stepY = dy === 0 ? 0 : dy > 0 ? 1 : -1;
+              
+              // 때로는 대각선 이동
+              const shouldMoveDiagonal = randomFactor > 0.4;
+              const finalStepX = shouldMoveDiagonal ? stepX : (randomFactor > 0.5 ? stepX : 0);
+              const finalStepY = shouldMoveDiagonal ? stepY : (randomFactor > 0.5 ? 0 : stepY);
               
               action = {
                 type: 'MOVE',
                 actor,
                 newPosition: {
-                  x: Math.max(0, Math.min(14, actor.position.x + stepX)),
-                  y: Math.max(0, Math.min(9, actor.position.y + stepY))
+                  x: Math.max(0, Math.min(14, actor.position.x + finalStepX)),
+                  y: Math.max(0, Math.min(9, actor.position.y + finalStepY))
                 },
                 message: `${actorInfo.name}: "접근 중!"`
               };
             }
           } else {
+            // 적이 없으면 랜덤 이동으로 순찰
+            const directions = [
+              { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+              { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+            ];
+            const randomDirection = directions[Math.floor(Math.random() * directions.length)];
+            
             action = {
               type: 'MOVE',
               actor,
-              newPosition: actor.position,
-              message: `${actorInfo.name}: "대기 중"`
+              newPosition: {
+                x: Math.max(0, Math.min(14, actor.position.x + randomDirection.x)),
+                y: Math.max(0, Math.min(9, actor.position.y + randomDirection.y))
+              },
+              message: `${actorInfo.name}: "순찰 중"`
             };
           }
           
@@ -839,13 +876,27 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           }
           
           else if (action.type === 'RETREAT' || action.type === 'SCOUT' || action.type === 'MOVE') {
+            // 이동 액션 처리 개선
             setAnimatingUnits(new Set([actor.pilotId]));
-            setTimeout(() => setAnimatingUnits(new Set()), 1000);
+            setTimeout(() => setAnimatingUnits(new Set()), 800);
+            
+            // 새 위치 검증 및 적용
+            const newPosition = action.newPosition || actor.position;
+            const isValidPosition = newPosition.x >= 0 && newPosition.x < 15 && 
+                                  newPosition.y >= 0 && newPosition.y < 10;
+            
+            // 다른 유닛과 겹치지 않는지 확인
+            const isPositionOccupied = battle.participants.some((p: BattleParticipant) => 
+              p.pilotId !== actor.pilotId && p.status === 'active' &&
+              p.position.x === newPosition.x && p.position.y === newPosition.y
+            );
+            
+            const finalPosition = isValidPosition && !isPositionOccupied ? newPosition : actor.position;
             
             const moveLog = {
               timestamp: Date.now(),
               type: 'movement' as const,
-              message: action.message,
+              message: finalPosition !== actor.position ? action.message : `${actorInfo.name}: "이동 불가"`,
               speaker: actorInfo.name
             };
             addBattleLog(moveLog);
@@ -854,7 +905,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               if (p.pilotId === actor.pilotId) {
                 return { 
                   ...p, 
-                  position: action.newPosition || p.position, 
+                  position: finalPosition, 
                   lastActionTime: currentTime 
                 };
               }
