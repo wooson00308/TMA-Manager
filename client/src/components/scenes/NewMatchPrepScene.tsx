@@ -334,7 +334,7 @@ export function NewMatchPrepScene() {
       case 'Knight': return '🛡️';
       case 'River': return '⚡';
       case 'Arbiter': return '🎯';
-      case 'Custom': return '⭐';
+      case 'Custom': return '🔧';
       default: return '🤖';
     }
   };
