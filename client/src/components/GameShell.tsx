@@ -9,6 +9,7 @@ import { BanPickScene } from './scenes/BanPickScene';
 import { BattleScene } from './scenes/BattleScene';
 import { AnalysisScene } from './scenes/AnalysisScene';
 import { MatchPrepScene } from './scenes/MatchPrepScene';
+import { NewMatchPrepScene } from './scenes/NewMatchPrepScene';
 import { StatusPanel } from './ui/StatusPanel';
 
 const sceneComponents = {
@@ -19,7 +20,7 @@ const sceneComponents = {
   banpick: BanPickScene,
   battle: BattleScene,
   analysis: AnalysisScene,
-  match_prep: MatchPrepScene,
+  match_prep: NewMatchPrepScene,
 };
 
 export function GameShell() {
