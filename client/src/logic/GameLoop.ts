@@ -3,25 +3,28 @@ import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosi
 import type { PilotInfo, TerrainFeature, BattleParticipant } from "@shared/domain/types";
 
 function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
-  const found = pilots.find(p => p.id === pilotId);
+  const found = pilots.find((p) => p.id === pilotId);
+
+  // Determine allegiance purely by convention: IDs >= 100 belong to enemy units.
+  const isEnemy = pilotId >= 100;
+
   if (found) {
-    const isEnemy = (found as any).team !== 'ally';
     return {
       id: found.id,
       name: found.name,
       callsign: found.callsign,
-      team: isEnemy ? 'enemy' : 'ally',
-      initial: isEnemy ? 'E' : found.name.charAt(0).toUpperCase()
+      team: isEnemy ? "enemy" : "ally",
+      initial: isEnemy ? "E" : found.name.charAt(0).toUpperCase(),
     };
   }
-  
-  const isEnemy = pilotId >= 100;
+
+  // Fallback placeholder when pilot data is missing from store
   return {
     id: pilotId,
     name: isEnemy ? `Enemy ${pilotId}` : `Pilot ${pilotId}`,
     callsign: isEnemy ? `E${pilotId}` : `P${pilotId}`,
-    team: isEnemy ? 'enemy' : 'ally',
-    initial: isEnemy ? 'E' : String.fromCharCode(65 + (pilotId % 26))
+    team: isEnemy ? "enemy" : "ally",
+    initial: isEnemy ? "E" : String.fromCharCode(65 + (pilotId % 26)),
   };
 };
 

@@ -113,24 +113,27 @@ export const useGameStore = create<GameState>()(
     getPilotInfo: (pilotId: number): PilotInfo => {
       const { pilots } = get();
       const found = pilots.find(p => p.id === pilotId);
+
+      // Determine team purely from id convention: IDs >= 100 are enemies.
+      const isEnemy = pilotId >= 100;
+
       if (found) {
-        const isEnemy = (found as any).team !== 'ally';
         return {
           id: found.id,
           name: found.name,
           callsign: found.callsign,
-          team: isEnemy ? 'enemy' : 'ally',
-          initial: isEnemy ? 'E' : found.name.charAt(0).toUpperCase()
+          team: isEnemy ? "enemy" : "ally",
+          initial: isEnemy ? "E" : found.name.charAt(0).toUpperCase(),
         };
       }
-      
-      const isEnemy = pilotId >= 100;
+
+      // Fallback for unknown pilots (e.g., enemy data not in store)
       return {
         id: pilotId,
         name: isEnemy ? `Enemy ${pilotId}` : `Pilot ${pilotId}`,
         callsign: isEnemy ? `E${pilotId}` : `P${pilotId}`,
-        team: isEnemy ? 'enemy' : 'ally',
-        initial: isEnemy ? 'E' : String.fromCharCode(65 + (pilotId % 26))
+        team: isEnemy ? "enemy" : "ally",
+        initial: isEnemy ? "E" : String.fromCharCode(65 + (pilotId % 26)),
       };
     }
   }))
