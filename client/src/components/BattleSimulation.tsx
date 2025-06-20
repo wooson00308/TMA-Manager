@@ -53,6 +53,8 @@ interface TerrainFeature {
 export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element {
   const [currentTick, setCurrentTick] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+  const [isCountingDown, setIsCountingDown] = useState(true);
   const [animatingUnits, setAnimatingUnits] = useState<Set<number>>(new Set());
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
   const [terrainFeatures] = useState<TerrainFeature[]>([
@@ -65,6 +67,25 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number>();
   const { addBattleLog, setBattle } = useBattleStore();
+
+  // 3초 카운트다운 및 자동 시작 로직
+  useEffect(() => {
+    if (isCountingDown && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    } else if (isCountingDown && countdown === 0) {
+      setIsCountingDown(false);
+      setIsSimulating(true);
+      addBattleLog({
+        type: 'system',
+        message: '전투가 시작됩니다!',
+        timestamp: Date.now()
+      });
+    }
+  }, [countdown, isCountingDown, addBattleLog]);
 
   const pilots: PilotInfo[] = [
     { id: 1, name: "Sasha", callsign: "볼코프", team: "ally", initial: "S" },
@@ -530,7 +551,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
   // 실시간 틱 시뮬레이션 로직 - 1초 행동 간격
   useEffect(() => {
-    if (!battle || !isSimulating) return;
+    if (!battle || !isSimulating || isCountingDown) return;
 
     const tickInterval = setInterval(() => {
       const currentTime = Date.now();
@@ -838,13 +859,24 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
         </div>
         
-        {battle.phase !== 'completed' && !isSimulating && (
+        {battle.phase !== 'completed' && !isSimulating && !isCountingDown && (
           <button
             onClick={startSimulation}
             className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
           >
             실시간 시뮬레이션 시작
           </button>
+        )}
+        
+        {isCountingDown && (
+          <div className="flex items-center space-x-3">
+            <div className="text-2xl font-bold text-red-400 animate-pulse">
+              {countdown > 0 ? countdown : "START!"}
+            </div>
+            <div className="text-sm text-gray-300">
+              전투 시작까지...
+            </div>
+          </div>
         )}
         
         {isSimulating && (
@@ -858,13 +890,27 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       <div className="p-6">
         <div className="bg-gray-900 rounded border border-gray-600 p-4 mb-6">
           <h4 className="text-md font-semibold text-gray-300 mb-3">전장 맵 (2D 탑뷰)</h4>
-          <div className="flex justify-center">
+          <div className="flex justify-center relative">
             <canvas
               ref={canvasRef}
               width={640}
               height={480}
               className="border border-gray-600 bg-gray-800 rounded"
             />
+            
+            {/* 카운트다운 오버레이 */}
+            {isCountingDown && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/70 rounded">
+                <div className="text-center">
+                  <div className="text-8xl font-bold text-cyan-400 animate-pulse mb-4">
+                    {countdown > 0 ? countdown : "START!"}
+                  </div>
+                  <div className="text-xl text-white">
+                    전투 시작 준비 중...
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-2 gap-4 mt-4 text-xs">
