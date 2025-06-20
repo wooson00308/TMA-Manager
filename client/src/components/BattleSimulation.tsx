@@ -246,6 +246,34 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     });
   };
 
+  // 전투 종료 조건 확인 헬퍼 함수
+  const checkVictoryCondition = (participants: BattleParticipant[]) => {
+    const allies = participants.filter(p => {
+      const info = getPilotInfo(p.pilotId);
+      return info.team === 'ally' && p.status === 'active';
+    });
+    const enemies = participants.filter(p => {
+      const info = getPilotInfo(p.pilotId);
+      return info.team === 'enemy' && p.status === 'active';
+    });
+
+    if (allies.length === 0 || enemies.length === 0) {
+      return {
+        isGameOver: true,
+        winner: allies.length > 0 ? '아군' : '적군',
+        allyCount: allies.length,
+        enemyCount: enemies.length
+      };
+    }
+
+    return {
+      isGameOver: false,
+      winner: null,
+      allyCount: allies.length,
+      enemyCount: enemies.length
+    };
+  };
+
   // Canvas 애니메이션 렌더링
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -602,6 +630,26 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               participants: updatedParticipants,
               log: [...(battle.log || []), newLog]
             });
+
+            // 공격 후 즉시 전투 종료 조건 확인
+            const victoryCheck = checkVictoryCondition(updatedParticipants);
+            if (victoryCheck.isGameOver) {
+              setIsSimulating(false);
+              const victoryLog = {
+                timestamp: Date.now(),
+                type: 'system' as const,
+                message: `🎉 전투 종료! ${victoryCheck.winner} 승리! (${victoryCheck.allyCount}vs${victoryCheck.enemyCount})`,
+              };
+              addBattleLog(victoryLog);
+              
+              setBattle({
+                ...battle,
+                phase: 'completed' as const,
+                participants: updatedParticipants,
+                log: [...(battle.log || []), newLog, victoryLog]
+              });
+              return;
+            }
           }
           
           else if (aiAction.type === 'SUPPORT' && aiAction.target) {
@@ -690,32 +738,67 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         }
       }
       
-      // 전투 종료 조건 확인
+      // 매 틱마다 전투 종료 조건 확인
       setCurrentTick(prev => {
         const nextTick = prev + 1;
         
-        if (nextTick > 180) { // 3분 후 종료
+        // 생존 유닛 체크
+        const currentAllies = (battle.participants || []).filter(p => {
+          const info = getPilotInfo(p.pilotId);
+          return info.team === 'ally' && p.status === 'active';
+        });
+        const currentEnemies = (battle.participants || []).filter(p => {
+          const info = getPilotInfo(p.pilotId);
+          return info.team === 'enemy' && p.status === 'active';
+        });
+
+        // 즉시 승리 조건: 한 팀 전멸
+        if (currentAllies.length === 0 || currentEnemies.length === 0) {
           setIsSimulating(false);
-          if (battle) {
-            const allyUnits = battle.participants.filter(p => {
-              const info = getPilotInfo(p.pilotId);
-              return info.team === 'ally' && p.status === 'active';
-            });
-            const enemyUnits = battle.participants.filter(p => {
-              const info = getPilotInfo(p.pilotId);
-              return info.team === 'enemy' && p.status === 'active';
-            });
-            
-            if (allyUnits.length === 0 || enemyUnits.length === 0) {
-              const winner = allyUnits.length > 0 ? '아군' : '적군';
-              const endLog = {
-                timestamp: Date.now(),
-                type: 'system' as const,
-                message: `전투 종료! ${winner} 승리!`,
-              };
-              addBattleLog(endLog);
-            }
+          const winner = currentAllies.length > 0 ? '아군' : '적군';
+          const victoryLog = {
+            timestamp: Date.now(),
+            type: 'system' as const,
+            message: `🎉 전투 종료! ${winner} 승리! (${currentAllies.length}vs${currentEnemies.length})`,
+          };
+          addBattleLog(victoryLog);
+          
+          setBattle({
+            ...battle,
+            phase: 'completed' as const,
+            log: [...(battle.log || []), victoryLog]
+          });
+          return nextTick;
+        }
+        
+        // 시간 제한 조건: 3분 후 무승부 또는 점수 승부
+        if (nextTick > 180) {
+          setIsSimulating(false);
+          let winner;
+          let message;
+          
+          if (currentAllies.length > currentEnemies.length) {
+            winner = '아군';
+            message = `⏰ 시간 종료! ${winner} 승리! (생존자 수: ${currentAllies.length}vs${currentEnemies.length})`;
+          } else if (currentEnemies.length > currentAllies.length) {
+            winner = '적군';
+            message = `⏰ 시간 종료! ${winner} 승리! (생존자 수: ${currentAllies.length}vs${currentEnemies.length})`;
+          } else {
+            message = `⏰ 시간 종료! 무승부! (생존자 수: ${currentAllies.length}vs${currentEnemies.length})`;
           }
+          
+          const timeoutLog = {
+            timestamp: Date.now(),
+            type: 'system' as const,
+            message,
+          };
+          addBattleLog(timeoutLog);
+          
+          setBattle({
+            ...battle,
+            phase: 'completed' as const,
+            log: [...(battle.log || []), timeoutLog]
+          });
         }
         
         return nextTick;
