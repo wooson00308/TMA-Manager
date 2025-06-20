@@ -775,5 +775,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 전투 테스트 러너 API
+  app.post('/api/battle/test/run', async (req, res) => {
+    try {
+      const { BattleTestRunner } = await import('./test/BattleTestRunner');
+      const testRunner = new BattleTestRunner();
+      
+      // 개별 컴포넌트 테스트 먼저 실행
+      await testRunner.testBattleComponents();
+      
+      // 전체 시나리오 테스트 실행
+      const results = await testRunner.runAllTests();
+      
+      // 성능 리포트 생성
+      await testRunner.generatePerformanceReport();
+      
+      res.json({
+        success: true,
+        results,
+        summary: {
+          total: results.length,
+          passed: results.filter(r => r.success).length,
+          failed: results.filter(r => !r.success).length,
+          averageDuration: results.reduce((sum, r) => sum + r.duration, 0) / results.length
+        }
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('테스트 실행 중 오류:', error);
+      res.status(500).json({
+        success: false,
+        error: errorMessage
+      });
+    }
+  });
+
+  app.post('/api/battle/test/single', async (req, res) => {
+    try {
+      const { scenarioName } = req.body;
+      
+      if (!scenarioName) {
+        return res.status(400).json({
+          success: false,
+          error: '시나리오 이름이 필요합니다'
+        });
+      }
+
+      const { BattleTestRunner } = await import('./test/BattleTestRunner');
+      const testRunner = new BattleTestRunner();
+      
+      const result = await testRunner.runSpecificTest(scenarioName);
+      
+      if (!result) {
+        return res.status(404).json({
+          success: false,
+          error: '시나리오를 찾을 수 없습니다'
+        });
+      }
+
+      res.json({
+        success: true,
+        result
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('단일 테스트 실행 중 오류:', error);
+      res.status(500).json({
+        success: false,
+        error: errorMessage
+      });
+    }
+  });
+
+  app.get('/api/battle/test/scenarios', async (req, res) => {
+    try {
+      const scenarios = [
+        "기본 3v3 전투",
+        "중장갑 vs 경량 메크", 
+        "1v1 듀얼"
+      ];
+
+      res.json({
+        success: true,
+        scenarios
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({
+        success: false,
+        error: errorMessage
+      });
+    }
+  });
+
   return httpServer;
 }
