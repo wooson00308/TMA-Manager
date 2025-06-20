@@ -23,6 +23,8 @@ interface ChampionSelectState {
     enemy: Mech[];
   };
   assignments: { [pilotId: number]: Mech | null };
+  playerBans: Mech[];
+  enemyBans: Mech[];
 }
 
 export function NewMatchPrepScene() {
@@ -40,7 +42,9 @@ export function NewMatchPrepScene() {
     turnCount: 1,
     bannedMechs: [],
     selectedMechs: { player: [], enemy: [] },
-    assignments: {}
+    assignments: {},
+    playerBans: [],
+    enemyBans: []
   });
 
   const [selectedEnemyTeam, setSelectedEnemyTeam] = useState<Team | null>(null);
@@ -142,7 +146,8 @@ export function NewMatchPrepScene() {
     }
 
     // 이미 밴/픽된 메크인지 확인
-    if (championSelect.bannedMechs.some(m => m.id === mech.id) ||
+    if (championSelect.playerBans.some(m => m.id === mech.id) ||
+        championSelect.enemyBans.some(m => m.id === mech.id) ||
         championSelect.selectedMechs.player.some(m => m.id === mech.id) ||
         championSelect.selectedMechs.enemy.some(m => m.id === mech.id)) {
       console.log('Mech already banned/picked:', mech.name);
@@ -153,6 +158,7 @@ export function NewMatchPrepScene() {
       setChampionSelect(prev => ({
         ...prev,
         bannedMechs: [...prev.bannedMechs, mech],
+        playerBans: [...prev.playerBans, mech],
         turnCount: prev.turnCount + 1
       }));
       console.log('Player banned:', mech.name);
@@ -193,7 +199,8 @@ export function NewMatchPrepScene() {
       
       const timer = setTimeout(() => {
         const availableForAction = (availableMechs as Mech[]).filter((mech: Mech) => 
-          !championSelect.bannedMechs.some(banned => banned.id === mech.id) &&
+          !championSelect.playerBans.some(banned => banned.id === mech.id) &&
+          !championSelect.enemyBans.some(banned => banned.id === mech.id) &&
           !championSelect.selectedMechs.player.some(picked => picked.id === mech.id) &&
           !championSelect.selectedMechs.enemy.some(picked => picked.id === mech.id)
         );
@@ -210,6 +217,7 @@ export function NewMatchPrepScene() {
             setChampionSelect(prev => ({
               ...prev,
               bannedMechs: [...prev.bannedMechs, selectedMech],
+              enemyBans: [...prev.enemyBans, selectedMech],
               turnCount: prev.turnCount + 1
             }));
             console.log('AI banned:', selectedMech.name);
@@ -506,10 +514,10 @@ export function NewMatchPrepScene() {
                   </h3>
                   <div className="space-y-3">
                     <div>
-                      <div className="text-sm text-gray-400 mb-2">밴 ({championSelect.bannedMechs.filter((_, i) => i % 2 === 0).length}/2)</div>
+                      <div className="text-sm text-gray-400 mb-2">밴 ({championSelect.playerBans.length}/2)</div>
                       <div className="grid grid-cols-2 gap-2">
                         {Array.from({ length: 2 }, (_, i) => {
-                          const bannedMech = championSelect.bannedMechs.filter((_, idx) => idx % 2 === 0)[i];
+                          const bannedMech = championSelect.playerBans[i];
                           return (
                             <div
                               key={i}
@@ -571,10 +579,10 @@ export function NewMatchPrepScene() {
                   </h3>
                   <div className="space-y-3">
                     <div>
-                      <div className="text-sm text-gray-400 mb-2">밴 ({championSelect.bannedMechs.filter((_, i) => i % 2 === 1).length}/2)</div>
+                      <div className="text-sm text-gray-400 mb-2">밴 ({championSelect.enemyBans.length}/2)</div>
                       <div className="grid grid-cols-2 gap-2">
                         {Array.from({ length: 2 }, (_, i) => {
-                          const bannedMech = championSelect.bannedMechs.filter((_, idx) => idx % 2 === 1)[i];
+                          const bannedMech = championSelect.enemyBans[i];
                           return (
                             <div
                               key={i}
@@ -640,7 +648,8 @@ export function NewMatchPrepScene() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-96 overflow-y-auto">
                   {(availableMechs as Mech[])
                     .filter((mech: Mech) => 
-                      !championSelect.bannedMechs.some(banned => banned.id === mech.id) &&
+                      !championSelect.playerBans.some(banned => banned.id === mech.id) &&
+                      !championSelect.enemyBans.some(banned => banned.id === mech.id) &&
                       !championSelect.selectedMechs.player.some(picked => picked.id === mech.id) &&
                       !championSelect.selectedMechs.enemy.some(picked => picked.id === mech.id)
                     )
