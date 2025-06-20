@@ -139,47 +139,131 @@ export function useBattleRender({
         terrainFeatures.forEach((terrain) => {
           const x = terrain.x * 40 + 20;
           const y = terrain.y * 40 + 20;
+          const cellX = terrain.x * 40;
+          const cellY = terrain.y * 40;
 
           terrainCtx.save();
           switch (terrain.type) {
             case "cover":
-              terrainCtx.fillStyle = "#059669";
-              terrainCtx.fillRect(terrain.x * 40 + 5, terrain.y * 40 + 5, 30, 30);
+              // 엄폐물 - 벙커 스타일
+              const gradient1 = terrainCtx.createLinearGradient(cellX, cellY, cellX + 40, cellY + 40);
+              gradient1.addColorStop(0, "#065F46");
+              gradient1.addColorStop(1, "#047857");
+              terrainCtx.fillStyle = gradient1;
+              terrainCtx.fillRect(cellX + 3, cellY + 3, 34, 34);
+              
+              // 벙커 디테일
               terrainCtx.fillStyle = "#10B981";
-              terrainCtx.font = "12px monospace";
-              terrainCtx.textAlign = "center";
-              terrainCtx.fillText("🛡️", x, y + 4);
+              terrainCtx.fillRect(cellX + 8, cellY + 8, 24, 6);
+              terrainCtx.fillRect(cellX + 8, cellY + 18, 24, 6);
+              terrainCtx.fillRect(cellX + 8, cellY + 28, 24, 6);
+              
+              // 그림자 효과
+              terrainCtx.fillStyle = "rgba(0,0,0,0.3)";
+              terrainCtx.fillRect(cellX + 6, cellY + 6, 28, 28);
+              
+              // 외곽선
+              terrainCtx.strokeStyle = "#34D399";
+              terrainCtx.lineWidth = 2;
+              terrainCtx.strokeRect(cellX + 3, cellY + 3, 34, 34);
               break;
+              
             case "elevation":
-              terrainCtx.fillStyle = "#7C3AED";
+              // 고지대 - 다층 플랫폼
+              const elevColors = ["#7C3AED", "#8B5CF6", "#A78BFA"];
+              for (let i = 0; i < 3; i++) {
+                const size = 28 - i * 6;
+                const offset = i * 3;
+                terrainCtx.fillStyle = elevColors[i];
+                terrainCtx.beginPath();
+                terrainCtx.moveTo(x, cellY + offset + 5);
+                terrainCtx.lineTo(x - size/2, cellY + offset + size);
+                terrainCtx.lineTo(x + size/2, cellY + offset + size);
+                terrainCtx.closePath();
+                terrainCtx.fill();
+                
+                // 윤곽선
+                terrainCtx.strokeStyle = "#DDD6FE";
+                terrainCtx.lineWidth = 1;
+                terrainCtx.stroke();
+              }
+              
+              // 방향 화살표
+              terrainCtx.fillStyle = "#FFFFFF";
               terrainCtx.beginPath();
-              terrainCtx.moveTo(x, y - 15);
-              terrainCtx.lineTo(x - 15, y + 10);
-              terrainCtx.lineTo(x + 15, y + 10);
+              terrainCtx.moveTo(x, y - 8);
+              terrainCtx.lineTo(x - 4, y - 2);
+              terrainCtx.lineTo(x + 4, y - 2);
               terrainCtx.closePath();
               terrainCtx.fill();
-              terrainCtx.fillStyle = "#A855F7";
-              terrainCtx.font = "10px monospace";
-              terrainCtx.textAlign = "center";
-              terrainCtx.fillText("⬆️", x, y + 2);
               break;
+              
             case "obstacle":
-              terrainCtx.fillStyle = "#DC2626";
-              terrainCtx.fillRect(terrain.x * 40 + 8, terrain.y * 40 + 8, 24, 24);
-              terrainCtx.fillStyle = "#EF4444";
-              terrainCtx.font = "12px monospace";
-              terrainCtx.textAlign = "center";
-              terrainCtx.fillText("🚫", x, y + 4);
-              break;
-            case "hazard":
-              terrainCtx.fillStyle = "#F59E0B";
+              // 장애물 - 파괴된 구조물
+              terrainCtx.fillStyle = "#7F1D1D";
+              terrainCtx.fillRect(cellX + 6, cellY + 6, 28, 28);
+              
+              // 크랙 패턴
+              terrainCtx.strokeStyle = "#DC2626";
+              terrainCtx.lineWidth = 3;
               terrainCtx.beginPath();
-              terrainCtx.arc(x, y, 15, 0, 2 * Math.PI);
+              terrainCtx.moveTo(cellX + 8, cellY + 8);
+              terrainCtx.lineTo(cellX + 32, cellY + 32);
+              terrainCtx.moveTo(cellX + 32, cellY + 8);
+              terrainCtx.lineTo(cellX + 8, cellY + 32);
+              terrainCtx.stroke();
+              
+              // 잔해 효과
+              for (let i = 0; i < 6; i++) {
+                const debrisX = cellX + 10 + Math.random() * 20;
+                const debrisY = cellY + 10 + Math.random() * 20;
+                terrainCtx.fillStyle = "#B91C1C";
+                terrainCtx.beginPath();
+                terrainCtx.arc(debrisX, debrisY, 2, 0, 2 * Math.PI);
+                terrainCtx.fill();
+              }
+              
+              // 경고 테두리
+              terrainCtx.strokeStyle = "#FEE2E2";
+              terrainCtx.lineWidth = 2;
+              terrainCtx.setLineDash([5, 5]);
+              terrainCtx.strokeRect(cellX + 2, cellY + 2, 36, 36);
+              terrainCtx.setLineDash([]);
+              break;
+              
+            case "hazard":
+              // 위험지대 - 방사능/독성 지역
+              const hazardGradient = terrainCtx.createRadialGradient(x, y, 5, x, y, 18);
+              hazardGradient.addColorStop(0, "#FCD34D");
+              hazardGradient.addColorStop(0.7, "#F59E0B");
+              hazardGradient.addColorStop(1, "#D97706");
+              
+              terrainCtx.fillStyle = hazardGradient;
+              terrainCtx.beginPath();
+              terrainCtx.arc(x, y, 18, 0, 2 * Math.PI);
               terrainCtx.fill();
-              terrainCtx.fillStyle = "#FBBF24";
-              terrainCtx.font = "12px monospace";
+              
+              // 펄싱 효과용 링
+              const time = Date.now() * 0.003;
+              const pulseAlpha = 0.3 + 0.2 * Math.sin(time);
+              terrainCtx.strokeStyle = `rgba(251, 191, 36, ${pulseAlpha})`;
+              terrainCtx.lineWidth = 3;
+              terrainCtx.beginPath();
+              terrainCtx.arc(x, y, 15 + 3 * Math.sin(time), 0, 2 * Math.PI);
+              terrainCtx.stroke();
+              
+              // 방사능 심볼
+              terrainCtx.fillStyle = "#92400E";
+              terrainCtx.font = "bold 16px monospace";
               terrainCtx.textAlign = "center";
-              terrainCtx.fillText("⚠️", x, y + 4);
+              terrainCtx.fillText("☢", x, y + 5);
+              
+              // 위험 경고
+              terrainCtx.strokeStyle = "#FBBF24";
+              terrainCtx.lineWidth = 2;
+              terrainCtx.setLineDash([3, 3]);
+              terrainCtx.strokeRect(cellX + 2, cellY + 2, 36, 36);
+              terrainCtx.setLineDash([]);
               break;
           }
           terrainCtx.restore();
