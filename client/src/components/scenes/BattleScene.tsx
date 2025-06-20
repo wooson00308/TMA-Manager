@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
-import { BattleSimulation } from '@/components/BattleSimulation';
+import BattleSimulation from '@/components/BattleSimulation';
 import { CyberButton } from '@/components/ui/CyberButton';
 import { wsManager } from '@/lib/websocket';
 
