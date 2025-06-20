@@ -1,8 +1,22 @@
 import { create } from 'zustand';
-import { type GameScene, type TerrainFeature, type PilotInfo } from '@shared/domain/types';
-import { immer } from 'zustand/middleware/immer';
-import { apiRequest } from '@/lib/queryClient';
-import type { Pilot, Mech, Team, Formation } from '@shared/schema';
+import { apiRequest } from '../lib/queryClient';
+import type { Pilot, Mech, Team, Formation, GameScene } from '../../../shared/schema';
+
+// Local type definitions
+interface TerrainFeature {
+  x: number;
+  y: number;
+  type: "cover" | "obstacle" | "elevation" | "hazard";
+  effect: string;
+}
+
+interface PilotInfo {
+  id: number;
+  name: string;
+  callsign: string;
+  team: "ally" | "enemy";
+  initial: string;
+}
 
 // Hardcoded terrain data (can be moved to server config later)
 const TFM_TERRAIN_FEATURES: TerrainFeature[] = [
@@ -43,95 +57,94 @@ interface GameState {
   getPilotInfo: (pilotId: number) => PilotInfo;
 }
 
-export const useGameStore = create<GameState>()(
-  immer((set, get) => ({
-    currentScene: 'hub',
-    currentSeason: 3,
-    currentWeek: 8,
-    playerTeam: null,
-    pilots: [],
-    mechs: [],
-    terrainFeatures: TFM_TERRAIN_FEATURES,
-    activeFormation: null,
-    enemyTeams: [],
-    selectedMechs: {
-      player: [],
-      enemy: [],
-    },
+export const useGameStore = create<GameState>((set, get) => ({
+  currentScene: 'hub',
+  currentSeason: 3,
+  currentWeek: 8,
+  playerTeam: null,
+  pilots: [],
+  mechs: [],
+  terrainFeatures: TFM_TERRAIN_FEATURES,
+  activeFormation: null,
+  enemyTeams: [],
+  selectedMechs: {
+    player: [],
+    enemy: [],
+  },
 
-    setScene: (scene) => set({ currentScene: scene }),
-    
-    initializeGameData: async () => {
-      try {
-        const [pilotsRes, mechsRes, teamsRes] = await Promise.all([
-          apiRequest('GET', '/api/pilots'),
-          apiRequest('GET', '/api/mechs'),
-          apiRequest('GET', '/api/teams'),
-        ]);
+  setScene: (scene: GameScene) => set({ currentScene: scene }),
+  
+  initializeGameData: async () => {
+    try {
+      const [pilotsRes, mechsRes, teamsRes] = await Promise.all([
+        apiRequest('GET', '/api/pilots'),
+        apiRequest('GET', '/api/mechs'),
+        apiRequest('GET', '/api/teams'),
+      ]);
 
-        const pilots = await pilotsRes.json();
-        const mechs = await mechsRes.json();
-        const teams = await teamsRes.json();
+      const pilots = await pilotsRes.json();
+      const mechs = await mechsRes.json();
+      const teams = await teamsRes.json();
 
-        set({ 
-          pilots, 
-          mechs, 
-          enemyTeams: teams.filter((t: Team) => t.id !== 1), // Assuming player is team 1
-          playerTeam: teams.find((t: Team) => t.id === 1) || null
-        });
+      set({ 
+        pilots, 
+        mechs, 
+        enemyTeams: teams.filter((t: Team) => t.id !== 1), // Assuming player is team 1
+        playerTeam: teams.find((t: Team) => t.id === 1) || null
+      });
 
-      } catch (error) {
-        console.error("Failed to initialize game data", error);
-      }
-    },
+    } catch (error) {
+      console.error("Failed to initialize game data", error);
+    }
+  },
 
-    setPlayerTeam: (team) => set({ playerTeam: team }),
-    setPilots: (pilots) => set({ pilots }),
-    setMechs: (mechs) => set({ mechs }),
-    setActiveFormation: (formation) => set({ activeFormation: formation }),
-    setEnemyTeams: (teams) => set({ enemyTeams: teams }),
-    setSelectedMechs: (mechs) => set({ selectedMechs: mechs }),
-    
-    initializePlayerTeam: async () => {
-      if (get().playerTeam) return;
+  setPlayerTeam: (team: Team) => set({ playerTeam: team }),
+  setPilots: (pilots: Pilot[]) => set({ pilots }),
+  setMechs: (mechs: Mech[]) => set({ mechs }),
+  setActiveFormation: (formation: Formation | null) => set({ activeFormation: formation }),
+  setEnemyTeams: (teams: Team[]) => set({ enemyTeams: teams }),
+  setSelectedMechs: (mechs: { player: Mech[]; enemy: Mech[] }) => set({ selectedMechs: mechs }),
+  
+  initializePlayerTeam: async () => {
+    if (get().playerTeam) return;
 
-      try {
-        const res = await apiRequest('GET', '/api/teams/1');
-        const playerTeam = await res.json();
-        
-        const pilotsRes = await apiRequest('GET', '/api/pilots');
-        const pilots = await pilotsRes.json();
-
-        set({ 
-          playerTeam,
-          pilots,
-        });
-      } catch (error) {
-        console.error("Failed to initialize player team:", error);
-      }
-    },
-    getPilotInfo: (pilotId: number): PilotInfo => {
-      const { pilots } = get();
-      const found = pilots.find(p => p.id === pilotId);
-      if (found) {
-        const isEnemy = (found as any).team !== 'ally';
-        return {
-          id: found.id,
-          name: found.name,
-          callsign: found.callsign,
-          team: isEnemy ? 'enemy' : 'ally',
-          initial: isEnemy ? 'E' : found.name.charAt(0).toUpperCase()
-        };
-      }
+    try {
+      const res = await apiRequest('GET', '/api/teams/1');
+      const playerTeam = await res.json();
       
-      const isEnemy = pilotId >= 100;
+      const pilotsRes = await apiRequest('GET', '/api/pilots');
+      const pilots = await pilotsRes.json();
+
+      set({ 
+        playerTeam,
+        pilots,
+      });
+    } catch (error) {
+      console.error("Failed to initialize player team:", error);
+    }
+  },
+  
+  getPilotInfo: (pilotId: number): PilotInfo => {
+    const { pilots } = get();
+    const found = pilots.find((p: Pilot) => p.id === pilotId);
+    if (found) {
+      const isEnemy = (found as any).team !== 'ally';
       return {
-        id: pilotId,
-        name: isEnemy ? `Enemy ${pilotId}` : `Pilot ${pilotId}`,
-        callsign: isEnemy ? `E${pilotId}` : `P${pilotId}`,
+        id: found.id,
+        name: found.name,
+        callsign: found.callsign,
         team: isEnemy ? 'enemy' : 'ally',
-        initial: isEnemy ? 'E' : String.fromCharCode(65 + (pilotId % 26))
+        initial: isEnemy ? 'E' : found.name.charAt(0).toUpperCase()
       };
     }
-  }))
-);
+    
+    const isEnemy = pilotId >= 100;
+    return {
+      id: pilotId,
+      name: isEnemy ? `Enemy ${pilotId}` : `Pilot ${pilotId}`,
+      callsign: isEnemy ? `E${pilotId}` : `P${pilotId}`,
+      team: isEnemy ? 'enemy' : 'ally',
+      initial: isEnemy ? 'E' : String.fromCharCode(65 + (pilotId % 26))
+    };
+  }
+}));
