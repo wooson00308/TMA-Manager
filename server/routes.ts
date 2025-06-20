@@ -218,6 +218,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI decision endpoint for battle simulation
+  app.post("/api/ai/decision", async (req, res) => {
+    try {
+      const { participant, battleState, team } = req.body;
+      
+      if (!participant || !battleState || !team) {
+        return res.status(400).json({ error: 'Missing required parameters' });
+      }
+      
+      const aiSystem = new AISystem();
+      const decision = aiSystem.makeAdvancedDecision(participant, battleState, team);
+      
+      res.json({ decision });
+    } catch (error) {
+      console.error('Error making AI decision:', error);
+      res.status(500).json({ error: 'Failed to make AI decision' });
+    }
+  });
+
   // Team performance analytics endpoint
   app.get("/api/teams/:id/analytics", async (req, res) => {
     try {
