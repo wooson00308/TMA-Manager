@@ -19,6 +19,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const [isCountingDown, setIsCountingDown] = useState(true);
   const [animatingUnits, setAnimatingUnits] = useState<Set<number>>(new Set());
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
+  const [lastLogCount, setLastLogCount] = useState(0);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
@@ -82,6 +83,59 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       setIsSimulating(false);
     }
   }, [battle.phase]);
+
+  // Trigger attack effects when new combat events occur
+  useEffect(() => {
+    if (!battle.log || battle.log.length === 0) return;
+    
+    const newLogs = battle.log.slice(lastLogCount);
+    setLastLogCount(battle.log.length);
+    
+    newLogs.forEach((log) => {
+      if (log.type === 'attack' && log.message.includes('공격')) {
+        // Find attacker and target from participants
+        const attacker = (battle.participants || []).find(p => 
+          log.message.includes(getPilotInfo(p.pilotId).name)
+        );
+        const targetMatch = log.message.match(/(\w+)에게/);
+        const target = targetMatch ? (battle.participants || []).find(p => 
+          getPilotInfo(p.pilotId).name.includes(targetMatch[1])
+        ) : null;
+        
+        if (attacker && target) {
+          // Determine weapon type from message
+          let weaponType: "laser" | "missile" | "beam" = "laser";
+          if (log.message.includes('미사일') || log.message.includes('로켓')) {
+            weaponType = "missile";
+          } else if (log.message.includes('빔') || log.message.includes('플라즈마')) {
+            weaponType = "beam";
+          }
+          
+          // Create attack effect
+          const attackEffect: AttackEffect = {
+            id: `attack-${Date.now()}-${Math.random()}`,
+            from: attacker.position,
+            to: target.position,
+            startTime: Date.now(),
+            type: weaponType,
+            targetHit: true
+          };
+          
+          setAttackEffects(prev => [...prev, attackEffect]);
+          
+          // Animate attacking unit
+          setAnimatingUnits(prev => new Set([...prev, attacker.pilotId]));
+          setTimeout(() => {
+            setAnimatingUnits(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(attacker.pilotId);
+              return newSet;
+            });
+          }, 1500);
+        }
+      }
+    });
+  }, [battle.log, lastLogCount, battle.participants, getPilotInfo]);
 
   // Auto-scroll combat log to the bottom whenever a new entry is added.
   useEffect(() => {
