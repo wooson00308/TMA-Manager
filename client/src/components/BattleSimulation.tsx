@@ -185,12 +185,12 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
         {/* Center Battlefield */}
         <div className="flex-1 flex flex-col">
-          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20">
+          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center">
             <CanvasRenderer
               ref={canvasRef}
               width={640}
               height={480}
-              className="w-full h-full"
+              className="border border-gray-600/50 rounded-lg shadow-2xl"
             />
 
             {/* Countdown Overlay */}
@@ -213,8 +213,8 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               </div>
             )}
 
-            {/* Battle Stats HUD */}
-            <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-sm rounded-lg p-4 border border-cyan-400/50">
+            {/* Battle Stats HUD - positioned relative to canvas */}
+            <div className="absolute top-6 left-6 bg-black/80 backdrop-blur-sm rounded-lg p-4 border border-cyan-400/50 z-10">
               <div className="text-cyan-400 font-bold mb-2">전투 상황</div>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
