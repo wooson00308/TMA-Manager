@@ -306,7 +306,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 .map(participant => {
                   const pilot = getPilotInfo(participant.pilotId);
                   return (
-                    <div key={participant.pilotId} className="bg-blue-900/30 border border-blue-400/40 rounded p-2 min-w-28 flex-shrink-0">
+                    <div key={participant.pilotId} className="bg-blue-900/30 border border-blue-400/40 rounded p-1.5 min-w-24 flex-shrink-0">
                       <div className="flex items-center space-x-1 mb-1">
                         <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
                           {pilot.initial}
@@ -430,7 +430,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
 
           {/* Bottom Battle Log */}
-          <div className="h-32 lg:h-32 md:h-24 sm:h-20 bg-black/50 border-t-2 border-gray-600/50 p-2 lg:p-3 battle-log-mobile">
+          <div className="h-20 lg:h-32 md:h-24 sm:h-16 bg-black/50 border-t-2 border-gray-600/50 p-1 lg:p-3 battle-log-mobile">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -457,7 +457,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             </div>
             <div
               ref={logContainerRef}
-              className="h-20 overflow-y-auto custom-scrollbar space-y-1"
+              className="h-12 lg:h-20 overflow-y-auto custom-scrollbar space-y-1"
             >
               {(battle.log || []).length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-500">
@@ -549,7 +549,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               .map(participant => {
                 const pilot = getPilotInfo(participant.pilotId);
                 return (
-                  <div key={participant.pilotId} className="bg-red-900/30 border border-red-400/40 rounded p-2 min-w-28 flex-shrink-0">
+                  <div key={participant.pilotId} className="bg-red-900/30 border border-red-400/40 rounded p-1.5 min-w-24 flex-shrink-0">
                     <div className="flex items-center space-x-1 mb-1">
                       <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
                         {pilot.initial}
