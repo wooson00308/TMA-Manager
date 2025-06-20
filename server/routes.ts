@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { insertPilotSchema, insertFormationSchema, type BattleState } from "@shared/schema";
 import { BattleEngine } from "./services/BattleEngine";
 import { AISystem } from "./services/AISystem";
+import { GameEngine } from "./services/GameEngine";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -12,6 +13,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // WebSocket server for real-time battle updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
   const battleEngine = new BattleEngine();
+  const gameEngine = new GameEngine();
   const activeBattles = new Map<string, BattleState>();
 
   wss.on('connection', (ws: WebSocket) => {
@@ -32,17 +34,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               battleId,
               state: battleState
             }));
+            break;
 
-            // Start battle simulation
-            battleEngine.runBattle(battleState, (update) => {
-              if (ws.readyState === WebSocket.OPEN) {
+          case 'TICK_UPDATE':
+            const battle = activeBattles.get(message.battleId);
+            if (battle && battle.phase === 'active') {
+              // AI가 행동 결정 및 처리 (서버에서만)
+              const aiResults = gameEngine.processAITurn(battle);
+              
+              // 업데이트된 상태를 클라이언트에 전송
+              if (aiResults.length > 0) {
+                const updatedBattle = aiResults[aiResults.length - 1].battleState;
+                activeBattles.set(message.battleId, updatedBattle);
+                
                 ws.send(JSON.stringify({
                   type: 'BATTLE_UPDATE',
-                  battleId,
-                  update
+                  battleId: message.battleId,
+                  state: updatedBattle,
+                  effects: aiResults.flatMap(result => result.effects),
+                  gameOver: aiResults.find(r => r.gameOver)?.gameOver
                 }));
               }
-            });
+            }
             break;
 
           case 'JOIN_BATTLE':

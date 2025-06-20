@@ -2,7 +2,7 @@ import { type BattleState } from "@shared/schema";
 import { AISystem } from "./AISystem";
 
 interface GameAction {
-  type: "MOVE" | "ATTACK" | "COMMUNICATE" | "DEFEND" | "SUPPORT" | "SCOUT" | "RETREAT" | "SPECIAL";
+  type: "MOVE" | "ATTACK" | "COMMUNICATE" | "DEFEND" | "SUPPORT" | "SCOUT" | "RETREAT" | "SPECIAL" | "ADVANCE";
   pilotId: number;
   targetId?: number;
   newPosition?: { x: number; y: number };
@@ -273,8 +273,9 @@ export class GameEngine {
         const team = index < 3 ? "team1" : "team2";
         const aiDecision = this.aiSystem.makeAdvancedDecision(participant, battleState, team);
         
+        const actionType = aiDecision.type === 'ADVANCE' ? 'MOVE' : aiDecision.type;
         const action: GameAction = {
-          type: aiDecision.type,
+          type: actionType,
           pilotId: participant.pilotId,
           targetId: aiDecision.target?.pilotId,
           newPosition: aiDecision.newPosition,
