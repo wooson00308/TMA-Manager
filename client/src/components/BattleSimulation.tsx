@@ -248,7 +248,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             {battle.phase !== 'completed' && !isSimulating && !isCountingDown && (
               <button
                 onClick={startSimulation}
-                className="px-3 md:px-6 py-1 md:py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg text-xs md:text-sm"
+                className="mobile-button md:px-6 md:py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
               >
                 <span className="hidden sm:inline">전투 시작</span>
                 <span className="sm:hidden">시작</span>
@@ -293,9 +293,50 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       </div>
 
       {/* Main Battle Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Player Panel */}
-        <div className="w-64 bg-gradient-to-b from-blue-900/20 to-blue-800/20 border-r-2 border-blue-400/30 flex flex-col">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden mobile-battle-layout">
+        {/* Mobile Top Allied Panel */}
+        <div className="lg:hidden bg-gradient-to-r from-blue-900/20 to-blue-800/20 border-b-2 border-blue-400/30 mobile-unit-panel">
+          <div className="bg-blue-900/50 border-b border-blue-400/30 p-1 mobile-status-bar">
+            <h3 className="text-blue-300 font-bold text-center text-xs">아군 부대</h3>
+          </div>
+          <div className="p-1 overflow-x-auto">
+            <div className="flex space-x-2">
+              {(battle.participants || [])
+                .filter(p => p.team === 'team1')
+                .map(participant => {
+                  const pilot = getPilotInfo(participant.pilotId);
+                  return (
+                    <div key={participant.pilotId} className="bg-blue-900/30 border border-blue-400/40 rounded p-2 min-w-28 flex-shrink-0">
+                      <div className="flex items-center space-x-1 mb-1">
+                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                          {pilot.initial}
+                        </div>
+                        <div className="text-blue-200 font-semibold text-xs truncate">{pilot.name}</div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-blue-300">HP</span>
+                          <span className="text-white font-bold">{participant.hp}%</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-1">
+                          <div
+                            className={`h-1 rounded-full transition-all ${
+                              participant.hp > 70 ? 'bg-green-500' :
+                              participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${Math.min(participant.hp, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+
+        {/* Desktop Left Player Panel */}
+        <div className="hidden lg:flex w-64 bg-gradient-to-b from-blue-900/20 to-blue-800/20 border-r-2 border-blue-400/30 flex-col">
           <div className="bg-blue-900/50 border-b border-blue-400/30 p-3">
             <h3 className="text-blue-300 font-bold text-center">아군 부대</h3>
           </div>
@@ -338,12 +379,12 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
         {/* Center Battlefield */}
         <div className="flex-1 flex flex-col">
-          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center">
+          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center p-2 lg:p-4">
             <CanvasRenderer
               ref={canvasRef}
               width={640}
               height={480}
-              className="border border-gray-600/50 rounded-lg shadow-2xl"
+              className="battlefield-canvas border border-gray-600/50 rounded-lg shadow-2xl"
             />
 
             {/* Countdown Overlay */}
@@ -389,7 +430,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
 
           {/* Bottom Battle Log */}
-          <div className="h-32 bg-black/50 border-t-2 border-gray-600/50 p-3">
+          <div className="h-32 lg:h-32 md:h-24 sm:h-20 bg-black/50 border-t-2 border-gray-600/50 p-2 lg:p-3 battle-log-mobile">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -453,8 +494,8 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
         </div>
 
-        {/* Right Enemy Panel */}
-        <div className="w-64 bg-gradient-to-b from-red-900/20 to-red-800/20 border-l-2 border-red-400/30 flex flex-col">
+        {/* Desktop Right Enemy Panel */}
+        <div className="hidden lg:flex w-64 bg-gradient-to-b from-red-900/20 to-red-800/20 border-l-2 border-red-400/30 flex-col">
           <div className="bg-red-900/50 border-b border-red-400/30 p-3">
             <h3 className="text-red-300 font-bold text-center">적군 부대</h3>
           </div>
@@ -482,6 +523,47 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full transition-all ${
+                            participant.hp > 70 ? 'bg-green-500' :
+                            participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${Math.min(participant.hp, 100)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Bottom Enemy Panel */}
+      <div className="lg:hidden bg-gradient-to-r from-red-900/20 to-red-800/20 border-t-2 border-red-400/30 mobile-unit-panel">
+        <div className="bg-red-900/50 border-b border-red-400/30 p-1 mobile-status-bar">
+          <h3 className="text-red-300 font-bold text-center text-xs">적군 부대</h3>
+        </div>
+        <div className="p-1 overflow-x-auto">
+          <div className="flex space-x-2">
+            {(battle.participants || [])
+              .filter(p => p.team === 'team2')
+              .map(participant => {
+                const pilot = getPilotInfo(participant.pilotId);
+                return (
+                  <div key={participant.pilotId} className="bg-red-900/30 border border-red-400/40 rounded p-2 min-w-28 flex-shrink-0">
+                    <div className="flex items-center space-x-1 mb-1">
+                      <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
+                        {pilot.initial}
+                      </div>
+                      <div className="text-red-200 font-semibold text-xs truncate">{pilot.name}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-red-300">HP</span>
+                        <span className="text-white font-bold">{participant.hp}%</span>
+                      </div>
+                      <div className="w-full bg-gray-700 rounded-full h-1">
+                        <div
+                          className={`h-1 rounded-full transition-all ${
                             participant.hp > 70 ? 'bg-green-500' :
                             participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}

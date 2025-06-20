@@ -395,8 +395,63 @@
 
 @media (max-width: 768px) {
   .battlefield-canvas {
-    aspect-ratio: 16/9;
-    max-height: 60vh;
+    aspect-ratio: 16/10;
+    max-height: 45vh;
+    max-width: 95vw;
+  }
+}
+
+/* Ultra-tall mobile screens (19.5:9 like Galaxy S24) */
+@media (max-width: 480px) {
+  .battlefield-canvas {
+    aspect-ratio: 3/2;
+    max-height: 40vh;
+    max-width: 92vw;
+    min-height: 200px;
+  }
+  
+  .mobile-battle-layout {
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+  }
+  
+  /* Compact mobile panels */
+  .mobile-unit-panel {
+    max-height: 70px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  
+  /* Smaller mobile elements */
+  .mobile-status-bar {
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .mobile-button {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
+  /* Battle log mobile optimization */
+  .battle-log-mobile {
+    max-height: 60px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Extra tall screens like Galaxy S24 (aspect ratio > 2) */
+@media (max-width: 480px) and (min-aspect-ratio: 2/1) {
+  .battlefield-canvas {
+    max-height: 35vh;
+    aspect-ratio: 4/3;
+  }
+  
+  .mobile-unit-panel {
+    max-height: 60px;
+  }
+  
+  .mobile-battle-layout {
+    max-height: calc(100vh - 120px);
   }
 }
 
