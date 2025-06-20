@@ -725,6 +725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const battle = await storage.createBattle(battleData);
       
       // Initialize battle state
+      console.log('Calling battleEngine.initializeBattle with:', { formation1, formation2 });
       const battleState = await battleEngine.initializeBattle(formation1, formation2);
       activeBattles.set(battle.id.toString(), battleState);
 

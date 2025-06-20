@@ -212,8 +212,74 @@ export class MemStorage implements IStorage {
       }
     ];
 
+    // Enemy pilots for battle simulation (100+ IDs)
+    const enemyPilots: InsertPilot[] = [
+      {
+        name: "Commander Rex",
+        callsign: "ALPHA",
+        dormitory: "Knight",
+        rating: 85,
+        reaction: 88,
+        accuracy: 82,
+        tactical: 90,
+        teamwork: 75,
+        traits: ["AGGRESSIVE", "ACE", "VETERAN"],
+        isActive: true
+      },
+      {
+        name: "Sniper Zara",
+        callsign: "BETA",
+        dormitory: "Arbiter",
+        rating: 80,
+        reaction: 75,
+        accuracy: 95,
+        tactical: 85,
+        teamwork: 60,
+        traits: ["ANALYTICAL", "SNIPER", "CAUTIOUS"],
+        isActive: true
+      },
+      {
+        name: "Blade Runner",
+        callsign: "GAMMA",
+        dormitory: "River",
+        rating: 78,
+        reaction: 92,
+        accuracy: 80,
+        tactical: 70,
+        teamwork: 65,
+        traits: ["AGGRESSIVE", "ASSAULT", "INDEPENDENT"],
+        isActive: true
+      }
+    ];
+
     // Create all pilots
     [...trinityPilots, ...recruitablePilots].forEach(pilot => this.createPilot(pilot));
+    
+    // Create enemy pilots with 100+ IDs
+    enemyPilots.forEach((pilot, index) => {
+      const id = 100 + index;
+      const enemyPilot: Pilot = { 
+        id,
+        name: pilot.name,
+        callsign: pilot.callsign,
+        dormitory: pilot.dormitory,
+        rating: pilot.rating!,
+        reaction: pilot.reaction!,
+        accuracy: pilot.accuracy!,
+        tactical: pilot.tactical!,
+        teamwork: pilot.teamwork!,
+        traits: pilot.traits!,
+        isActive: pilot.isActive!,
+        experience: 500,
+        wins: 15,
+        losses: 8,
+        trainingUntil: null,
+        trainingType: null,
+        fatigue: 30,
+        morale: 85
+      };
+      this.pilots.set(id, enemyPilot);
+    });
 
     // Initialize default mechs
     const defaultMechs: InsertMech[] = [

@@ -7,38 +7,63 @@ export class BattleEngine {
   private battleTimers = new Map<string, NodeJS.Timeout>();
 
   async initializeBattle(formation1: any, formation2: any): Promise<BattleState> {
+    console.log('Formation1 received:', formation1);
+    console.log('Formation2 received:', formation2);
+    console.log('Formation1 pilots:', formation1?.pilots);
+    console.log('Formation2 pilots:', formation2?.pilots);
+    
+    if (!formation1 || !formation2) {
+      throw new Error('Both formations are required');
+    }
+    
     // 실제 파일럿과 메크 데이터 기반으로 배틀 상태 초기화
     const participants = [];
 
     // 팀 1 (아군) 파티시펀트 생성
-    for (let i = 0; i < formation1.pilots.length; i++) {
-      const pilot = await storage.getPilot(formation1.pilots[i]);
-      const mech = await storage.getMech(formation1.mechs[i]);
-      
-      if (pilot && mech) {
-        participants.push({
-          pilotId: pilot.id,
-          mechId: mech.id,
-          position: { x: 2 + i * 2, y: 7 - i },
-          hp: mech.hp,
-          status: 'active' as const
-        });
+    if (formation1.pilots && Array.isArray(formation1.pilots)) {
+      for (let i = 0; i < formation1.pilots.length; i++) {
+        const formationUnit = formation1.pilots[i];
+        const pilotId = formationUnit.pilotId || formationUnit.pilot?.id;
+        const mechId = formationUnit.mechId || formationUnit.mech?.id;
+        
+        if (pilotId && mechId) {
+          const pilot = await storage.getPilot(pilotId);
+          const mech = await storage.getMech(mechId);
+          
+          if (pilot && mech) {
+            participants.push({
+              pilotId: pilot.id,
+              mechId: mech.id,
+              position: { x: 2 + i * 2, y: 7 - i },
+              hp: mech.hp,
+              status: 'active' as const
+            });
+          }
+        }
       }
     }
 
-    // 팀 2 (적군) 파티시펀트 생성 - ID를 100번대로 설정
-    for (let i = 0; i < formation2.pilots.length; i++) {
-      const pilot = await storage.getPilot(formation2.pilots[i]);
-      const mech = await storage.getMech(formation2.mechs[i]);
-      
-      if (pilot && mech) {
-        participants.push({
-          pilotId: pilot.id + 100, // 적군 구분을 위한 오프셋
-          mechId: mech.id,
-          position: { x: 12 + i * 2, y: 2 + i },
-          hp: mech.hp,
-          status: 'active' as const
-        });
+    // 팀 2 (적군) 파티시펀트 생성
+    if (formation2.pilots && Array.isArray(formation2.pilots)) {
+      for (let i = 0; i < formation2.pilots.length; i++) {
+        const formationUnit = formation2.pilots[i];
+        const pilotId = formationUnit.pilotId || formationUnit.pilot?.id;
+        const mechId = formationUnit.mechId || formationUnit.mech?.id;
+        
+        if (pilotId && mechId) {
+          // 적군은 실제 저장된 파일럿 대신 임시 데이터 사용
+          const mech = await storage.getMech(mechId);
+          
+          if (mech) {
+            participants.push({
+              pilotId: pilotId, // 이미 100번대로 설정됨
+              mechId: mech.id,
+              position: { x: 12 + i * 2, y: 2 + i },
+              hp: mech.hp,
+              status: 'active' as const
+            });
+          }
+        }
       }
     }
 
