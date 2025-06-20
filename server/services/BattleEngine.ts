@@ -1,165 +1,235 @@
-import { type BattleState, type Formation, type Pilot, type Mech } from "@shared/schema";
+import { type BattleState } from "@shared/schema";
+import { storage } from "../storage";
 import { AISystem } from "./AISystem";
 
 export class BattleEngine {
-  private aiSystem: AISystem;
-
-  constructor() {
-    this.aiSystem = new AISystem();
-  }
+  private aiSystem = new AISystem();
+  private battleTimers = new Map<string, NodeJS.Timeout>();
 
   async initializeBattle(formation1: any, formation2: any): Promise<BattleState> {
-    const battleId = `battle_${Date.now()}`;
-    
-    const participants: Array<{
-      pilotId: number;
-      mechId: number;
-      position: { x: number; y: number };
-      hp: number;
-      status: "active" | "damaged" | "destroyed";
-    }> = [];
-    
-    // Team 1 (아군) - formation1.pilots 배열 사용
-    if (formation1.pilots && Array.isArray(formation1.pilots)) {
-      formation1.pilots.forEach((pilot: any, index: number) => {
+    // 실제 파일럿과 메크 데이터 기반으로 배틀 상태 초기화
+    const participants = [];
+
+    // 팀 1 (아군) 파티시펀트 생성
+    for (let i = 0; i < formation1.pilots.length; i++) {
+      const pilot = await storage.getPilot(formation1.pilots[i]);
+      const mech = await storage.getMech(formation1.mechs[i]);
+      
+      if (pilot && mech) {
         participants.push({
-          pilotId: pilot.pilotId,
-          mechId: pilot.mechId,
-          position: { x: 2, y: 2 + (index * 2) },
-          hp: 100,
-          status: "active" as const
+          pilotId: pilot.id,
+          mechId: mech.id,
+          position: { x: 2 + i * 2, y: 7 - i },
+          hp: mech.hp,
+          status: 'active' as const
         });
-      });
-    }
-    
-    // Team 2 (적군) - formation2.pilots 배열 사용
-    if (formation2.pilots && Array.isArray(formation2.pilots)) {
-      formation2.pilots.forEach((pilot: any, index: number) => {
-        participants.push({
-          pilotId: pilot.pilotId,
-          mechId: pilot.mechId,
-          position: { x: 17, y: 2 + (index * 2) },
-          hp: 100,
-          status: "active" as const
-        });
-      });
+      }
     }
 
-    return {
-      id: battleId,
-      phase: "preparation",
+    // 팀 2 (적군) 파티시펀트 생성 - ID를 100번대로 설정
+    for (let i = 0; i < formation2.pilots.length; i++) {
+      const pilot = await storage.getPilot(formation2.pilots[i]);
+      const mech = await storage.getMech(formation2.mechs[i]);
+      
+      if (pilot && mech) {
+        participants.push({
+          pilotId: pilot.id + 100, // 적군 구분을 위한 오프셋
+          mechId: mech.id,
+          position: { x: 12 + i * 2, y: 2 + i },
+          hp: mech.hp,
+          status: 'active' as const
+        });
+      }
+    }
+
+    const battleState: BattleState = {
+      id: `battle_${Date.now()}`,
+      phase: 'preparation',
       turn: 0,
       participants,
-      log: [
-        {
-          timestamp: Date.now(),
-          type: "system",
-          message: "전투 시스템 초기화 완료. 모든 유닛 대기 중.",
-        },
-        {
-          timestamp: Date.now() + 1000,
-          type: "system", 
-          message: "전술 분석 시작. 교전 준비 완료.",
-        }
-      ]
+      log: [{
+        timestamp: Date.now(),
+        type: 'system',
+        message: '전투 준비 완료. 모든 유닛 대기 중...'
+      }]
     };
+
+    return battleState;
   }
 
   async runBattle(battleState: BattleState, onUpdate: (update: any) => void): Promise<void> {
-    battleState.phase = "active";
-    onUpdate({ type: "PHASE_CHANGE", phase: "active" });
+    // 전투 준비 단계
+    setTimeout(() => {
+      battleState.phase = 'active';
+      onUpdate({
+        type: 'PHASE_CHANGE',
+        phase: 'active',
+        message: '전투 개시!'
+      });
+      
+      // 전투 시뮬레이션 시작
+      this.startBattleLoop(battleState, onUpdate);
+    }, 2000);
+  }
 
-    const maxTurns = 50;
-    let turn = 0;
-
-    const battleInterval = setInterval(() => {
-      if (turn >= maxTurns || this.isBattleComplete(battleState)) {
-        clearInterval(battleInterval);
-        battleState.phase = "completed";
-        onUpdate({ type: "BATTLE_COMPLETE", winner: this.determineWinner(battleState) });
+  private async startBattleLoop(battleState: BattleState, onUpdate: (update: any) => void): Promise<void> {
+    const battleTimer = setInterval(async () => {
+      if (battleState.phase !== 'active') {
+        clearInterval(battleTimer);
         return;
       }
 
-      turn++;
-      battleState.turn = turn;
+      // 전투 종료 조건 확인
+      const allyCount = battleState.participants.filter(p => p.pilotId < 100 && p.status === 'active').length;
+      const enemyCount = battleState.participants.filter(p => p.pilotId >= 100 && p.status === 'active').length;
 
-      // Process AI decisions for each active participant (simplified)
-      battleState.participants.forEach((participant, index) => {
-        if (participant.status === "active") {
-          const aiDecision = this.aiSystem.makeSimpleDecision(participant, battleState, index < 3 ? "team1" : "team2");
-          this.executeAction(participant, aiDecision, battleState);
-        }
-      });
+      if (allyCount === 0 || enemyCount === 0) {
+        battleState.phase = 'completed';
+        const winner = allyCount > 0 ? 'team1' : 'team2';
+        
+        onUpdate({
+          type: 'BATTLE_COMPLETE',
+          winner,
+          finalState: battleState
+        });
+        
+        clearInterval(battleTimer);
+        return;
+      }
 
-      // Send complete battle state update
+      // 턴 진행
+      battleState.turn++;
+      const recentLogs: any[] = [];
+
+      // 모든 참가자의 AI 결정 생성 (병렬 처리)
+      const activeParticipants = battleState.participants.filter(p => p.status === 'active');
+      const aiDecisions = await Promise.all(
+        activeParticipants.map(async (participant) => {
+          const team = participant.pilotId < 100 ? 'ally' : 'enemy';
+          return await this.aiSystem.makeSimpleDecision(participant, battleState, team);
+        })
+      );
+
+      // AI 결정 실행
+      for (let i = 0; i < activeParticipants.length; i++) {
+        const participant = activeParticipants[i];
+        const decision = aiDecisions[i];
+        
+        await this.executeAIDecision(participant, decision, battleState, recentLogs);
+      }
+
+      // 업데이트 전송
       onUpdate({
-        type: "TURN_UPDATE",
-        battleState: {
-          ...battleState,
-          log: battleState.log // 전체 로그 포함
-        }
+        type: 'TURN_UPDATE',
+        turn: battleState.turn,
+        participants: battleState.participants,
+        recentLogs
       });
 
-    }, 2000); // 2 second intervals
+    }, 3000); // 3초마다 턴 진행
+
+    this.battleTimers.set(battleState.id, battleTimer);
   }
 
-  private executeAction(participant: any, action: any, battleState: BattleState): void {
-    const timestamp = Date.now();
-    
-    switch (action.type) {
-      case "MOVE":
-        participant.position = action.newPosition;
-        battleState.log.push({
-          timestamp,
-          type: "movement",
-          message: action.dialogue || `포지션 이동 중`,
-          speaker: action.pilotName
-        });
-        break;
+  private async executeAIDecision(
+    participant: any, 
+    decision: any, 
+    battleState: BattleState, 
+    recentLogs: any[]
+  ): Promise<void> {
+    const pilot = await storage.getPilot(participant.pilotId >= 100 ? participant.pilotId - 100 : participant.pilotId);
+    const pilotName = pilot ? pilot.name : `Unit-${participant.pilotId}`;
 
-      case "ATTACK":
-        const target = battleState.participants[action.targetIndex];
-        const damage = Math.floor(Math.random() * 25) + 10;
-        target.hp = Math.max(0, target.hp - damage);
-        
-        if (target.hp === 0) {
-          target.status = "destroyed";
-        } else if (target.hp < 30) {
-          target.status = "damaged";
+    switch (decision.type) {
+      case 'ATTACK':
+        if (decision.targetIndex !== undefined) {
+          const target = battleState.participants[decision.targetIndex];
+          if (target && target.status === 'active') {
+            // 실제 메크 데이터 기반 데미지 계산
+            const attackerMech = await storage.getMech(participant.mechId);
+            const targetMech = await storage.getMech(target.mechId);
+            
+            let damage = attackerMech ? 
+              Math.floor(attackerMech.firepower * (0.8 + Math.random() * 0.4)) : 
+              Math.floor(Math.random() * 30) + 10;
+
+            // 파일럿 정확도 적용
+            if (pilot) {
+              const accuracyMultiplier = 0.8 + (pilot.accuracy / 100) * 0.4;
+              damage = Math.floor(damage * accuracyMultiplier);
+            }
+
+            // 타겟 방어력 적용
+            if (targetMech) {
+              const armorReduction = targetMech.armor * 0.01;
+              damage = Math.floor(damage * (1 - armorReduction));
+            }
+
+            damage = Math.max(1, damage);
+            target.hp = Math.max(0, target.hp - damage);
+
+            if (target.hp === 0) {
+              target.status = 'destroyed';
+            } else if (target.hp < 30) {
+              target.status = 'damaged';
+            }
+
+            recentLogs.push({
+              timestamp: Date.now(),
+              type: 'attack',
+              message: decision.dialogue || `${pilotName}이(가) 공격했습니다!`,
+              speaker: pilotName
+            });
+
+            if (target.hp === 0) {
+              const targetPilot = await storage.getPilot(target.pilotId >= 100 ? target.pilotId - 100 : target.pilotId);
+              const targetName = targetPilot ? targetPilot.name : `Unit-${target.pilotId}`;
+              recentLogs.push({
+                timestamp: Date.now(),
+                type: 'system',
+                message: `${targetName}의 기체가 격파되었습니다!`
+              });
+            }
+          }
         }
-
-        battleState.log.push({
-          timestamp,
-          type: "attack",
-          message: action.dialogue || `공격 실행`,
-          speaker: action.pilotName
-        });
         break;
 
-      case "COMMUNICATE":
-        battleState.log.push({
-          timestamp,
-          type: "communication",
-          message: action.dialogue || `통신 중`,
-          speaker: action.pilotName
-        });
+      case 'MOVE':
+      case 'RETREAT':
+      case 'SCOUT':
+      case 'SUPPORT':
+        if (decision.newPosition) {
+          participant.position = decision.newPosition;
+        }
+        
+        if (decision.dialogue) {
+          recentLogs.push({
+            timestamp: Date.now(),
+            type: 'movement',
+            message: decision.dialogue,
+            speaker: pilotName
+          });
+        }
+        break;
+
+      case 'COMMUNICATE':
+        if (decision.dialogue) {
+          recentLogs.push({
+            timestamp: Date.now(),
+            type: 'communication',
+            message: decision.dialogue,
+            speaker: pilotName
+          });
+        }
         break;
     }
   }
 
-  private isBattleComplete(battleState: BattleState): boolean {
-    const team1Active = battleState.participants.slice(0, 3).filter(p => p.status === "active").length;
-    const team2Active = battleState.participants.slice(3, 6).filter(p => p.status === "active").length;
-    
-    return team1Active === 0 || team2Active === 0;
-  }
-
-  private determineWinner(battleState: BattleState): "team1" | "team2" | "draw" {
-    const team1Active = battleState.participants.slice(0, 3).filter(p => p.status === "active").length;
-    const team2Active = battleState.participants.slice(3, 6).filter(p => p.status === "active").length;
-    
-    if (team1Active > team2Active) return "team1";
-    if (team2Active > team1Active) return "team2";
-    return "draw";
+  stopBattle(battleId: string): void {
+    const timer = this.battleTimers.get(battleId);
+    if (timer) {
+      clearInterval(timer);
+      this.battleTimers.delete(battleId);
+    }
   }
 }

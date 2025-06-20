@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useBattleStore } from '@/stores/battleStore';
+import { useQuery } from '@tanstack/react-query';
+import { type Pilot, type Mech } from '@shared/schema';
 
 interface BattleParticipant {
   pilotId: number;
@@ -68,6 +70,18 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const animationFrameRef = useRef<number>();
   const { addBattleLog, setBattle } = useBattleStore();
 
+  // 실제 파일럿 데이터 조회
+  const { data: allPilots = [] } = useQuery<Pilot[]>({
+    queryKey: ['/api/pilots/active'],
+    enabled: true
+  });
+
+  // 실제 메크 데이터 조회
+  const { data: allMechs = [] } = useQuery<Mech[]>({
+    queryKey: ['/api/mechs/available'],
+    enabled: true
+  });
+
   // 3초 카운트다운 및 자동 시작 로직
   useEffect(() => {
     if (isCountingDown && countdown > 0) {
@@ -87,21 +101,21 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     }
   }, [countdown, isCountingDown, addBattleLog]);
 
-  const pilots: PilotInfo[] = [
-    { id: 1, name: "Sasha", callsign: "볼코프", team: "ally", initial: "S" },
-    { id: 2, name: "Mente", callsign: "스톰", team: "ally", initial: "M" },
-    { id: 3, name: "Azuma", callsign: "레이븐", team: "ally", initial: "A" },
-    { id: 4, name: "Luna", callsign: "문영", team: "ally", initial: "L" },
-    { id: 7, name: "Jin", callsign: "진", team: "ally", initial: "J" },
-    { id: 101, name: "Enemy Alpha", callsign: "타겟-α", team: "enemy", initial: "E" },
-    { id: 102, name: "Enemy Beta", callsign: "타겟-β", team: "enemy", initial: "E" },
-    { id: 103, name: "Enemy Gamma", callsign: "타겟-γ", team: "enemy", initial: "E" },
-  ];
-
   const getPilotInfo = (pilotId: number): PilotInfo => {
-    const found = pilots.find(p => p.id === pilotId);
-    if (found) return found;
+    // 실제 파일럿 데이터에서 찾기
+    const pilot = allPilots.find(p => p.id === pilotId);
+    if (pilot) {
+      const isEnemy = pilotId >= 100;
+      return {
+        id: pilot.id,
+        name: pilot.name,
+        callsign: pilot.callsign,
+        team: isEnemy ? 'enemy' : 'ally',
+        initial: pilot.name.charAt(0).toUpperCase()
+      };
+    }
     
+    // 데이터가 없을 경우 기본값
     const isEnemy = pilotId >= 100;
     return {
       id: pilotId,
@@ -110,6 +124,10 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       team: isEnemy ? 'enemy' : 'ally',
       initial: isEnemy ? 'E' : String.fromCharCode(65 + (pilotId % 26))
     };
+  };
+
+  const getMechInfo = (mechId: number) => {
+    return allMechs.find(m => m.id === mechId);
   };
 
   const determineAIAction = (actor: any, battleState: any, actorInfo: PilotInfo) => {
@@ -132,13 +150,23 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
     const random = Math.random();
     
-    const personalities: { [key: string]: any } = {
-      'S': { aggressive: 0.8, tactical: 0.6, supportive: 0.4 },
-      'M': { aggressive: 0.4, tactical: 0.9, supportive: 0.8 },
-      'A': { aggressive: 0.9, tactical: 0.3, supportive: 0.5 },
-      'E': { aggressive: 0.6, tactical: 0.5, supportive: 0.2 }
+    // 실제 파일럿 데이터를 기반으로 성격 결정
+    const pilot = allPilots.find(p => p.id === actor.pilotId);
+    const personality = pilot ? {
+      aggressive: pilot.traits.includes('AGGRESSIVE') ? 0.9 : 
+                  pilot.traits.includes('CAUTIOUS') ? 0.3 : 
+                  (pilot.reaction + pilot.accuracy) / 200, // 반응속도와 정확도 기반
+      tactical: pilot.traits.includes('ANALYTICAL') ? 0.9 : 
+                pilot.tactical / 100, // 전술 스탯 기반
+      supportive: pilot.traits.includes('COOPERATIVE') ? 0.9 : 
+                  pilot.traits.includes('INDEPENDENT') ? 0.2 : 
+                  pilot.teamwork / 100 // 팀워크 스탯 기반
+    } : {
+      // 기본값 (적군이나 데이터 없는 경우)
+      aggressive: 0.6,
+      tactical: 0.5,
+      supportive: 0.3
     };
-    const personality = personalities[actorInfo.initial] || personalities['E'];
 
     if (isCriticalHP && random < 0.6) {
       const retreatPos = calculateRetreatPosition(actor.position, actorInfo.team, enemies);
@@ -593,9 +621,15 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             const attackTypes: ('laser' | 'missile' | 'beam')[] = ['laser', 'missile', 'beam'];
             let weaponType = attackTypes[Math.floor(Math.random() * attackTypes.length)];
             
-            if (actorInfo.initial === 'S') weaponType = 'laser';
-            else if (actorInfo.initial === 'M') weaponType = 'missile';
-            else if (actorInfo.initial === 'A') weaponType = 'beam';
+            // 메크 타입에 따른 무기 선택
+            const mech = getMechInfo(attacker.mechId);
+            if (mech) {
+              if (mech.type === 'Knight') weaponType = 'laser'; // 나이트: 레이저
+              else if (mech.type === 'River') weaponType = 'missile'; // 리버: 미사일
+              else if (mech.type === 'Arbiter') weaponType = 'beam'; // 아비터: 빔
+              else if (mech.variant.includes('Sniper')) weaponType = 'beam'; // 스나이퍼: 빔
+              else if (mech.variant.includes('Assault')) weaponType = 'missile'; // 어설트: 미사일
+            }
             
             const attackEffect: AttackEffect = {
               id: `${Date.now()}-${Math.random()}`,
@@ -606,9 +640,30 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             };
             setAttackEffects(prev => [...prev, attackEffect]);
             
-            let baseDamage = Math.floor(Math.random() * 30) + 10;
+            // 실제 메크 스탯 기반 데미지 계산
+            const attackerMech = getMechInfo(attacker.mechId);
+            const targetMech = getMechInfo(target.mechId);
+            const attackerPilot = allPilots.find(p => p.id === attacker.pilotId);
+            
+            let baseDamage = attackerMech ? 
+              Math.floor(attackerMech.firepower * (0.8 + Math.random() * 0.4)) : // 80-120% 화력
+              Math.floor(Math.random() * 30) + 10; // 기본값
+            
+            // 파일럿 정확도 적용
+            if (attackerPilot) {
+              const accuracyMultiplier = 0.8 + (attackerPilot.accuracy / 100) * 0.4; // 80-120%
+              baseDamage = Math.floor(baseDamage * accuracyMultiplier);
+            }
+            
             let finalDamage = baseDamage;
             
+            // 타겟 메크 방어력 적용
+            if (targetMech) {
+              const armorReduction = targetMech.armor * 0.01; // 1% per armor point
+              finalDamage = Math.floor(finalDamage * (1 - armorReduction));
+            }
+            
+            // 지형 효과 적용
             if (attackerTerrain?.type === 'elevation') {
               finalDamage += Math.floor(baseDamage * 0.2);
             }
@@ -620,6 +675,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             if (targetTerrain?.type === 'hazard') {
               finalDamage += 5;
             }
+            
+            // 최소 데미지 보장
+            finalDamage = Math.max(1, finalDamage);
             
             const newLog = {
               timestamp: Date.now(),
