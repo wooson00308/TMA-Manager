@@ -130,6 +130,12 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     return allMechs.find(m => m.id === mechId);
   };
 
+  const getHPPercentage = (participant: BattleParticipant) => {
+    const mechInfo = getMechInfo(participant.mechId);
+    const maxHP = mechInfo?.hp || 100;
+    return Math.round((participant.hp / maxHP) * 100);
+  };
+
   const determineAIAction = (actor: any, battleState: any, actorInfo: PilotInfo) => {
     const isLowHP = actor.hp < 30;
     const isCriticalHP = actor.hp < 15;
@@ -525,6 +531,10 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         ctx.stroke();
         
         if (participant.status !== 'destroyed') {
+          const mechInfo = getMechInfo(participant.mechId);
+          const maxHP = mechInfo?.hp || 100;
+          const hpPercentage = Math.round((participant.hp / maxHP) * 100);
+          
           const hpBarWidth = 30;
           const hpBarHeight = 4;
           const hpX = x - hpBarWidth / 2;
@@ -533,15 +543,15 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           ctx.fillStyle = '#374151';
           ctx.fillRect(hpX, hpY, hpBarWidth, hpBarHeight);
           
-          const hpWidth = (participant.hp / 100) * hpBarWidth;
-          ctx.fillStyle = participant.hp > 70 ? '#10B981' : 
-                         participant.hp > 30 ? '#F59E0B' : '#EF4444';
+          const hpWidth = (hpPercentage / 100) * hpBarWidth;
+          ctx.fillStyle = hpPercentage > 70 ? '#10B981' : 
+                         hpPercentage > 30 ? '#F59E0B' : '#EF4444';
           ctx.fillRect(hpX, hpY, hpWidth, hpBarHeight);
           
           ctx.fillStyle = '#FFFFFF';
           ctx.font = '10px monospace';
           ctx.textAlign = 'center';
-          ctx.fillText(`${participant.hp}%`, x, hpY - 2);
+          ctx.fillText(`${hpPercentage}%`, x, hpY - 2);
         }
         
         ctx.fillStyle = '#FFFFFF';
@@ -1045,6 +1055,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 .filter(p => getPilotInfo(p.pilotId).team === 'ally')
                 .map(participant => {
                   const pilot = getPilotInfo(participant.pilotId);
+                  const hpPercentage = getHPPercentage(participant);
                   return (
                     <div key={participant.pilotId} className="p-3 bg-blue-900/20 rounded border border-blue-400/30">
                       <div className="flex items-center justify-between">
@@ -1062,13 +1073,13 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                             <div className="w-16 bg-gray-700 rounded h-2">
                               <div 
                                 className={`h-2 rounded transition-all duration-300 ${
-                                  participant.hp > 70 ? 'bg-green-500' :
-                                  participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                                  hpPercentage > 70 ? 'bg-green-500' :
+                                  hpPercentage > 30 ? 'bg-yellow-500' : 'bg-red-500'
                                 }`}
-                                style={{ width: `${participant.hp}%` }}
+                                style={{ width: `${hpPercentage}%` }}
                               ></div>
                             </div>
-                            <span className="text-xs text-gray-300">{participant.hp}%</span>
+                            <span className="text-xs text-gray-300">{hpPercentage}%</span>
                           </div>
                         </div>
                       </div>
@@ -1085,6 +1096,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 .filter(p => getPilotInfo(p.pilotId).team === 'enemy')
                 .map(participant => {
                   const pilot = getPilotInfo(participant.pilotId);
+                  const hpPercentage = getHPPercentage(participant);
                   return (
                     <div key={participant.pilotId} className="p-3 bg-red-900/20 rounded border border-red-400/30">
                       <div className="flex items-center justify-between">
@@ -1102,13 +1114,13 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                             <div className="w-16 bg-gray-700 rounded h-2">
                               <div 
                                 className={`h-2 rounded transition-all duration-300 ${
-                                  participant.hp > 70 ? 'bg-green-500' :
-                                  participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                                  hpPercentage > 70 ? 'bg-green-500' :
+                                  hpPercentage > 30 ? 'bg-yellow-500' : 'bg-red-500'
                                 }`}
-                                style={{ width: `${participant.hp}%` }}
+                                style={{ width: `${hpPercentage}%` }}
                               ></div>
                             </div>
-                            <span className="text-xs text-gray-300">{participant.hp}%</span>
+                            <span className="text-xs text-gray-300">{hpPercentage}%</span>
                           </div>
                         </div>
                       </div>
