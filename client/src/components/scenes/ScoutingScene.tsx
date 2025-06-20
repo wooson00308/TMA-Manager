@@ -66,7 +66,7 @@ export function ScoutingScene() {
     queryKey: ['/api/pilots/active'],
   });
 
-  const { data: teams = [], isLoading: teamsLoading } = useQuery({
+  const { data: teams = [], isLoading: teamsLoading } = useQuery<TeamWithCredits[]>({
     queryKey: ['/api/teams'],
   });
 

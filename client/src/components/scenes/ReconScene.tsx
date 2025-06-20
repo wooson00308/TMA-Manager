@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useQuery } from '@tanstack/react-query';
 import { CyberButton } from '@/components/ui/CyberButton';
-import type { ReconData, Team } from '@/../../shared/schema';
+import type { ReconData, Team } from '@shared/schema';
 
 export function ReconScene() {
   const { setScene, enemyTeams } = useGameStore();

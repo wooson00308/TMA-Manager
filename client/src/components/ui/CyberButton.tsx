@@ -1,7 +1,7 @@
 import React, { ButtonHTMLAttributes, forwardRef } from 'react';
 
 interface CyberButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger';
+  variant?: 'primary' | 'secondary' | 'danger' | 'default';
   children: React.ReactNode;
 }
 
@@ -12,6 +12,7 @@ export const CyberButton = forwardRef<HTMLButtonElement, CyberButtonProps>(
       primary: 'cyber-border hover:bg-blue-900',
       secondary: 'border border-gray-600 hover:bg-gray-800',
       danger: 'border border-red-600 hover:bg-red-900',
+      default: 'cyber-border hover:bg-blue-900',
     };
 
     return (

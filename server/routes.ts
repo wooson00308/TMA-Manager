@@ -3,14 +3,14 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { insertPilotSchema, insertFormationSchema, type BattleState } from "@shared/schema";
-import { BattleEngine } from "./services/BattleEngine";
+import { BattleUseCase } from "./application/BattleUseCase";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
   // WebSocket server for real-time battle updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  const battleEngine = new BattleEngine();
+  const battleEngine = new BattleUseCase();
   const activeBattles = new Map<string, BattleState>();
 
   wss.on('connection', (ws: WebSocket) => {

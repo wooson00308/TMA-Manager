@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useBattleStore } from '@/stores/battleStore';
+import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
+import CanvasRenderer from "@/presentation/CanvasRenderer";
 
 interface BattleParticipant {
   pilotId: number;
@@ -206,65 +208,6 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       newPosition: tacticalPos,
       message: `${actorInfo.name}: "포지션 조정!"`
     };
-  };
-
-  const calculateRetreatPosition = (pos: any, team: string, enemies: any[]) => {
-    const safeDirection = team === 'ally' ? -2 : 2;
-    return {
-      x: Math.max(1, Math.min(15, pos.x + safeDirection)),
-      y: Math.max(1, Math.min(11, pos.y + (Math.random() > 0.5 ? -1 : 1)))
-    };
-  };
-
-  const calculateScoutPosition = (pos: any, team: string, enemies: any[]) => {
-    const scoutDirection = team === 'ally' ? 2 : -2;
-    return {
-      x: Math.max(1, Math.min(15, pos.x + scoutDirection)),
-      y: Math.max(1, Math.min(11, pos.y))
-    };
-  };
-
-  const calculateTacticalPosition = (pos: any, team: string, enemies: any[]) => {
-    if (enemies.length === 0) {
-      const direction = team === 'ally' ? 1 : -1;
-      return {
-        x: Math.max(1, Math.min(15, pos.x + direction)),
-        y: Math.max(1, Math.min(11, pos.y + (Math.random() > 0.5 ? 1 : -1)))
-      };
-    }
-
-    const nearestEnemy = enemies.reduce((prev: any, current: any) => {
-      const prevDist = Math.abs(prev.position.x - pos.x) + Math.abs(prev.position.y - pos.y);
-      const currDist = Math.abs(current.position.x - pos.x) + Math.abs(current.position.y - pos.y);
-      return currDist < prevDist ? current : prev;
-    });
-
-    const optimalX = Math.floor((pos.x + nearestEnemy.position.x) / 2);
-    const optimalY = Math.floor((pos.y + nearestEnemy.position.y) / 2);
-
-    return {
-      x: Math.max(1, Math.min(15, optimalX)),
-      y: Math.max(1, Math.min(11, optimalY))
-    };
-  };
-
-  const selectBestTarget = (enemies: any[], attacker: any, personality: any) => {
-    if (personality.aggressive > 0.7) {
-      return enemies.reduce((prev: any, current: any) => 
-        current.hp < prev.hp ? current : prev
-      );
-    } else if (personality.tactical > 0.7) {
-      return enemies.reduce((prev: any, current: any) => {
-        const prevScore = prev.hp + (Math.abs(prev.position.x - attacker.position.x) + Math.abs(prev.position.y - attacker.position.y)) * 3;
-        const currScore = current.hp + (Math.abs(current.position.x - attacker.position.x) + Math.abs(current.position.y - attacker.position.y)) * 3;
-        return currScore < prevScore ? current : prev;
-      });
-    }
-    return enemies.reduce((prev: any, current: any) => {
-      const prevDist = Math.abs(prev.position.x - attacker.position.x) + Math.abs(prev.position.y - attacker.position.y);
-      const currDist = Math.abs(current.position.x - attacker.position.x) + Math.abs(current.position.y - attacker.position.y);
-      return currDist < prevDist ? current : prev;
-    });
   };
 
   // 전투 종료 조건 확인 헬퍼 함수
@@ -789,7 +732,6 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             phase: 'completed' as const,
             log: [...(battle.log || []), victoryLog]
           });
-          return nextTick;
         }
         
         // 시간 제한 조건: 3분 후 무승부 또는 점수 승부
@@ -891,7 +833,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         <div className="bg-gray-900 rounded border border-gray-600 p-4 mb-6">
           <h4 className="text-md font-semibold text-gray-300 mb-3">전장 맵 (2D 탑뷰)</h4>
           <div className="flex justify-center relative">
-            <canvas
+            <CanvasRenderer
               ref={canvasRef}
               width={640}
               height={480}

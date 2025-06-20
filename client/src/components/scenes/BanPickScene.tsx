@@ -84,6 +84,11 @@ export function BanPickScene() {
     }
   }, [banPickState.phase, banPickState.selectedMechs]);
 
+  // Helper booleans derived from current phase
+  const isPlayerTurn = banPickState.phase.includes('player');
+  const isBanPhase = banPickState.phase.startsWith('ban_');
+  const isComplete = banPickState.phase === 'complete';
+
   // 디버그 정보 로그
   useEffect(() => {
     console.log('Ban/Pick State Debug:', {
@@ -148,10 +153,6 @@ export function BanPickScene() {
       !banPickState.selectedMechs.enemy.some(selected => selected.id === mech.id)
     );
   };
-
-  const isPlayerTurn = banPickState.phase.includes('player');
-  const isBanPhase = banPickState.phase.startsWith('ban_');
-  const isComplete = banPickState.phase === 'complete';
 
   const handleStartBattle = async () => {
     try {

@@ -91,9 +91,6 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export const insertPilotSchema = createInsertSchema(pilots).omit({
   id: true,
-  wins: true,
-  losses: true,
-  experience: true,
 });
 
 export const insertMechSchema = createInsertSchema(mechs).omit({
@@ -135,43 +132,6 @@ export type InsertBattle = z.infer<typeof insertBattleSchema>;
 export type Formation = typeof formations.$inferSelect;
 export type InsertFormation = z.infer<typeof insertFormationSchema>;
 
-// Game state types
-export type GameScene = "hub" | "scouting" | "formation" | "recon" | "banpick" | "battle" | "analysis" | "match_prep";
-
-export type PilotTrait = 
-  | "AGGRESSIVE" | "CAUTIOUS" | "ANALYTICAL" | "COOPERATIVE" | "INDEPENDENT"
-  | "ASSAULT" | "DEFENSIVE" | "SUPPORT" | "SNIPER" | "SCOUT"
-  | "KNIGHT" | "RIVER" | "ARBITER"
-  | "ACE" | "VETERAN" | "ROOKIE" | "GENIUS";
-
-export type BattleState = {
-  id: string;
-  phase: "preparation" | "active" | "completed";
-  turn: number;
-  participants: Array<{
-    pilotId: number;
-    mechId: number;
-    position: { x: number; y: number };
-    hp: number;
-    status: "active" | "damaged" | "destroyed";
-  }>;
-  log: Array<{
-    timestamp: number;
-    type: "movement" | "attack" | "communication" | "system";
-    message: string;
-    speaker?: string;
-  }>;
-};
-
-export type ReconData = {
-  teamName: string;
-  recentWins: number;
-  recentLosses: number;
-  preferredComposition: string[];
-  weaknesses: string[];
-  corePilots: Array<{
-    name: string;
-    traits: string[];
-    winRate: number;
-  }>;
-};
+// Re-export domain-level types from the new shared/domain/types module so that existing imports of
+// "@shared/schema" continue to compile during gradual migration.
+export { GameScene, PilotTrait, BattleState, ReconData } from "@shared/domain/types";
