@@ -27,12 +27,12 @@ export function HubScene() {
       </div>
 
       {/* Season Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="cyber-border p-4 bg-slate-800">
-          <h3 className="text-pink-400 font-semibold mb-3">시즌 진행도</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6">
+        <div className="cyber-border p-3 md:p-4 bg-slate-800">
+          <h3 className="text-pink-400 font-semibold mb-3 text-sm md:text-base">시즌 진행도</h3>
           <div className="space-y-3">
             <div>
-              <div className="flex justify-between text-sm mb-1">
+              <div className="flex justify-between text-xs md:text-sm mb-1">
                 <span>{currentWeek}주차 / 12주</span>
                 <span className="text-green-400">{Math.round((currentWeek / 12) * 100)}%</span>
               </div>
@@ -45,23 +45,23 @@ export function HubScene() {
             </div>
             <div className="text-xs text-gray-400">
               다음 매치: <span className="text-white">스틸 레이븐스</span><br/>
-              경기장: <span className="text-white">넥서스 아레나 베타</span>
+              <span className="hidden md:inline">경기장: <span className="text-white">넥서스 아레나 베타</span></span>
             </div>
           </div>
         </div>
 
-        <div className="cyber-border p-4 bg-slate-800">
-          <h3 className="text-pink-400 font-semibold mb-3">리그 순위</h3>
-          <div className="space-y-2 text-sm">
-            {leagueStandings.map((standing) => (
+        <div className="cyber-border p-3 md:p-4 bg-slate-800">
+          <h3 className="text-pink-400 font-semibold mb-3 text-sm md:text-base">리그 순위</h3>
+          <div className="space-y-1 md:space-y-2 text-xs md:text-sm">
+            {leagueStandings.slice(0, 5).map((standing) => (
               <div 
                 key={standing.rank}
                 className={`flex justify-between ${
                   standing.highlight ? 'border-l-2 border-green-400 pl-2 text-green-400 font-semibold' : 'text-gray-400'
                 }`}
               >
-                <span>{standing.rank}. {standing.team}</span>
-                <span className={standing.highlight ? 'text-green-400' : 'text-gray-300'}>
+                <span className="truncate">{standing.rank}. {standing.team}</span>
+                <span className={`ml-2 ${standing.highlight ? 'text-green-400' : 'text-gray-300'}`}>
                   {standing.record}
                 </span>
               </div>
@@ -69,15 +69,15 @@ export function HubScene() {
           </div>
         </div>
 
-        <div className="cyber-border p-4 bg-slate-800">
-          <h3 className="text-pink-400 font-semibold mb-3">최근 성과</h3>
-          <div className="space-y-2">
+        <div className="cyber-border p-3 md:p-4 bg-slate-800 md:col-span-2 lg:col-span-1">
+          <h3 className="text-pink-400 font-semibold mb-3 text-sm md:text-base">최근 성과</h3>
+          <div className="space-y-1 md:space-y-2">
             {recentMatches.map((match, index) => (
-              <div key={index} className="flex items-center space-x-2 text-sm">
+              <div key={index} className="flex items-center space-x-2 text-xs md:text-sm">
                 <div className={`w-2 h-2 rounded-full ${
                   match.type === 'success' ? 'bg-green-400' : 'bg-red-500'
                 }`}></div>
-                <span className="text-gray-400">vs {match.opponent}</span>
+                <span className="text-gray-400 truncate">vs {match.opponent}</span>
                 <span className={`ml-auto ${
                   match.type === 'success' ? 'text-green-400' : 'text-red-400'
                 }`}>
@@ -91,8 +91,8 @@ export function HubScene() {
 
       {/* Pilot Status Grid */}
       <div className="mb-6">
-        <h3 className="text-xl font-orbitron font-semibold text-green-400 mb-4">활성 파일럿 로스터</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <h3 className="text-lg md:text-xl font-orbitron font-semibold text-green-400 mb-4">활성 파일럿 로스터</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {pilots.slice(0, 3).map((pilot) => (
             <PilotCard key={pilot.id} pilot={pilot} />
           ))}

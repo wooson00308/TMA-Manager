@@ -46,10 +46,10 @@ export function GameShell() {
   return (
     <div className="h-screen flex flex-col">
       {/* Header Terminal */}
-      <header className="status-panel cyber-border border-t-0 border-l-0 border-r-0 p-4">
+      <header className="status-panel cyber-border border-t-0 border-l-0 border-r-0 p-2 md:p-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="ascii-art text-green-400 text-sm">
+          <div className="flex items-center space-x-2 md:space-x-4">
+            <div className="ascii-art text-green-400 text-xs md:text-sm hidden sm:block">
               ████╗  ████╗   ██╗<br/>
               ╚══██╗██╔══██╗███║<br/>
               &nbsp;&nbsp;&nbsp;██║██║  ██║╚██║<br/>
@@ -58,25 +58,28 @@ export function GameShell() {
               &nbsp;╚═════╝   ╚═╝ ╚═╝
             </div>
             <div>
-              <h1 className="text-xl font-orbitron font-bold text-green-400">TRINITY MECHA ACADEMY</h1>
-              <p className="text-xs text-gray-400">COMMAND & CONTROL INTERFACE v2.1</p>
+              <h1 className="text-sm md:text-xl font-orbitron font-bold text-green-400">
+                <span className="hidden sm:inline">TRINITY MECHA ACADEMY</span>
+                <span className="sm:hidden">TMA</span>
+              </h1>
+              <p className="text-xs text-gray-400 hidden md:block">COMMAND & CONTROL INTERFACE v2.1</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-2 md:space-x-6">
             <div className="text-right">
-              <div className="text-pink-400 font-semibold">시즌 {currentSeason}</div>
-              <div className="text-xs text-gray-400">주차 {currentWeek}/12</div>
+              <div className="text-pink-400 font-semibold text-xs md:text-sm">S{currentSeason}</div>
+              <div className="text-xs text-gray-400">{currentWeek}/12</div>
             </div>
             
-            <div className="cyber-border p-2 bg-slate-800">
+            <div className="cyber-border p-1 md:p-2 bg-slate-800 hidden sm:block">
               <div className="text-xs text-gray-400">운영자</div>
-              <div className="text-green-400 font-semibold">NEXUS-07</div>
+              <div className="text-green-400 font-semibold text-xs md:text-sm">NEXUS-07</div>
             </div>
             
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 md:space-x-2">
               <div className={`w-2 h-2 rounded-full animate-pulse ${isConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
-              <span className={`text-xs ${isConnected ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`text-xs ${isConnected ? 'text-green-400' : 'text-red-400'} hidden sm:inline`}>
                 {isConnected ? '온라인' : '오프라인'}
               </span>
             </div>
@@ -85,9 +88,26 @@ export function GameShell() {
       </header>
 
       {/* Main Interface */}
-      <div className="flex-1 flex">
-        {/* Sidebar Navigation */}
-        <nav className="w-64 status-panel cyber-border border-t-0 border-b-0 border-l-0 p-4">
+      <div className="flex-1 flex flex-col md:flex-row">
+        {/* Mobile Navigation Bar (Bottom) */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-green-400 z-50">
+          <div className="grid grid-cols-4 gap-1 p-2">
+            {navigationItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setScene(item.id as any)}
+                className={`p-2 text-center transition-colors ${
+                  currentScene === item.id ? 'bg-blue-900 text-green-400' : 'text-gray-400'
+                }`}
+              >
+                <div className="text-xs font-semibold">{item.label.split(' ')[0]}</div>
+              </button>
+            ))}
+          </div>
+        </nav>
+
+        {/* Sidebar Navigation (Desktop) */}
+        <nav className="hidden md:block w-64 status-panel cyber-border border-t-0 border-b-0 border-l-0 p-4">
           <div className="space-y-2">
             {navigationItems.map((item) => (
               <button
@@ -113,7 +133,7 @@ export function GameShell() {
         </nav>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ height: 'calc(100vh - 160px)' }}>
+        <main className="flex-1 p-3 md:p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800 pb-20 md:pb-0" style={{ height: 'calc(100vh - 120px)' }}>
           <CurrentSceneComponent />
         </main>
       </div>

@@ -236,45 +236,46 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       <div className="bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 border-b-2 border-cyan-400/50 p-2">
         <div className="flex items-center justify-between">
           {/* Team 1 Score */}
-          <div className="flex items-center space-x-4 bg-blue-900/30 border border-blue-400/50 rounded px-4 py-2">
-            <div className="text-2xl font-bold text-blue-400">
+          <div className="flex items-center space-x-2 md:space-x-4 bg-blue-900/30 border border-blue-400/50 rounded px-2 md:px-4 py-1 md:py-2">
+            <div className="text-lg md:text-2xl font-bold text-blue-400">
               {(battle.participants || []).filter(p => p.team === 'team1' && p.hp > 0).length}
             </div>
-            <div className="text-sm text-blue-300">아군</div>
+            <div className="text-xs md:text-sm text-blue-300">아군</div>
           </div>
 
           {/* Center Battle Info */}
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-2 md:space-x-6">
             {battle.phase !== 'completed' && !isSimulating && !isCountingDown && (
               <button
                 onClick={startSimulation}
-                className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
+                className="px-3 md:px-6 py-1 md:py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg text-xs md:text-sm"
               >
-                전투 시작
+                <span className="hidden sm:inline">전투 시작</span>
+                <span className="sm:hidden">시작</span>
               </button>
             )}
             
             {isCountingDown && (
-              <div className="flex items-center space-x-3 bg-red-900/30 border border-red-400/50 rounded px-4 py-2">
-                <div className="text-3xl font-bold text-red-400 animate-pulse tabular-nums">
+              <div className="flex items-center space-x-2 md:space-x-3 bg-red-900/30 border border-red-400/50 rounded px-2 md:px-4 py-1 md:py-2">
+                <div className="text-xl md:text-3xl font-bold text-red-400 animate-pulse tabular-nums">
                   {countdown > 0 ? countdown : "START!"}
                 </div>
               </div>
             )}
 
             {isSimulating && (
-              <div className="flex items-center space-x-2 bg-green-900/30 border border-green-400/50 rounded px-4 py-2">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-green-400 font-bold">LIVE</span>
-                <span className="text-white font-mono">{currentTick}초</span>
+              <div className="flex items-center space-x-1 md:space-x-2 bg-green-900/30 border border-green-400/50 rounded px-2 md:px-4 py-1 md:py-2">
+                <div className="w-2 md:w-3 h-2 md:h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-green-400 font-bold text-xs md:text-sm">LIVE</span>
+                <span className="text-white font-mono text-xs md:text-sm">{currentTick}초</span>
               </div>
             )}
 
-            {/* Animation Test Button */}
+            {/* Animation Test Button - Hidden on mobile */}
             {battle.participants && battle.participants.length >= 2 && (
               <button
                 onClick={testAnimation}
-                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-bold transition-colors"
+                className="hidden md:block px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-bold transition-colors"
               >
                 애니메이션 테스트
               </button>
@@ -282,9 +283,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
 
           {/* Team 2 Score */}
-          <div className="flex items-center space-x-4 bg-red-900/30 border border-red-400/50 rounded px-4 py-2">
-            <div className="text-sm text-red-300">적군</div>
-            <div className="text-2xl font-bold text-red-400">
+          <div className="flex items-center space-x-2 md:space-x-4 bg-red-900/30 border border-red-400/50 rounded px-2 md:px-4 py-1 md:py-2">
+            <div className="text-xs md:text-sm text-red-300">적군</div>
+            <div className="text-lg md:text-2xl font-bold text-red-400">
               {(battle.participants || []).filter(p => p.team === 'team2' && p.hp > 0).length}
             </div>
           </div>
