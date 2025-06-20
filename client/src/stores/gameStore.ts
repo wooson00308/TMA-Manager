@@ -135,13 +135,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     const { pilots } = get();
     const found = pilots.find((p: Pilot) => p.id === pilotId);
     if (found) {
-      const isEnemy = (found as any).team !== "ally";
+      // All pilots held in the local store belong to the player's roster, therefore they are allies.
       return {
         id: found.id,
         name: found.name,
         callsign: found.callsign,
-        team: isEnemy ? "enemy" : "ally",
-        initial: isEnemy ? "E" : found.name.charAt(0).toUpperCase(),
+        team: "ally",
+        initial: found.name.charAt(0).toUpperCase(),
       };
     }
 
