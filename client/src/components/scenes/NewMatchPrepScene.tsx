@@ -49,8 +49,7 @@ export function NewMatchPrepScene() {
 
   const [selectedEnemyTeam, setSelectedEnemyTeam] = useState<Team | null>(null);
   const [showMechDetails, setShowMechDetails] = useState<Mech | null>(null);
-  const [mechFilter, setMechFilter] = useState<'all' | 'knight' | 'river' | 'arbiter'>('all');
-  const [customFilter, setCustomFilter] = useState<'none' | 'high_rating' | 'balanced' | 'specialist'>('none');
+  const [mechFilter, setMechFilter] = useState<'all' | 'knight' | 'river' | 'arbiter' | 'custom'>('all');
 
   // 사용 가능한 파일럿 조회
   const { data: availablePilots = [] } = useQuery<Pilot[]>({
@@ -527,89 +526,40 @@ export function NewMatchPrepScene() {
                     챔피언 선택
                   </h3>
                   <div className="flex items-center space-x-4">
-                    {/* 필터 섹션 */}
-                    <div className="flex items-center space-x-4">
-                      {/* 타입 필터 */}
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-400">타입:</span>
-                        <div className="flex space-x-1">
-                          {[
-                            { value: 'all', label: '전체', icon: '🌟' },
-                            { value: 'knight', label: '나이트', icon: '🛡️' },
-                            { value: 'river', label: '리버', icon: '⚡' },
-                            { value: 'arbiter', label: '아비터', icon: '🎯' }
-                          ].map((filter) => (
-                            <button
-                              key={filter.value}
-                              onClick={() => setMechFilter(filter.value as any)}
-                              className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                                mechFilter === filter.value
-                                  ? 'bg-cyan-500 text-white'
-                                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                              }`}
-                            >
-                              {filter.icon} {filter.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* 커스텀 필터 */}
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-400">커스텀:</span>
-                        <div className="flex space-x-1">
-                          {[
-                            { value: 'none', label: '없음', icon: '📋' },
-                            { value: 'high_rating', label: '고성능', icon: '⭐' },
-                            { value: 'balanced', label: '밸런스', icon: '⚖️' },
-                            { value: 'specialist', label: '특화형', icon: '🔥' }
-                          ].map((filter) => (
-                            <button
-                              key={filter.value}
-                              onClick={() => setCustomFilter(filter.value as any)}
-                              className={`px-2 py-1 rounded text-xs font-medium transition-all ${
-                                customFilter === filter.value
-                                  ? 'bg-purple-500 text-white'
-                                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
-                              }`}
-                            >
-                              {filter.icon} {filter.label}
-                            </button>
-                          ))}
-                        </div>
+                    {/* 타입 필터 */}
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm text-gray-400">필터:</span>
+                      <div className="flex space-x-1">
+                        {[
+                          { value: 'all', label: '전체', icon: '🌟' },
+                          { value: 'knight', label: '나이트', icon: '🛡️' },
+                          { value: 'river', label: '리버', icon: '⚡' },
+                          { value: 'arbiter', label: '아비터', icon: '🎯' },
+                          { value: 'custom', label: '커스텀', icon: '🔧' }
+                        ].map((filter) => (
+                          <button
+                            key={filter.value}
+                            onClick={() => setMechFilter(filter.value as any)}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                              mechFilter === filter.value
+                                ? 'bg-cyan-500 text-white'
+                                : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                            }`}
+                          >
+                            {filter.icon} {filter.label}
+                          </button>
+                        ))}
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
                       <div className="text-sm text-gray-400">
                         {(() => {
                           const filteredMechs = (availableMechs as Mech[]).filter((mech: Mech) => {
-                            // 타입 필터
-                            if (mechFilter !== 'all') {
-                              if (!mech.type.toLowerCase().includes(mechFilter.toLowerCase())) {
-                                return false;
-                              }
+                            if (mechFilter === 'all') return true;
+                            if (mechFilter === 'custom') {
+                              return mech.type.toLowerCase().includes('custom') || mech.type.toLowerCase().includes('prototype');
                             }
-                            
-                            // 커스텀 필터
-                            if (customFilter !== 'none') {
-                              const totalStats = mech.firepower + mech.hp + mech.armor;
-                              const averageStats = totalStats / 3;
-                              
-                              switch (customFilter) {
-                                case 'high_rating':
-                                  return totalStats >= 200;
-                                case 'balanced':
-                                  return Math.abs(mech.firepower - averageStats) <= 20 && 
-                                         Math.abs(mech.hp - averageStats) <= 20 && 
-                                         Math.abs(mech.armor - averageStats) <= 20;
-                                case 'specialist':
-                                  return Math.max(mech.firepower, mech.hp, mech.armor) >= 80;
-                                default:
-                                  return true;
-                              }
-                            }
-                            
-                            return true;
+                            return mech.type.toLowerCase().includes(mechFilter.toLowerCase());
                           });
                           return `${filteredMechs.length}기 표시 중`;
                         })()}
@@ -628,33 +578,11 @@ export function NewMatchPrepScene() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-[600px] overflow-y-auto">
                   {(availableMechs as Mech[])
                     .filter((mech: Mech) => {
-                      // 타입 필터
-                      if (mechFilter !== 'all') {
-                        if (!mech.type.toLowerCase().includes(mechFilter.toLowerCase())) {
-                          return false;
-                        }
+                      if (mechFilter === 'all') return true;
+                      if (mechFilter === 'custom') {
+                        return mech.type.toLowerCase().includes('custom') || mech.type.toLowerCase().includes('prototype');
                       }
-                      
-                      // 커스텀 필터
-                      if (customFilter !== 'none') {
-                        const totalStats = mech.firepower + mech.hp + mech.armor;
-                        const averageStats = totalStats / 3;
-                        
-                        switch (customFilter) {
-                          case 'high_rating':
-                            return totalStats >= 200; // 고성능 메크
-                          case 'balanced':
-                            return Math.abs(mech.firepower - averageStats) <= 20 && 
-                                   Math.abs(mech.hp - averageStats) <= 20 && 
-                                   Math.abs(mech.armor - averageStats) <= 20; // 밸런스가 좋은 메크
-                          case 'specialist':
-                            return Math.max(mech.firepower, mech.hp, mech.armor) >= 80; // 특화 능력이 높은 메크
-                          default:
-                            return true;
-                        }
-                      }
-                      
-                      return true;
+                      return mech.type.toLowerCase().includes(mechFilter.toLowerCase());
                     })
                     .map((mech: Mech) => {
                     const currentSequence = championSelectSequence[championSelect.turnCount - 1];
