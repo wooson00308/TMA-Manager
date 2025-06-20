@@ -232,215 +232,49 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
   return (
     <div className="h-full bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 flex flex-col overflow-hidden">
-      {/* Mobile Portrait Layout */}
-      <div className="lg:hidden flex flex-col h-full">
-        {/* Mobile Top Status Bar */}
-        <div className="bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 border-b-2 border-cyan-400/50 p-2 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            {/* Team Scores Compact */}
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1 bg-blue-900/30 border border-blue-400/50 rounded px-2 py-1">
-                <div className="text-lg font-bold text-blue-400">
-                  {(battle.participants || []).filter(p => p.team === 'team1' && p.hp > 0).length}
-                </div>
-                <div className="text-xs text-blue-300">아군</div>
-              </div>
-              
-              <div className="flex items-center space-x-1 bg-red-900/30 border border-red-400/50 rounded px-2 py-1">
-                <div className="text-xs text-red-300">적군</div>
-                <div className="text-lg font-bold text-red-400">
-                  {(battle.participants || []).filter(p => p.team === 'team2' && p.hp > 0).length}
-                </div>
-              </div>
-            </div>
-
-            {/* Center Action */}
-            <div className="flex items-center">
-              {battle.phase !== 'completed' && !isSimulating && !isCountingDown && (
-                <button
-                  onClick={startSimulation}
-                  className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-bold text-sm"
-                >
-                  전투 시작
-                </button>
-              )}
-              
-              {isCountingDown && (
-                <div className="text-2xl font-bold text-red-400 animate-pulse">
-                  {countdown > 0 ? countdown : "START!"}
-                </div>
-              )}
-
-              {isSimulating && (
-                <div className="flex items-center space-x-2 bg-green-900/30 border border-green-400/50 rounded px-3 py-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-green-400 font-bold text-sm">LIVE</span>
-                  <span className="text-white font-mono text-sm">{currentTick}초</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Battlefield Area */}
-        <div className="flex-1 flex flex-col">
-          {/* Compact Allied Units */}
-          <div className="bg-gradient-to-r from-blue-900/20 to-blue-800/20 border-b border-blue-400/30 p-2">
-            <div className="flex space-x-2 overflow-x-auto">
-              {(battle.participants || [])
-                .filter(p => p.team === 'team1')
-                .map(participant => {
-                  const pilot = getPilotInfo(participant.pilotId);
-                  return (
-                    <div key={participant.pilotId} className="bg-blue-900/30 border border-blue-400/40 rounded p-2 min-w-20 flex-shrink-0">
-                      <div className="text-center">
-                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xs mx-auto mb-1">
-                          {pilot.initial}
-                        </div>
-                        <div className="text-blue-200 font-semibold text-xs truncate">{pilot.name}</div>
-                        <div className="text-white font-bold text-xs">{participant.hp}%</div>
-                        <div className="w-full bg-gray-700 rounded-full h-1 mt-1">
-                          <div
-                            className={`h-1 rounded-full ${
-                              participant.hp > 70 ? 'bg-green-500' :
-                              participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            style={{ width: `${Math.min(participant.hp, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-
-          {/* Mobile Battlefield Canvas */}
-          <div className="flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center p-2 relative">
-            <CanvasRenderer
-              ref={canvasRef}
-              width={640}
-              height={480}
-              className="border border-gray-600/50 rounded-lg shadow-2xl w-full max-h-60 object-contain"
-            />
-
-            {/* Mobile Battle Info Overlay */}
-            <div className="absolute top-2 right-2 bg-black/70 border border-gray-500 rounded p-2 text-xs">
-              <div className="text-gray-300">경과: {currentTick}초</div>
-              <div className={`font-bold ${
-                battle.phase === 'active' ? 'text-green-400' :
-                battle.phase === 'completed' ? 'text-red-400' :
-                'text-yellow-400'
-              }`}>
-                {battle.phase?.toUpperCase() || 'PREPARING'}
-              </div>
-            </div>
-
-            {/* Countdown Overlay */}
-            {isCountingDown && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <div className="text-6xl font-bold text-red-400 animate-pulse">
-                  {countdown > 0 ? countdown : "START!"}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Compact Enemy Units */}
-          <div className="bg-gradient-to-r from-red-900/20 to-red-800/20 border-t border-red-400/30 p-2">
-            <div className="flex space-x-2 overflow-x-auto">
-              {(battle.participants || [])
-                .filter(p => p.team === 'team2')
-                .map(participant => {
-                  const pilot = getPilotInfo(participant.pilotId);
-                  return (
-                    <div key={participant.pilotId} className="bg-red-900/30 border border-red-400/40 rounded p-2 min-w-20 flex-shrink-0">
-                      <div className="text-center">
-                        <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xs mx-auto mb-1">
-                          {pilot.initial}
-                        </div>
-                        <div className="text-red-200 font-semibold text-xs truncate">{pilot.name}</div>
-                        <div className="text-white font-bold text-xs">{participant.hp}%</div>
-                        <div className="w-full bg-gray-700 rounded-full h-1 mt-1">
-                          <div
-                            className={`h-1 rounded-full ${
-                              participant.hp > 70 ? 'bg-green-500' :
-                              participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            style={{ width: `${Math.min(participant.hp, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-
-          {/* Mobile Battle Log */}
-          <div className="bg-black/50 border-t border-gray-600/50 p-2 max-h-16 overflow-y-auto">
-            <div className="text-xs space-y-1">
-              {(battle.log || []).slice(-3).map((logEntry, index) => (
-                <div key={index} className="flex items-start space-x-1">
-                  <span className="font-mono text-gray-500 text-xs">
-                    {new Date(logEntry.timestamp).toLocaleTimeString()}
-                  </span>
-                  <span className="text-gray-300 text-xs truncate">
-                    {logEntry.message}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Desktop Layout (Unchanged) */}
-      <div className="hidden lg:block h-full">
       {/* Top Status Bar - RTS Style */}
       <div className="bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 border-b-2 border-cyan-400/50 p-2">
         <div className="flex items-center justify-between">
           {/* Team 1 Score */}
-          <div className="flex items-center space-x-2 md:space-x-4 bg-blue-900/30 border border-blue-400/50 rounded px-2 md:px-4 py-1 md:py-2">
-            <div className="text-lg md:text-2xl font-bold text-blue-400">
+          <div className="flex items-center space-x-4 bg-blue-900/30 border border-blue-400/50 rounded px-4 py-2">
+            <div className="text-2xl font-bold text-blue-400">
               {(battle.participants || []).filter(p => p.team === 'team1' && p.hp > 0).length}
             </div>
-            <div className="text-xs md:text-sm text-blue-300">아군</div>
+            <div className="text-sm text-blue-300">아군</div>
           </div>
 
           {/* Center Battle Info */}
-          <div className="flex items-center space-x-2 md:space-x-6">
+          <div className="flex items-center space-x-6">
             {battle.phase !== 'completed' && !isSimulating && !isCountingDown && (
               <button
                 onClick={startSimulation}
-                className="mobile-button md:px-6 md:py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
+                className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
               >
-                <span className="hidden sm:inline">전투 시작</span>
-                <span className="sm:hidden">시작</span>
+                전투 시작
               </button>
             )}
             
             {isCountingDown && (
-              <div className="flex items-center space-x-2 md:space-x-3 bg-red-900/30 border border-red-400/50 rounded px-2 md:px-4 py-1 md:py-2">
-                <div className="text-xl md:text-3xl font-bold text-red-400 animate-pulse tabular-nums">
+              <div className="flex items-center space-x-3 bg-red-900/30 border border-red-400/50 rounded px-4 py-2">
+                <div className="text-3xl font-bold text-red-400 animate-pulse tabular-nums">
                   {countdown > 0 ? countdown : "START!"}
                 </div>
               </div>
             )}
 
             {isSimulating && (
-              <div className="flex items-center space-x-1 md:space-x-2 bg-green-900/30 border border-green-400/50 rounded px-2 md:px-4 py-1 md:py-2">
-                <div className="w-2 md:w-3 h-2 md:h-3 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-green-400 font-bold text-xs md:text-sm">LIVE</span>
-                <span className="text-white font-mono text-xs md:text-sm">{currentTick}초</span>
+              <div className="flex items-center space-x-2 bg-green-900/30 border border-green-400/50 rounded px-4 py-2">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-green-400 font-bold">LIVE</span>
+                <span className="text-white font-mono">{currentTick}초</span>
               </div>
             )}
 
-            {/* Animation Test Button - Hidden on mobile */}
+            {/* Animation Test Button */}
             {battle.participants && battle.participants.length >= 2 && (
               <button
                 onClick={testAnimation}
-                className="hidden md:block px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-bold transition-colors"
+                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-bold transition-colors"
               >
                 애니메이션 테스트
               </button>
@@ -448,9 +282,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
 
           {/* Team 2 Score */}
-          <div className="flex items-center space-x-2 md:space-x-4 bg-red-900/30 border border-red-400/50 rounded px-2 md:px-4 py-1 md:py-2">
-            <div className="text-xs md:text-sm text-red-300">적군</div>
-            <div className="text-lg md:text-2xl font-bold text-red-400">
+          <div className="flex items-center space-x-4 bg-red-900/30 border border-red-400/50 rounded px-4 py-2">
+            <div className="text-sm text-red-300">적군</div>
+            <div className="text-2xl font-bold text-red-400">
               {(battle.participants || []).filter(p => p.team === 'team2' && p.hp > 0).length}
             </div>
           </div>
@@ -458,50 +292,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       </div>
 
       {/* Main Battle Area */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden mobile-battle-layout">
-        {/* Mobile Top Allied Panel */}
-        <div className="lg:hidden bg-gradient-to-r from-blue-900/20 to-blue-800/20 border-b-2 border-blue-400/30 mobile-unit-panel">
-          <div className="bg-blue-900/50 border-b border-blue-400/30 p-1 mobile-status-bar">
-            <h3 className="text-blue-300 font-bold text-center text-xs">아군 부대</h3>
-          </div>
-          <div className="p-1 overflow-x-auto">
-            <div className="flex space-x-2">
-              {(battle.participants || [])
-                .filter(p => p.team === 'team1')
-                .map(participant => {
-                  const pilot = getPilotInfo(participant.pilotId);
-                  return (
-                    <div key={participant.pilotId} className="bg-blue-900/30 border border-blue-400/40 rounded p-1.5 min-w-24 flex-shrink-0">
-                      <div className="flex items-center space-x-1 mb-1">
-                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                          {pilot.initial}
-                        </div>
-                        <div className="text-blue-200 font-semibold text-xs truncate">{pilot.name}</div>
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-blue-300">HP</span>
-                          <span className="text-white font-bold">{participant.hp}%</span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-1">
-                          <div
-                            className={`h-1 rounded-full transition-all ${
-                              participant.hp > 70 ? 'bg-green-500' :
-                              participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}
-                            style={{ width: `${Math.min(participant.hp, 100)}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        </div>
-
-        {/* Desktop Left Player Panel */}
-        <div className="hidden lg:flex w-64 bg-gradient-to-b from-blue-900/20 to-blue-800/20 border-r-2 border-blue-400/30 flex-col">
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Player Panel */}
+        <div className="w-64 bg-gradient-to-b from-blue-900/20 to-blue-800/20 border-r-2 border-blue-400/30 flex flex-col">
           <div className="bg-blue-900/50 border-b border-blue-400/30 p-3">
             <h3 className="text-blue-300 font-bold text-center">아군 부대</h3>
           </div>
@@ -544,28 +337,38 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
         {/* Center Battlefield */}
         <div className="flex-1 flex flex-col">
-          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center p-2 lg:p-4" style={{ maxHeight: 'calc(100vh - 300px)' }}>
+          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center">
             <CanvasRenderer
               ref={canvasRef}
               width={640}
               height={480}
-              className="battlefield-canvas border border-gray-600/50 rounded-lg shadow-2xl"
-
+              className="border border-gray-600/50 rounded-lg shadow-2xl"
             />
 
             {/* Countdown Overlay */}
             {isCountingDown && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
-                <div className="text-8xl font-bold text-red-400 animate-pulse tabular-nums">
-                  {countdown > 0 ? countdown : "START!"}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+                <div className="text-center bg-gray-900/90 rounded-2xl p-12 border-2 border-cyan-400/50">
+                  <div className="text-9xl font-bold text-cyan-400 animate-pulse mb-6 tabular-nums">
+                    {countdown > 0 ? countdown : "START!"}
+                  </div>
+                  <div className="text-2xl text-white font-bold">전투 시작 준비 중...</div>
+                  <div className="mt-6 flex justify-center">
+                    <div className="w-48 h-2 bg-gray-600 rounded-full">
+                      <div 
+                        className="h-2 bg-cyan-400 rounded-full transition-all duration-1000"
+                        style={{ width: `${((3 - countdown) / 3) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Battle Status HUD */}
-            <div className="absolute top-4 left-4 bg-black/70 border border-gray-500 rounded-lg p-3 min-w-48">
-              <div className="text-cyan-300 font-bold mb-2 text-sm">전투 상황</div>
-              <div className="space-y-1 text-xs">
+            {/* Battle Stats HUD - positioned relative to canvas */}
+            <div className="absolute top-6 left-6 bg-black/80 backdrop-blur-sm rounded-lg p-4 border border-cyan-400/50 z-10">
+              <div className="text-cyan-400 font-bold mb-2">전투 상황</div>
+              <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-300">경과시간:</span>
                   <span className="text-white font-mono">{currentTick}초</span>
@@ -585,7 +388,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
 
           {/* Bottom Battle Log */}
-          <div className="h-20 lg:h-32 md:h-24 sm:h-16 bg-black/50 border-t-2 border-gray-600/50 p-1 lg:p-3 battle-log-mobile">
+          <div className="h-32 bg-black/50 border-t-2 border-gray-600/50 p-3">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -612,7 +415,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             </div>
             <div
               ref={logContainerRef}
-              className="h-12 lg:h-20 overflow-y-auto custom-scrollbar space-y-1"
+              className="h-20 overflow-y-auto custom-scrollbar space-y-1"
             >
               {(battle.log || []).length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-500">
@@ -649,8 +452,8 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           </div>
         </div>
 
-        {/* Desktop Right Enemy Panel */}
-        <div className="hidden lg:flex w-64 bg-gradient-to-b from-red-900/20 to-red-800/20 border-l-2 border-red-400/30 flex-col">
+        {/* Right Enemy Panel */}
+        <div className="w-64 bg-gradient-to-b from-red-900/20 to-red-800/20 border-l-2 border-red-400/30 flex flex-col">
           <div className="bg-red-900/50 border-b border-red-400/30 p-3">
             <h3 className="text-red-300 font-bold text-center">적군 부대</h3>
           </div>
@@ -690,48 +493,6 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               })}
           </div>
         </div>
-      </div>
-
-      {/* Mobile Bottom Enemy Panel */}
-      <div className="lg:hidden bg-gradient-to-r from-red-900/20 to-red-800/20 border-t-2 border-red-400/30 mobile-unit-panel">
-        <div className="bg-red-900/50 border-b border-red-400/30 p-1 mobile-status-bar">
-          <h3 className="text-red-300 font-bold text-center text-xs">적군 부대</h3>
-        </div>
-        <div className="p-1 overflow-x-auto">
-          <div className="flex space-x-2">
-            {(battle.participants || [])
-              .filter(p => p.team === 'team2')
-              .map(participant => {
-                const pilot = getPilotInfo(participant.pilotId);
-                return (
-                  <div key={participant.pilotId} className="bg-red-900/30 border border-red-400/40 rounded p-1.5 min-w-24 flex-shrink-0">
-                    <div className="flex items-center space-x-1 mb-1">
-                      <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
-                        {pilot.initial}
-                      </div>
-                      <div className="text-red-200 font-semibold text-xs truncate">{pilot.name}</div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-red-300">HP</span>
-                        <span className="text-white font-bold">{participant.hp}%</span>
-                      </div>
-                      <div className="w-full bg-gray-700 rounded-full h-1">
-                        <div
-                          className={`h-1 rounded-full transition-all ${
-                            participant.hp > 70 ? 'bg-green-500' :
-                            participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${Math.min(participant.hp, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      </div>
       </div>
     </div>
   );
