@@ -15,8 +15,9 @@ export class AISystem {
   private pathfinding = new PathfindingService();
 
   async makeSimpleDecision(participant: any, battleState: BattleState, team: string): Promise<AIDecision> {
-    // 실제 파일럿 데이터 조회
-    const pilot = await storage.getPilot(participant.pilotId);
+    // 실제 파일럿 데이터 조회 (적군은 ID - 100으로 조회)
+    const pilotLookupId = participant.pilotId >= 100 ? participant.pilotId - 100 : participant.pilotId;
+    const pilot = await storage.getPilot(pilotLookupId);
     const mech = await storage.getMech(participant.mechId);
     
     const pilotName = pilot ? pilot.name : `Unit-${participant.pilotId}`;
@@ -134,13 +135,18 @@ export class AISystem {
     if (nearbyEnemies.length > 0 && randomAction < personality.aggressive) {
       // 공격적 성향과 근처 적이 있으면 공격
       const target = this.selectBestTarget(nearbyEnemies, participant);
-      const attackDialogue = personality.dialogues.attack[Math.floor(Math.random() * personality.dialogues.attack.length)];
-      return {
-        type: "ATTACK",
-        pilotName,
-        dialogue: attackDialogue,
-        targetIndex: battleState.participants.findIndex(p => p.pilotId === target.pilotId)
-      };
+      if (target) {
+        const attackDialogue = personality.dialogues.attack[Math.floor(Math.random() * personality.dialogues.attack.length)];
+        const targetIndex = battleState.participants.findIndex(p => p.pilotId === target.pilotId);
+        if (targetIndex !== -1) {
+          return {
+            type: "ATTACK",
+            pilotName,
+            dialogue: attackDialogue,
+            targetIndex
+          };
+        }
+      }
     }
 
     if (allies.some(ally => ally.hp < 30) && randomAction < personality.supportive) {
@@ -184,6 +190,22 @@ export class AISystem {
         dialogue: scoutDialogue,
         newPosition: scoutPosition
       };
+    }
+
+    // 적이 있으면 무조건 공격 (테스트용)
+    if (enemies.length > 0) {
+      const target = this.selectBestTarget(enemies, participant);
+      if (target) {
+        const targetIndex = battleState.participants.findIndex(p => p.pilotId === target.pilotId);
+        if (targetIndex !== -1) {
+          return {
+            type: "ATTACK",
+            pilotName,
+            dialogue: `${pilotName}: "공격!!"`,
+            targetIndex
+          };
+        }
+      }
     }
 
     // 기본 이동 - A* 패스파인딩으로 전술적 위치 찾기

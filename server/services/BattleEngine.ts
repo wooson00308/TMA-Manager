@@ -104,6 +104,25 @@ export class BattleEngine {
         return;
       }
 
+      // 강제 타임아웃 (15턴 후 종료 - 테스트용)
+      if (battleState.turn >= 15) {
+        battleState.phase = 'completed';
+        const allyCount = battleState.participants.filter(p => p.pilotId < 100 && p.status === 'active').length;
+        const enemyCount = battleState.participants.filter(p => p.pilotId >= 100 && p.status === 'active').length;
+        const winner = allyCount > enemyCount ? 'team1' : enemyCount > allyCount ? 'team2' : 'draw';
+        
+        onUpdate({
+          type: 'BATTLE_COMPLETE',
+          winner,
+          finalState: battleState,
+          reason: 'timeout'
+        });
+        
+        clearInterval(battleTimer);
+        this.battleTimers.delete(battleState.id);
+        return;
+      }
+
       // 전투 종료 조건 확인
       const allyCount = battleState.participants.filter(p => p.pilotId < 100 && p.status === 'active').length;
       const enemyCount = battleState.participants.filter(p => p.pilotId >= 100 && p.status === 'active').length;
@@ -115,23 +134,31 @@ export class BattleEngine {
         onUpdate({
           type: 'BATTLE_COMPLETE',
           winner,
-          finalState: battleState
+          finalState: battleState,
+          reason: 'elimination'
         });
         
         clearInterval(battleTimer);
+        this.battleTimers.delete(battleState.id);
         return;
       }
 
       // 턴 진행
       battleState.turn++;
       const recentLogs: any[] = [];
+      
+      console.log(`턴 ${battleState.turn} 시작`);
 
       // 모든 참가자의 AI 결정 생성 (병렬 처리)
       const activeParticipants = battleState.participants.filter(p => p.status === 'active');
+      console.log(`활성 참가자: ${activeParticipants.length}명`);
+      
       const aiDecisions = await Promise.all(
         activeParticipants.map(async (participant) => {
           const team = participant.pilotId < 100 ? 'ally' : 'enemy';
-          return await this.aiSystem.makeSimpleDecision(participant, battleState, team);
+          const decision = await this.aiSystem.makeSimpleDecision(participant, battleState, team);
+          console.log(`${participant.pilotId} (${team}): ${decision.type}`);
+          return decision;
         })
       );
 
@@ -151,7 +178,7 @@ export class BattleEngine {
         recentLogs
       });
 
-    }, 3000); // 3초마다 턴 진행
+    }, 1000); // 1초마다 턴 진행 (테스트용)
 
     this.battleTimers.set(battleState.id, battleTimer);
   }
@@ -174,28 +201,20 @@ export class BattleEngine {
             const attackerMech = await storage.getMech(participant.mechId);
             const targetMech = await storage.getMech(target.mechId);
             
-            let damage = attackerMech ? 
-              Math.floor(attackerMech.firepower * (0.8 + Math.random() * 0.4)) : 
-              Math.floor(Math.random() * 30) + 10;
+            // 테스트용 매우 높은 데미지 (확실한 전투 종료)
+            let damage = targetMech ? Math.floor(targetMech.hp * 0.4) : 50; // 타겟 HP의 40%
+            
+            // 추가 랜덤 데미지
+            damage += Math.floor(Math.random() * 30) + 20;
 
-            // 파일럿 정확도 적용
-            if (pilot) {
-              const accuracyMultiplier = 0.8 + (pilot.accuracy / 100) * 0.4;
-              damage = Math.floor(damage * accuracyMultiplier);
-            }
-
-            // 타겟 방어력 적용
-            if (targetMech) {
-              const armorReduction = targetMech.armor * 0.01;
-              damage = Math.floor(damage * (1 - armorReduction));
-            }
-
-            damage = Math.max(1, damage);
+            // 최소 데미지 보장
+            damage = Math.max(30, damage);
             target.hp = Math.max(0, target.hp - damage);
 
-            if (target.hp === 0) {
+            if (target.hp <= 0) {
               target.status = 'destroyed';
-            } else if (target.hp < 30) {
+              target.hp = 0;
+            } else if (target.hp < (targetMech?.hp ? targetMech.hp * 0.3 : 30)) {
               target.status = 'damaged';
             }
 
