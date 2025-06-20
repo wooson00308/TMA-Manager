@@ -49,6 +49,7 @@ export function NewMatchPrepScene() {
 
   const [selectedEnemyTeam, setSelectedEnemyTeam] = useState<Team | null>(null);
   const [showMechDetails, setShowMechDetails] = useState<Mech | null>(null);
+  const [mechFilter, setMechFilter] = useState<'all' | 'knight' | 'river' | 'arbiter'>('all');
 
   // 사용 가능한 파일럿 조회
   const { data: availablePilots = [] } = useQuery<Pilot[]>({
@@ -529,17 +530,59 @@ export function NewMatchPrepScene() {
                   <h3 className="text-lg font-bold text-gray-300">
                     챔피언 선택
                   </h3>
-                  <div className="text-sm text-cyan-400">
-                    {(() => {
-                      const currentSequence = championSelectSequence[championSelect.turnCount - 1];
-                      const isPlayerTurn = currentSequence?.team === 'player';
-                      return isPlayerTurn ? '플레이어 턴' : 'AI 턴';
-                    })()}
+                  <div className="flex items-center space-x-4">
+                    {/* 타입 필터 */}
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm text-gray-400">필터:</span>
+                      <div className="flex space-x-1">
+                        {[
+                          { value: 'all', label: '전체', icon: '🌟' },
+                          { value: 'knight', label: '나이트', icon: '🛡️' },
+                          { value: 'river', label: '리버', icon: '⚡' },
+                          { value: 'arbiter', label: '아비터', icon: '🎯' }
+                        ].map((filter) => (
+                          <button
+                            key={filter.value}
+                            onClick={() => setMechFilter(filter.value as any)}
+                            className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                              mechFilter === filter.value
+                                ? 'bg-cyan-500 text-white'
+                                : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                            }`}
+                          >
+                            {filter.icon} {filter.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                      <div className="text-sm text-gray-400">
+                        {(() => {
+                          const filteredMechs = (availableMechs as Mech[]).filter((mech: Mech) => {
+                            if (mechFilter === 'all') return true;
+                            return mech.type.toLowerCase().includes(mechFilter.toLowerCase());
+                          });
+                          return `${filteredMechs.length}기 표시 중`;
+                        })()}
+                      </div>
+                      <div className="text-sm text-cyan-400">
+                        {(() => {
+                          const currentSequence = championSelectSequence[championSelect.turnCount - 1];
+                          const isPlayerTurn = currentSequence?.team === 'player';
+                          return isPlayerTurn ? '플레이어 턴' : 'AI 턴';
+                        })()}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-96 overflow-y-auto">
-                  {(availableMechs as Mech[]).map((mech: Mech) => {
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-[600px] overflow-y-auto">
+                  {(availableMechs as Mech[])
+                    .filter((mech: Mech) => {
+                      if (mechFilter === 'all') return true;
+                      return mech.type.toLowerCase().includes(mechFilter.toLowerCase());
+                    })
+                    .map((mech: Mech) => {
                     const currentSequence = championSelectSequence[championSelect.turnCount - 1];
                     const isPlayerTurn = currentSequence?.team === 'player';
                     const isBanTurn = currentSequence?.action === 'ban';
