@@ -51,6 +51,6 @@ export interface IStorage {
   spendCredits(teamId: number, amount: number): Promise<Team | undefined>;
 }
 
-import { SQLiteStorage } from "./SQLiteStorage";
+import { MemStorage } from "./MemStorage";
 
-export const storage: IStorage = new SQLiteStorage();
+export const storage: IStorage = new MemStorage();

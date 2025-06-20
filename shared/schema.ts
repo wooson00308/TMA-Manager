@@ -134,4 +134,4 @@ export type InsertFormation = z.infer<typeof insertFormationSchema>;
 
 // Re-export domain-level types from the new shared/domain/types module so that existing imports of
 // "@shared/schema" continue to compile during gradual migration.
-export { GameScene, PilotTrait, BattleState, ReconData } from "@shared/domain/types";
+export type { GameScene, PilotTrait, BattleState, ReconData } from "./domain/types";
