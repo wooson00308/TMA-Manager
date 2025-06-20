@@ -10,8 +10,8 @@ function createMinimalBattleState(): BattleState {
     phase: "active",
     turn: 1,
     participants: [
-      { pilotId: 1, mechId: 1, position: { x: 1, y: 1 }, hp: 100, status: "active" },
-      { pilotId: 101, mechId: 1, position: { x: 5, y: 5 }, hp: 100, status: "active" },
+      { pilotId: 1, mechId: 1, team: "team1", position: { x: 1, y: 1 }, hp: 100, status: "active" },
+      { pilotId: 101, mechId: 1, team: "team2", position: { x: 5, y: 5 }, hp: 100, status: "active" },
     ],
     log: [],
   };

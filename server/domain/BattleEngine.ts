@@ -17,10 +17,26 @@ export class BattleEngine {
         participants.push({
           pilotId: pilot.pilotId,
           mechId: pilot.mechId,
+          team: "team1" as const,
           position: { x: 2, y: 2 + index * 2 },
           hp: 100,
           status: "active" as const,
         });
+      });
+    } else if (formation1.pilot1Id) {
+      [0, 1, 2].forEach((idx) => {
+        const pid = formation1[`pilot${idx + 1}Id`];
+        const mid = formation1[`mech${idx + 1}Id`];
+        if (pid && mid) {
+          participants.push({
+            pilotId: pid,
+            mechId: mid,
+            team: "team1" as const,
+            position: { x: 2, y: 2 + idx * 2 },
+            hp: 100,
+            status: "active" as const,
+          });
+        }
       });
     }
 
@@ -29,10 +45,26 @@ export class BattleEngine {
         participants.push({
           pilotId: pilot.pilotId,
           mechId: pilot.mechId,
+          team: "team2" as const,
           position: { x: 17, y: 2 + index * 2 },
           hp: 100,
           status: "active" as const,
         });
+      });
+    } else if (formation2.pilot1Id) {
+      [0, 1, 2].forEach((idx) => {
+        const pid = formation2[`pilot${idx + 1}Id`];
+        const mid = formation2[`mech${idx + 1}Id`];
+        if (pid && mid) {
+          participants.push({
+            pilotId: pid,
+            mechId: mid,
+            team: "team2" as const,
+            position: { x: 17, y: 2 + idx * 2 },
+            hp: 100,
+            status: "active" as const,
+          });
+        }
       });
     }
 
@@ -74,12 +106,12 @@ export class BattleEngine {
       turn++;
       battleState.turn = turn;
 
-      battleState.participants.forEach((participant, idx) => {
+      battleState.participants.forEach((participant) => {
         if (participant.status === "active") {
           const decision = this.aiSystem.makeSimpleDecision(
             participant,
             battleState,
-            idx < 3 ? "team1" : "team2",
+            participant.team,
           );
           this.executeAction(participant, decision, battleState);
         }
@@ -111,14 +143,14 @@ export class BattleEngine {
   }
 
   private isBattleComplete(state: BattleState) {
-    const team1Active = state.participants.slice(0, 3).filter((p) => p.status === "active").length;
-    const team2Active = state.participants.slice(3, 6).filter((p) => p.status === "active").length;
+    const team1Active = state.participants.filter((p) => p.team === "team1" && p.status === "active").length;
+    const team2Active = state.participants.filter((p) => p.team === "team2" && p.status === "active").length;
     return team1Active === 0 || team2Active === 0;
   }
 
   private determineWinner(state: BattleState): "team1" | "team2" | "draw" {
-    const t1 = state.participants.slice(0, 3).filter((p) => p.status === "active").length;
-    const t2 = state.participants.slice(3, 6).filter((p) => p.status === "active").length;
+    const t1 = state.participants.filter((p) => p.team === "team1" && p.status === "active").length;
+    const t2 = state.participants.filter((p) => p.team === "team2" && p.status === "active").length;
     if (t1 > t2) return "team1";
     if (t2 > t1) return "team2";
     return "draw";

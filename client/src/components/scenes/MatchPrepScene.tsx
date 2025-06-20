@@ -279,16 +279,18 @@ export function MatchPrepScene() {
           ...formation1.pilots.map((p, i) => ({
             pilotId: p.pilot.id,
             mechId: p.mech.id,
+            team: 'team1' as const,
             position: { x: 2 + i * 2, y: 6 },
             hp: 100,
-            status: 'active' as const
+            status: 'active' as const,
           })),
           ...formation2.pilots.map((p, i) => ({
             pilotId: p.pilot.id,
             mechId: p.mech.id,
+            team: 'team2' as const,
             position: { x: 10 + i * 2, y: 6 },
             hp: 100,
-            status: 'active' as const
+            status: 'active' as const,
           }))
         ],
         log: [{

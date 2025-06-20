@@ -31,14 +31,9 @@ function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
 function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo) {
   const isLowHP = actor.hp < 30;
   const isCriticalHP = actor.hp < 15;
-  const allies = battleState.participants.filter((p: any) => {
-    const info = getPilotInfo(pilots, p.pilotId);
-    return info.team === actorInfo.team && p.status === 'active' && p.pilotId !== actor.pilotId;
-  });
-  const enemies = battleState.participants.filter((p: any) => {
-    const info = getPilotInfo(pilots, p.pilotId);
-    return info.team !== actorInfo.team && p.status === 'active';
-  });
+  const actorTeam = actor.team;
+  const allies = battleState.participants.filter((p: any) => p.team === actorTeam && p.status === 'active' && p.pilotId !== actor.pilotId);
+  const enemies = battleState.participants.filter((p: any) => p.team !== actorTeam && p.status === 'active');
   
   const damagedAllies = allies.filter((ally: any) => ally.hp < 50);
   const nearbyEnemies = enemies.filter((enemy: any) => 
@@ -57,7 +52,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
   const personality = personalities[actorInfo.initial] || personalities['E'];
 
   if (isCriticalHP && random < 0.6) {
-    const retreatPos = calculateRetreatPosition(actor.position, actorInfo.team, enemies);
+    const retreatPos = calculateRetreatPosition(actor.position, actorTeam, enemies);
     return {
       type: 'RETREAT',
       actor,
@@ -85,7 +80,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
   }
 
   if (personality.tactical > 0.7 && random < 0.3) {
-    const scoutPos = calculateScoutPosition(actor.position, actorInfo.team, enemies);
+    const scoutPos = calculateScoutPosition(actor.position, actorTeam, enemies);
     return {
       type: 'SCOUT',
       actor,
@@ -115,7 +110,7 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
     };
   }
 
-  const tacticalPos = calculateTacticalPosition(actor.position, actorInfo.team, enemies);
+  const tacticalPos = calculateTacticalPosition(actor.position, actorTeam, enemies);
   return {
     type: 'MOVE',
     actor,
@@ -124,23 +119,17 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
   };
 };
 
-function checkVictoryCondition(participants: any[], pilots: Pilot[]) {
-  const allies = participants.filter(p => {
-    const info = getPilotInfo(pilots, p.pilotId);
-    return info.team === 'ally' && p.status === 'active';
-  });
-  const enemies = participants.filter(p => {
-    const info = getPilotInfo(pilots, p.pilotId);
-    return info.team === 'enemy' && p.status === 'active';
-  });
-
+function checkVictoryCondition(participants: any[]) {
+  const allies = participants.filter((p: any) => p.team === "team1" && p.status === "active");
+  const enemies = participants.filter((p: any) => p.team === "team2" && p.status === "active");
+   
   if (allies.length === 0 || enemies.length === 0) {
     return {
       isGameOver: true,
       winner: allies.length > 0 ? 'ally' : 'enemy',
     };
   }
-
+ 
   return { isGameOver: false, winner: null };
 };
 
@@ -258,7 +247,7 @@ export function processGameTick(
       });
     }
 
-    const victoryCheck = checkVictoryCondition(newState.participants, pilots);
+    const victoryCheck = checkVictoryCondition(newState.participants);
     if (victoryCheck.isGameOver) {
       newState.phase = 'completed';
       newState.log.push({

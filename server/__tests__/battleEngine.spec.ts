@@ -6,21 +6,22 @@ import type { BattleState } from "@shared/domain/types";
 
 // Helper to construct a minimal BattleState with desired active/destroyed counts
 function createBattleState(team1Active: number, team2Active: number): BattleState {
-  const makeParticipant = (pilotId: number, active: boolean) => ({
+  const makeParticipant = (pilotId: number, active: boolean, team: "team1" | "team2") => ({
     pilotId,
     mechId: 1,
+    team,
     position: { x: 0, y: 0 },
     hp: active ? 100 : 0,
     status: (active ? "active" : "destroyed") as "active" | "destroyed",
   });
 
   const participants = [
-    makeParticipant(1, team1Active >= 1),
-    makeParticipant(2, team1Active >= 2),
-    makeParticipant(3, team1Active >= 3),
-    makeParticipant(101, team2Active >= 1),
-    makeParticipant(102, team2Active >= 2),
-    makeParticipant(103, team2Active >= 3),
+    makeParticipant(1, team1Active >= 1, "team1"),
+    makeParticipant(2, team1Active >= 2, "team1"),
+    makeParticipant(3, team1Active >= 3, "team1"),
+    makeParticipant(101, team2Active >= 1, "team2"),
+    makeParticipant(102, team2Active >= 2, "team2"),
+    makeParticipant(103, team2Active >= 3, "team2"),
   ];
 
   return {

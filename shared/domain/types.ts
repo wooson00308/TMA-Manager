@@ -35,6 +35,12 @@ export type PilotTrait =
 export type BattleParticipant = {
   pilotId: number;
   mechId: number;
+  /**
+   * Which side this unit belongs to.  The server marks participants during
+   * battle initialisation so the client no longer needs to infer allegiance
+   * from the pilotId heuristic.
+   */
+  team: "team1" | "team2";
   position: { x: number; y: number };
   hp: number;
   status: "active" | "damaged" | "destroyed";

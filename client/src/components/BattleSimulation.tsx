@@ -210,7 +210,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             <h4 className="text-md font-semibold text-blue-300 mb-3">아군 상태</h4>
             <div className="space-y-2">
               {(battle.participants || [])
-                .filter(p => getPilotInfo(p.pilotId).team === 'ally')
+                .filter(p => p.team === 'team1')
                 .map(participant => {
                   const pilot = getPilotInfo(participant.pilotId);
                   return (
@@ -250,7 +250,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             <h4 className="text-md font-semibold text-red-300 mb-3">적군 상태</h4>
             <div className="space-y-2">
               {(battle.participants || [])
-                .filter(p => getPilotInfo(p.pilotId).team === 'enemy')
+                .filter(p => p.team === 'team2')
                 .map(participant => {
                   const pilot = getPilotInfo(participant.pilotId);
                   return (
