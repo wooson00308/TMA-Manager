@@ -1,16 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
-import { CyberButton } from '@/components/ui/CyberButton';
 import { wsManager } from '@/lib/websocket';
 import type { Mech } from '@shared/schema';
 
-type BanPickPhase = 'ban_enemy_1' | 'ban_player_1' | 'ban_player_2' | 'ban_enemy_2' | 
-                    'pick_player_1' | 'pick_enemy_1' | 'pick_enemy_2' | 'pick_player_2' | 
-                    'pick_player_3' | 'pick_enemy_3' | 'complete';
-
 interface BanPickState {
-  phase: BanPickPhase;
+  phase: string;
   bannedMechs: Mech[];
   selectedMechs: {
     player: Mech[];
@@ -19,9 +14,9 @@ interface BanPickState {
   enemyTeamName: string;
 }
 
-const phaseSequence: BanPickPhase[] = [
+const phaseSequence = [
   'ban_enemy_1', 'ban_player_1', 'ban_player_2', 'ban_enemy_2',
-  'pick_player_1', 'pick_enemy_1', 'pick_enemy_2', 'pick_player_2', 
+  'pick_player_1', 'pick_enemy_1', 'pick_enemy_2', 'pick_player_2',
   'pick_player_3', 'pick_enemy_3', 'complete'
 ];
 
@@ -89,18 +84,6 @@ export function BanPickScene() {
     }
   }, [banPickState.phase, banPickState.selectedMechs]);
 
-  // 디버그 정보 로그
-  useEffect(() => {
-    const isComplete = banPickState.phase === 'complete';
-    console.log('Ban/Pick State Debug:', {
-      phase: banPickState.phase,
-      isComplete,
-      playerMechs: banPickState.selectedMechs.player.length,
-      enemyMechs: banPickState.selectedMechs.enemy.length,
-      shouldShowButton: isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)
-    });
-  }, [banPickState]);
-
   const handleEnemyAction = () => {
     const availableMechs = mechs.filter(mech => 
       !banPickState.bannedMechs.some(banned => banned.id === mech.id) &&
@@ -126,21 +109,26 @@ export function BanPickScene() {
     setBanPickState(prev => {
       const newState = { ...prev };
       
-      if (prev.phase.startsWith('ban_')) {
+      if (banPickState.phase.startsWith('ban_')) {
         newState.bannedMechs = [...prev.bannedMechs, mech];
-      } else {
-        if (prev.phase.includes('player')) {
-          newState.selectedMechs.player = [...prev.selectedMechs.player, mech];
+      } else if (banPickState.phase.startsWith('pick_')) {
+        if (banPickState.phase.includes('player')) {
+          newState.selectedMechs = {
+            ...prev.selectedMechs,
+            player: [...prev.selectedMechs.player, mech]
+          };
         } else {
-          newState.selectedMechs.enemy = [...prev.selectedMechs.enemy, mech];
+          newState.selectedMechs = {
+            ...prev.selectedMechs,
+            enemy: [...prev.selectedMechs.enemy, mech]
+          };
         }
       }
       
-      // 다음 단계로 진행 (마지막 단계라면 complete로)
-      if (currentPhaseIndex < phaseSequence.length - 1) {
-        newState.phase = phaseSequence[currentPhaseIndex + 1];
-      } else {
-        newState.phase = 'complete';
+      // 다음 페이즈로 진행
+      const nextPhaseIndex = currentPhaseIndex + 1;
+      if (nextPhaseIndex < phaseSequence.length) {
+        newState.phase = phaseSequence[nextPhaseIndex];
       }
       
       return newState;
@@ -220,28 +208,16 @@ export function BanPickScene() {
         log: [{
           timestamp: Date.now(),
           type: 'system',
-          message: '전투 시스템 초기화 완료. 모든 유닛 대기 중.'
+          message: '전투 시스템 초기화 완료. 모든 유닛 대기 중...'
         }]
       });
 
-      // Start battle via WebSocket if connected
-      if (wsManager.isConnected()) {
-        wsManager.startBattle(playerFormation, enemyFormation);
-      }
-      
-      // Navigate to battle scene
       setScene('battle');
-      
     } catch (error) {
       console.error('Failed to start battle:', error);
       alert('전투 시작 중 오류가 발생했습니다.');
     }
   };
-
-  // Calculate helper variables
-  const isPlayerTurn = banPickState.phase.includes('player');
-  const isBanPhase = banPickState.phase.startsWith('ban_');
-  const isComplete = banPickState.phase === 'complete';
 
   return (
     <div className="scene-transition">
@@ -296,9 +272,6 @@ export function BanPickScene() {
                   <span className="text-gray-300">{mech.name}</span>
                 </div>
               ))}
-              {banPickState.selectedMechs.player.length < 2 && banPickState.bannedMechs.length < 4 && (
-                <div className="text-gray-500 text-sm">대기 중...</div>
-              )}
             </div>
           </div>
           
@@ -307,10 +280,7 @@ export function BanPickScene() {
             <div className="space-y-2">
               {banPickState.selectedMechs.player.map((mech, index) => (
                 <div key={mech.id} className="cyber-border p-3 bg-green-800/30">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">{mech.name}</span>
-                    <span className="text-xs text-gray-400">{mech.type}</span>
-                  </div>
+                  <div className="text-green-300 font-medium">{mech.name}</div>
                   <div className="text-xs text-gray-400">
                     화력: {mech.firepower} | 속도: {mech.speed} | 장갑: {mech.armor}
                   </div>
@@ -340,9 +310,6 @@ export function BanPickScene() {
                   <span className="text-gray-300">{mech.name}</span>
                 </div>
               ))}
-              {banPickState.selectedMechs.enemy.length < 2 && banPickState.bannedMechs.length < 4 && (
-                <div className="text-gray-500 text-sm">대기 중...</div>
-              )}
             </div>
           </div>
           
@@ -351,10 +318,7 @@ export function BanPickScene() {
             <div className="space-y-2">
               {banPickState.selectedMechs.enemy.map((mech, index) => (
                 <div key={mech.id} className="cyber-border p-3 bg-red-800/30">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">{mech.name}</span>
-                    <span className="text-xs text-gray-400">{mech.type}</span>
-                  </div>
+                  <div className="text-red-300 font-medium">{mech.name}</div>
                   <div className="text-xs text-gray-400">
                     화력: {mech.firepower} | 속도: {mech.speed} | 장갑: {mech.armor}
                   </div>
@@ -371,62 +335,75 @@ export function BanPickScene() {
       </div>
 
       {/* Available Mechs */}
-      {!isComplete && isPlayerTurn && (
+      {!isComplete && (
         <div className="cyber-border p-4 bg-slate-800 mb-6">
-          <h3 className="text-pink-400 font-semibold mb-3">
-            {isBanPhase ? '밴할 기체 선택' : '픽할 기체 선택'}
+          <h3 className="text-blue-400 font-semibold mb-3">
+            사용 가능한 메카 ({isPlayerTurn ? '플레이어' : '적팀'} 턴)
           </h3>
-          <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              {getAvailableMechs().map((mech) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+            {getAvailableMechs().map(mech => (
               <button
                 key={mech.id}
-                onClick={() => handleMechAction(mech)}
-                className="cyber-border p-3 bg-slate-700 hover:bg-slate-600 transition-all"
+                onClick={() => isPlayerTurn ? handleMechAction(mech) : undefined}
+                disabled={!isPlayerTurn || (!isBanPhase && banPickState.selectedMechs.player.length >= 3)}
+                className={`cyber-border p-3 text-left transition-all ${
+                  isPlayerTurn 
+                    ? 'hover:bg-blue-600/20 cursor-pointer' 
+                    : 'opacity-50 cursor-not-allowed'
+                } ${
+                  isBanPhase 
+                    ? 'border-red-400/50 bg-red-900/10' 
+                    : 'border-green-400/50 bg-green-900/10'
+                }`}
               >
-                <div className="text-sm font-medium mb-1">{mech.name}</div>
-                <div className="text-xs text-gray-400 mb-2">{mech.type} - {mech.variant}</div>
-                <div className="text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span>화력:</span> <span className="text-orange-400">{mech.firepower}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>속도:</span> <span className="text-blue-400">{mech.speed}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>장갑:</span> <span className="text-green-400">{mech.armor}</span>
-                  </div>
+                <div className="font-medium text-white">{mech.name}</div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {mech.type} | HP: {mech.hp} | 화력: {mech.firepower}
+                </div>
+                <div className="text-xs text-gray-500">
+                  속도: {mech.speed} | 장갑: {mech.armor} | 사거리: {mech.range}
                 </div>
               </button>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex justify-between">
-        <CyberButton variant="secondary" onClick={() => setScene('recon')}>
-          정찰로 돌아가기
-        </CyberButton>
-        
-        {/* 전투 시작 버튼 */}
-        <div className="flex space-x-4">
-          {(isComplete || (banPickState.selectedMechs.player.length === 3 && banPickState.selectedMechs.enemy.length === 3)) && (
-            <CyberButton onClick={() => setScene('formation')}>
-              편성 확인하기
-            </CyberButton>
-          )}
-          
-          {/* 강제 전투 시작 버튼 (디버그용) */}
-          <CyberButton 
-            variant="secondary" 
-            onClick={() => handleStartBattle()}
-          >
-            강제 전투 시작 (디버그)
-          </CyberButton>
+      {/* Complete Actions */}
+      {isComplete && (
+        <div className="cyber-border p-6 bg-green-900/20 border-green-400/50 text-center">
+          <h3 className="text-green-400 font-semibold text-lg mb-4">밴픽 완료!</h3>
+          <p className="text-gray-300 mb-6">
+            모든 기체 선택이 완료되었습니다. 전투를 시작하시겠습니까?
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button
+              onClick={() => setScene('hub')}
+              className="cyber-button bg-gray-600 hover:bg-gray-500 px-6 py-3"
+            >
+              돌아가기
+            </button>
+            <button
+              onClick={handleStartBattle}
+              className="cyber-button bg-green-600 hover:bg-green-500 px-6 py-3"
+            >
+              전투 시작
+            </button>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Back Button */}
+      {!isComplete && (
+        <div className="flex justify-start">
+          <button
+            onClick={() => setScene('hub')}
+            className="cyber-button bg-gray-600 hover:bg-gray-500 px-4 py-2"
+          >
+            ← 뒤로가기
+          </button>
+        </div>
+      )}
     </div>
   );
 }
