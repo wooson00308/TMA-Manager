@@ -324,7 +324,7 @@ export function useBattleRender({
           ctx.fillStyle = "#374151";
           ctx.fillRect(hpX, hpY, hpBarWidth, hpBarHeight);
 
-          const hpWidth = (participant.hp / 100) * hpBarWidth;
+          const hpWidth = (Math.min(participant.hp, 100) / 100) * hpBarWidth;
           ctx.fillStyle = participant.hp > 70 ? "#10B981" : participant.hp > 30 ? "#F59E0B" : "#EF4444";
           ctx.fillRect(hpX, hpY, hpWidth, hpBarHeight);
 
