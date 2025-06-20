@@ -231,7 +231,7 @@ export function BanPickScene() {
         <h3 className="text-pink-400 font-semibold mb-3">현재 단계</h3>
         <div className="flex items-center justify-between mb-4">
           <span className="text-lg font-medium">
-            {phaseNames[banPickState.phase]}
+            {phaseNames[banPickState.phase as keyof typeof phaseNames]}
           </span>
           <span className={`px-3 py-1 rounded text-sm ${
             isPlayerTurn ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
