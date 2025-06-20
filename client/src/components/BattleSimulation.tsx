@@ -549,14 +549,14 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     };
   }, [battle, animatingUnits, attackEffects]);
 
-  // 실시간 틱 시뮬레이션 로직 - 1초 행동 간격
+  // 병렬 전투 시뮬레이션 로직 - 모든 유닛이 동시에 행동
   useEffect(() => {
     if (!battle || !isSimulating || isCountingDown) return;
 
     const tickInterval = setInterval(() => {
       const currentTime = Date.now();
       
-      // 실시간 AI 행동 처리
+      // 모든 활성 유닛들이 동시에 행동 결정
       const activeUnits = (battle.participants || []).filter((p: BattleParticipant) => p.status === 'active');
       
       if (activeUnits.length >= 1) {
@@ -567,15 +567,18 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           return currentTime - lastActionTime > cooldownTime;
         });
 
-        if (availableUnits.length > 0 && Math.random() < 0.6) { // 60% 확률로 행동
-          const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
+        // 모든 사용 가능한 유닛들이 병렬로 행동 계획 수립
+        const parallelActions = availableUnits.map(actor => {
           const actorInfo = getPilotInfo(actor.pilotId);
-          
           const aiAction = determineAIAction(actor, battle, actorInfo);
-          
-          if (aiAction.type === 'ATTACK' && aiAction.target) {
-            const target = aiAction.target;
-            const attacker = aiAction.actor;
+          return { actor, actorInfo, action: aiAction };
+        });
+
+        // 모든 행동을 동시에 실행 (병렬 처리)
+        parallelActions.forEach(({ actor, actorInfo, action }) => {
+          if (action.type === 'ATTACK' && action.target) {
+            const target = action.target;
+            const attacker = action.actor;
             
             const attackerTerrain = terrainFeatures.find(t => 
               t.x === attacker.position.x && t.y === attacker.position.y
@@ -621,7 +624,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             const newLog = {
               timestamp: Date.now(),
               type: 'attack' as const,
-              message: `${aiAction.message} ${finalDamage} 데미지!${
+              message: `${action.message} ${finalDamage} 데미지!${
                 attackerTerrain?.type === 'elevation' ? ' [고지대]' : ''
               }${targetTerrain?.type === 'cover' ? ' [엄폐]' : ''}${
                 targetTerrain?.type === 'hazard' ? ' [위험지대]' : ''
@@ -673,17 +676,17 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             }
           }
           
-          else if (aiAction.type === 'SUPPORT' && aiAction.target) {
+          else if (action.type === 'SUPPORT' && action.target) {
             const supportLog = {
               timestamp: Date.now(),
               type: 'system' as const,
-              message: aiAction.message,
+              message: action.message,
               speaker: actorInfo.name
             };
             addBattleLog(supportLog);
             
             const updatedParticipants = battle.participants.map((p: BattleParticipant) => {
-              if (p.pilotId === aiAction.target.pilotId) {
+              if (p.pilotId === action.target.pilotId) {
                 return { ...p, hp: Math.min(100, p.hp + 15) };
               }
               if (p.pilotId === actor.pilotId) {
@@ -700,14 +703,14 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             });
           }
           
-          else if (aiAction.type === 'RETREAT' || aiAction.type === 'SCOUT' || aiAction.type === 'MOVE') {
+          else if (action.type === 'RETREAT' || action.type === 'SCOUT' || action.type === 'MOVE') {
             setAnimatingUnits(new Set([actor.pilotId]));
             setTimeout(() => setAnimatingUnits(new Set()), 1000);
             
             const moveLog = {
               timestamp: Date.now(),
               type: 'movement' as const,
-              message: aiAction.message,
+              message: action.message,
               speaker: actorInfo.name
             };
             addBattleLog(moveLog);
@@ -716,7 +719,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               if (p.pilotId === actor.pilotId) {
                 return { 
                   ...p, 
-                  position: aiAction.newPosition || p.position, 
+                  position: action.newPosition || p.position, 
                   lastActionTime: currentTime 
                 };
               }
@@ -735,12 +738,12 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             const actionLog = {
               timestamp: Date.now(),
               type: 'communication' as const,
-              message: aiAction.message,
+              message: action.message,
               speaker: actorInfo.name
             };
             addBattleLog(actionLog);
             
-            if (aiAction.type === 'SPECIAL') {
+            if (action.type === 'SPECIAL') {
               setAnimatingUnits(new Set([actor.pilotId]));
               setTimeout(() => setAnimatingUnits(new Set()), 2000);
             }
@@ -756,7 +759,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               log: [...(battle.log || []), actionLog]
             });
           }
-        }
+        });
       }
       
       // 매 틱마다 전투 종료 조건 확인
