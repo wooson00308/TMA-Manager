@@ -82,16 +82,16 @@ export function BattleScene() {
   };
 
   const getLogTypeColor = (type: string, speaker?: string) => {
-    // Prioritize action-based coloring over team colors
+    // Prioritise team colouring if speaker is present
+    if (speaker) {
+      return speaker.startsWith('Enemy') ? 'text-red-400' : 'text-green-400';
+    }
     switch (type) {
-      case 'attack': return 'text-red-400';        // 공격 - 빨간색
-      case 'movement': return 'text-blue-400';     // 이동 - 파란색
-      case 'communication': return 'text-cyan-400'; // 통신 - 청록색
-      case 'system': return 'text-yellow-400';     // 시스템 - 노란색
-      case 'damage': return 'text-orange-400';     // 피해 - 주황색
-      case 'repair': return 'text-green-400';      // 수리 - 초록색
-      case 'special': return 'text-purple-400';    // 특수 능력 - 보라색
-      default: return 'text-gray-300';             // 기본 - 회색
+      case 'communication': return 'text-green-400';
+      case 'attack': return 'text-red-400';
+      case 'movement': return 'text-blue-400';
+      case 'system': return 'text-yellow-400';
+      default: return 'text-gray-300';
     }
   };
 
