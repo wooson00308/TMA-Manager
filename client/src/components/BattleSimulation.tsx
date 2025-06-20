@@ -611,30 +611,22 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       const activeUnits = (battle.participants || []).filter((p: BattleParticipant) => p.status === 'active');
       
       if (activeUnits.length >= 1) {
-        // 모든 유닛이 쿨다운 후 무조건 행동 (100% 확률)
+        // 80% 확률로 행동 (균형잡힌 전투)
         const availableUnits = activeUnits.filter((unit: BattleParticipant) => {
           const lastActionTime = unit.lastActionTime || 0;
-          const cooldownTime = 500; // 0.5초 쿨다운
-          return currentTime - lastActionTime > cooldownTime;
+          const cooldownTime = 800; // 0.8초 쿨다운
+          const hasPassedCooldown = currentTime - lastActionTime > cooldownTime;
+          const actionChance = Math.random() < 0.8;
+          return hasPassedCooldown && actionChance;
         });
 
-        // 디버깅: 유닛 행동 상태 확인
-        if (availableUnits.length > 0) {
-          console.log(`활성 유닛 ${activeUnits.length}개 중 ${availableUnits.length}개 행동 예정`);
-          availableUnits.forEach(unit => {
-            const info = getPilotInfo(unit.pilotId);
-            console.log(`${info.name} (${info.team}) - 위치: (${unit.position.x}, ${unit.position.y})`);
-          });
-        }
+
 
         // 병렬 행동 계획 수립 및 실행
         const parallelActions = availableUnits.map(actor => {
           const actorInfo = getPilotInfo(actor.pilotId);
           
-          // 디버깅: 행동자 정보 출력
-          console.log(`행동자: ${actorInfo.name} (${actorInfo.team}, ID: ${actor.pilotId})`);
-          
-          // 간단한 AI 로직으로 임시 대체 (서버 AI 시스템은 별도 구현)
+          // AI 로직
           const enemies = (battle.participants || []).filter((p: BattleParticipant) => {
             const info = getPilotInfo(p.pilotId);
             return info.team !== actorInfo.team && p.status === 'active';
@@ -645,13 +637,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             return info.team === actorInfo.team && p.status === 'active' && p.pilotId !== actor.pilotId;
           });
           
-          console.log(`${actorInfo.name} - 적군 ${enemies.length}개, 아군 ${allies.length}개 발견`);
-          
-          // 개선된 AI 결정 로직
+          // AI 결정 로직
           let action;
           const randomFactor = Math.random();
-          
-          console.log(`${actorInfo.name} 행동 결정 - HP: ${actor.hp}, 랜덤: ${randomFactor.toFixed(2)}`);
           
           if (actor.hp < 25) {
             // 후퇴 - 더 적극적인 후퇴 로직
@@ -675,8 +663,8 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             
             const distance = manhattanDistance(actor.position, closestEnemy.position);
             
-            // 공격 범위 내라면 공격 (30% 확률로 낮춰서 더 많이 움직이게)
-            if (distance <= 3 && randomFactor < 0.3) {
+            // 공격 범위 내라면 공격 (50% 확률)
+            if (distance <= 3 && randomFactor < 0.5) {
               action = {
                 type: 'ATTACK',
                 actor,
@@ -688,42 +676,22 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               let dx = closestEnemy.position.x - actor.position.x;
               let dy = closestEnemy.position.y - actor.position.y;
               
-              // 아군은 더 적극적으로 이동, 적군은 기존 패턴
-              if (actorInfo.team === 'ally') {
-                // 아군: 항상 적에게 접근하거나 측면 공격
-                if (randomFactor > 0.5) {
-                  dx += Math.random() > 0.5 ? 2 : -2; // 더 큰 움직임
-                  dy += Math.random() > 0.5 ? 1 : -1;
-                }
-              } else {
-                // 적군: 기존 패턴
-                if (randomFactor > 0.7) {
-                  dx += Math.random() > 0.5 ? 1 : -1;
-                  dy += Math.random() > 0.5 ? 1 : -1;
-                }
+              // 측면 공격 패턴 (모든 팀 동일)
+              if (randomFactor > 0.6) {
+                dx += Math.random() > 0.5 ? 1 : -1;
+                dy += Math.random() > 0.5 ? 1 : -1;
               }
               
               const stepX = dx === 0 ? 0 : dx > 0 ? 1 : -1;
               const stepY = dy === 0 ? 0 : dy > 0 ? 1 : -1;
               
-              // 아군은 더 적극적인 대각선 이동
-              const shouldMoveDiagonal = actorInfo.team === 'ally' ? randomFactor > 0.3 : randomFactor > 0.4;
+              // 대각선 이동 확률
+              const shouldMoveDiagonal = randomFactor > 0.4;
               const finalStepX = shouldMoveDiagonal ? stepX : (randomFactor > 0.5 ? stepX : 0);
               const finalStepY = shouldMoveDiagonal ? stepY : (randomFactor > 0.5 ? 0 : stepY);
               
-              // 0,0 이동 방지 - 무조건 움직이게 강제
               let newX = actor.position.x + finalStepX;
               let newY = actor.position.y + finalStepY;
-              
-              if (newX === actor.position.x && newY === actor.position.y) {
-                // 움직임이 없으면 강제로 랜덤 이동
-                const forceDirections = [
-                  { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }
-                ];
-                const forceDir = forceDirections[Math.floor(Math.random() * forceDirections.length)];
-                newX = actor.position.x + forceDir.x;
-                newY = actor.position.y + forceDir.y;
-              }
               
               action = {
                 type: 'MOVE',
@@ -758,9 +726,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         });
 
         // 모든 행동을 동시에 실행 (병렬 처리)
-        console.log(`총 ${parallelActions.length}개 행동 실행 예정`);
         parallelActions.forEach(({ actor, actorInfo, action }) => {
-          console.log(`실행: ${actorInfo.name} - ${action.type} 행동`);
           if (action.type === 'ATTACK' && action.target) {
             const target = action.target;
             const attacker = action.actor;
@@ -914,18 +880,51 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             setAnimatingUnits(new Set([actor.pilotId]));
             setTimeout(() => setAnimatingUnits(new Set()), 800);
             
-            // 새 위치 검증 및 적용
+            // 새 위치 검증 및 적용 (더 유연한 로직)
             const newPosition = action.newPosition || actor.position;
             const isValidPosition = newPosition.x >= 0 && newPosition.x < 15 && 
                                   newPosition.y >= 0 && newPosition.y < 10;
             
-            // 다른 유닛과 겹치지 않는지 확인
+            let finalPosition = newPosition;
+            
+            // 위치가 유효하지 않거나 겹치면 대안 위치 찾기
+            if (!isValidPosition) {
+              finalPosition = {
+                x: Math.max(0, Math.min(14, newPosition.x)),
+                y: Math.max(0, Math.min(9, newPosition.y))
+              };
+            }
+            
+            // 위치 겹침 체크 - 겹치면 근처 빈 공간 찾기
             const isPositionOccupied = battle.participants.some((p: BattleParticipant) => 
               p.pilotId !== actor.pilotId && p.status === 'active' &&
-              p.position.x === newPosition.x && p.position.y === newPosition.y
+              p.position.x === finalPosition.x && p.position.y === finalPosition.y
             );
             
-            const finalPosition = isValidPosition && !isPositionOccupied ? newPosition : actor.position;
+            if (isPositionOccupied) {
+              // 주변 8방향에서 빈 공간 찾기
+              const directions = [
+                {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1},
+                {x: 1, y: 1}, {x: -1, y: -1}, {x: 1, y: -1}, {x: -1, y: 1}
+              ];
+              
+              for (const dir of directions) {
+                const altPosition = {
+                  x: Math.max(0, Math.min(14, finalPosition.x + dir.x)),
+                  y: Math.max(0, Math.min(9, finalPosition.y + dir.y))
+                };
+                
+                const isAltOccupied = battle.participants.some((p: BattleParticipant) => 
+                  p.pilotId !== actor.pilotId && p.status === 'active' &&
+                  p.position.x === altPosition.x && p.position.y === altPosition.y
+                );
+                
+                if (!isAltOccupied) {
+                  finalPosition = altPosition;
+                  break;
+                }
+              }
+            }
             
             const moveLog = {
               timestamp: Date.now(),
