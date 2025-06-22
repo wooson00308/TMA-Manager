@@ -101,7 +101,7 @@ export function processGameTick(
   // 초기 상태에서는 모든 유닛이 행동 가능하도록 설정
   const availableUnits = activeUnits.filter((unit: any) => {
     const lastActionTime = unit.lastActionTime || 0;
-    const cooldownTime = 500; // 0.5초 쿨다운으로 단축
+    const cooldownTime = 300; // 0.3초 쿨다운으로 더 단축
     const isReady = currentTime - lastActionTime > cooldownTime;
     if (!isReady) {
       console.log(`Unit ${unit.pilotId} still on cooldown`);
@@ -111,7 +111,7 @@ export function processGameTick(
 
   console.log(`Available units: ${availableUnits.length}`);
 
-  if (availableUnits.length > 0) { // 확률 제거하고 항상 행동
+  if (availableUnits.length > 0) { // 100% 확률로 행동
     const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
     const actorInfo = getPilotInfo(pilots, actor.pilotId);
     
@@ -215,6 +215,9 @@ export function processGameTick(
     }
   }
 
-  newState.turn += 1;
+  // Only increment turn if an action was taken
+  if (availableUnits.length > 0) {
+    newState.turn += 1;
+  }
   return newState;
 }

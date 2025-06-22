@@ -9,8 +9,11 @@ export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) 
   const { pilots, terrainFeatures } = useGameStore();
 
   useEffect(() => {
+    console.log("useGameLoopWorker effect triggered:", { enabled, hasBattle: !!battle });
+    
     if (!enabled || !battle) {
       // stop and clean up
+      console.log("Stopping worker - enabled:", enabled, "battle:", !!battle);
       if (workerRef.current) {
         workerRef.current.postMessage({ type: "STOP" });
         workerRef.current.terminate();

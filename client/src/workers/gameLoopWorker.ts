@@ -37,7 +37,7 @@ let currentState: BattleState | null = null;
 let pilots: Pilot[] = [];
 let terrainFeatures: TerrainFeature[] = [];
 let intervalId: ReturnType<typeof setInterval> | null = null;
-let tickMs = 1000; // default 1s tick – can be overridden by INIT
+let tickMs = 800; // faster tick for more responsive AI
 
 function startLoop() {
   if (intervalId !== null || !currentState) {

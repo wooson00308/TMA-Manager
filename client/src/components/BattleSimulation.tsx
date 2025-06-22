@@ -38,6 +38,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     } else if (isCountingDown && countdown === 0) {
       setIsCountingDown(false);
       setIsSimulating(true);
+      console.log("Starting battle simulation with enabled:", true);
       addBattleLog({
         type: 'system',
         message: '전투가 시작됩니다!',
@@ -58,7 +59,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   });
 
   // Phase B: leverage Web Worker for game loop when simulation is active
-  useGameLoopWorker(battle, isSimulating && !isCountingDown);
+  const workerEnabled = isSimulating && !isCountingDown;
+  console.log("Game loop worker enabled:", workerEnabled, { isSimulating, isCountingDown });
+  useGameLoopWorker(battle, workerEnabled);
 
   // Timer logic for battle time tracking
   useEffect(() => {
