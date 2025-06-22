@@ -89,24 +89,37 @@ export function processGameTick(
   };
 
   const currentTime = Date.now();
-  const activeUnits = newState.participants.filter((p: BattleParticipant) => p.status === 'active') as SafeBattleParticipant[];
+  const activeUnits = newState.participants.filter((p: any) => p.status === 'active');
   
   if (activeUnits.length === 0) {
+    console.log("No active units found");
     return battleState; // no-op
   }
   
-  // 1초 쿨다운 시스템
-  const availableUnits = activeUnits.filter((unit: SafeBattleParticipant) => {
+  console.log(`Active units: ${activeUnits.length}, Processing game tick at ${new Date().toLocaleTimeString()}`);
+  
+  // 초기 상태에서는 모든 유닛이 행동 가능하도록 설정
+  const availableUnits = activeUnits.filter((unit: any) => {
     const lastActionTime = unit.lastActionTime || 0;
-    const cooldownTime = 1000; // 1초 쿨다운
-    return currentTime - lastActionTime > cooldownTime;
+    const cooldownTime = 500; // 0.5초 쿨다운으로 단축
+    const isReady = currentTime - lastActionTime > cooldownTime;
+    if (!isReady) {
+      console.log(`Unit ${unit.pilotId} still on cooldown`);
+    }
+    return isReady;
   });
 
-  if (availableUnits.length > 0 && Math.random() < 0.6) { // 60% 확률로 행동
+  console.log(`Available units: ${availableUnits.length}`);
+
+  if (availableUnits.length > 0) { // 확률 제거하고 항상 행동
     const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
     const actorInfo = getPilotInfo(pilots, actor.pilotId);
     
+    console.log(`Actor ${actor.pilotId} (${actorInfo.name}) taking action`);
+    
     const aiAction = determineAIAction(actor, newState, pilots, actorInfo);
+    
+    console.log(`AI Action: ${aiAction.type} - ${aiAction.message}`);
     
     // Process action
     actor.lastActionTime = currentTime;

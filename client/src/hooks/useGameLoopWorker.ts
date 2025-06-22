@@ -29,11 +29,19 @@ export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) 
       workerRef.current = w;
 
       w.onmessage = (evt: MessageEvent<{ type: string; state: BattleState }>) => {
+        console.log("Received message from worker:", evt.data.type);
         if (evt.data.type === "STATE_UPDATE") {
+          console.log("Updating battle state from worker");
           setBattle(evt.data.state);
         }
       };
 
+      console.log("Initializing worker with battle state:", {
+        participants: battle.participants?.length,
+        pilots: pilots.length,
+        terrainFeatures: terrainFeatures.length
+      });
+      
       w.postMessage({ 
         type: "INIT", 
         payload: { 
@@ -45,6 +53,7 @@ export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) 
     }
 
     // start loop (idempotent inside worker)
+    console.log("Sending START message to worker");
     workerRef.current?.postMessage({ type: "START" });
 
     return () => {
