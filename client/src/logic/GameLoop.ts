@@ -1,6 +1,8 @@
 import type { BattleState, Pilot } from "@shared/schema";
 import { makeAIDecision } from "@shared/ai/decision";
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
+import { TERRAIN_FEATURES } from "@shared/terrain/config";
+import { type SafeBattleParticipant, type SafeAIAction, isEnemyPilot } from "@shared/types/battle";
 import type { PilotInfo, TerrainFeature, BattleParticipant } from "@shared/domain/types";
 
 function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
@@ -29,26 +31,22 @@ function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
   };
 };
 
-function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo) {
-  // Enhanced terrain features for client-side AI
-  const terrainFeatures = [
-    { x: 4, y: 3, type: "cover" as const, effect: "방어력 +20%" },
-    { x: 8, y: 5, type: "elevation" as const, effect: "사거리 +1" },
-    { x: 12, y: 7, type: "obstacle" as const, effect: "이동 제한" },
-    { x: 6, y: 9, type: "hazard" as const, effect: "턴당 HP -5" },
-    { x: 10, y: 2, type: "cover" as const, effect: "방어력 +20%" },
-  ];
-
+function determineAIAction(
+  actor: SafeBattleParticipant, 
+  battleState: BattleState, 
+  pilots: Pilot[], 
+  actorInfo: PilotInfo
+): SafeAIAction {
   // Use the enhanced shared AI decision system
   const sharedDecision = makeAIDecision(actor, battleState, actor.team, {
     getPilotInitial: (id: number) => actorInfo.initial,
-    terrainFeatures,
+    terrainFeatures: TERRAIN_FEATURES,
   });
 
-  // Convert shared decision format to client format
+  // Convert shared decision format to client format with proper type safety
   const targetActor = sharedDecision.targetId 
-    ? battleState.participants.find((p: any) => p.pilotId === sharedDecision.targetId)
-    : null;
+    ? battleState.participants.find((p: any) => p.pilotId === sharedDecision.targetId) as SafeBattleParticipant
+    : undefined;
 
   return {
     type: sharedDecision.type,
@@ -57,24 +55,6 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
     newPosition: sharedDecision.newPosition,
     ability: sharedDecision.ability,
     message: sharedDecision.message
-  };
-
-  if (enemies.length > 0 && random < 0.8) {
-    const target = selectBestTarget(enemies, actor, personality);
-    return {
-      type: 'ATTACK',
-      actor,
-      target,
-      message: `타겟 확인! 공격 개시!`
-    };
-  }
-
-  const tacticalPos = calculateTacticalPosition(actor.position, actorTeam, enemies);
-  return {
-    type: 'MOVE',
-    actor,
-    newPosition: tacticalPos,
-    message: `포지션 조정!`
   };
 };
 
@@ -109,14 +89,14 @@ export function processGameTick(
   };
 
   const currentTime = Date.now();
-  const activeUnits = newState.participants.filter((p: BattleParticipant) => p.status === 'active');
+  const activeUnits = newState.participants.filter((p: BattleParticipant) => p.status === 'active') as SafeBattleParticipant[];
   
   if (activeUnits.length === 0) {
     return battleState; // no-op
   }
   
   // 1초 쿨다운 시스템
-  const availableUnits = activeUnits.filter((unit: any) => {
+  const availableUnits = activeUnits.filter((unit: SafeBattleParticipant) => {
     const lastActionTime = unit.lastActionTime || 0;
     const cooldownTime = 1000; // 1초 쿨다운
     return currentTime - lastActionTime > cooldownTime;
@@ -135,10 +115,10 @@ export function processGameTick(
       const target = aiAction.target;
       const attacker = aiAction.actor;
       
-      const attackerTerrain = terrainFeatures.find(t => 
+      const attackerTerrain = TERRAIN_FEATURES.find(t => 
         t.x === attacker.position.x && t.y === attacker.position.y
       );
-      const targetTerrain = terrainFeatures.find(t => 
+      const targetTerrain = TERRAIN_FEATURES.find(t => 
         t.x === target.position.x && t.y === target.position.y
       );
 

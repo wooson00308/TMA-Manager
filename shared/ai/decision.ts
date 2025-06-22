@@ -4,6 +4,7 @@
 // in browsers (WebWorker) and on the server deterministically.
 
 import type { BattleState } from "@shared/schema";
+import { isEnemyPilot, normalizeTeamName, type TeamIdentifier } from "@shared/types/battle";
 import {
   calculateRetreatPosition,
   calculateScoutPosition,
@@ -149,18 +150,18 @@ export function makeAIDecision(
 ): AIDecision {
   const rand = options.random ?? Math.random;
   const terrainFeatures = options.terrainFeatures || [];
+  const normalizedTeam = normalizeTeamName(team);
 
   const pilotInitial = options.getPilotInitial(actor.pilotId);
   const personality = PERSONALITY_PRESETS[pilotInitial] ?? PERSONALITY_PRESETS["E"];
 
+  // Use consistent team identification
   const enemies = battleState.participants.filter((p: any) => {
-    const isEnemy = team === "team1" || team === "ally" ? p.pilotId >= 100 : p.pilotId < 100;
-    return isEnemy && p.status === "active";
+    return isEnemyPilot(p.pilotId, normalizedTeam) && p.status === "active";
   }) as Participant[];
 
   const allies = battleState.participants.filter((p: any) => {
-    const isAlly = team === "team1" || team === "ally" ? p.pilotId < 100 : p.pilotId >= 100;
-    return isAlly && p.status === "active" && p.pilotId !== actor.pilotId;
+    return !isEnemyPilot(p.pilotId, normalizedTeam) && p.status === "active" && p.pilotId !== actor.pilotId;
   }) as Participant[];
 
   // Enhanced context analysis
@@ -189,7 +190,7 @@ export function makeAIDecision(
     return {
       type: "RETREAT",
       pilotId: actor.pilotId,
-      newPosition: calculateRetreatPosition(actor.position, team, enemies),
+      newPosition: calculateRetreatPosition(actor.position, normalizedTeam, enemies),
       message: getContextualDialogue("retreat", personality, { inHazard: true }),
     };
   }
@@ -198,7 +199,7 @@ export function makeAIDecision(
     return {
       type: "RETREAT",
       pilotId: actor.pilotId,
-      newPosition: calculateRetreatPosition(actor.position, team, enemies),
+      newPosition: calculateRetreatPosition(actor.position, normalizedTeam, enemies),
       message: getContextualDialogue("retreat", personality, { inCover }),
     };
   }
@@ -248,7 +249,7 @@ export function makeAIDecision(
     return {
       type: "SCOUT",
       pilotId: actor.pilotId,
-      newPosition: calculateScoutPosition(actor.position, team, enemies),
+      newPosition: calculateScoutPosition(actor.position, normalizedTeam, enemies),
       message: getContextualDialogue("scout", personality, { hasElevation: false }),
     };
   }
@@ -285,7 +286,7 @@ export function makeAIDecision(
   return {
     type: "MOVE",
     pilotId: actor.pilotId,
-    newPosition: calculateTacticalPosition(actor.position, team, enemies, allies, terrainFeatures),
+    newPosition: calculateTacticalPosition(actor.position, normalizedTeam, enemies, allies, terrainFeatures),
     message: getContextualDialogue("move", personality, { hasElevation, inCover }),
   };
 } 

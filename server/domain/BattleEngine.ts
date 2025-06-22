@@ -1,5 +1,6 @@
 import { type BattleState } from "@shared/schema";
 import { AISystem } from "./AISystem";
+import { TERRAIN_FEATURES } from "@shared/terrain/config";
 
 export class BattleEngine {
   private aiSystem: AISystem;
@@ -123,15 +124,6 @@ export class BattleEngine {
 
   private executeAction(participant: any, action: any, battleState: BattleState) {
     const timestamp = Date.now();
-    
-    // Terrain features for damage calculations
-    const terrainFeatures = [
-      { x: 4, y: 3, type: "cover" as const, effect: "방어력 +20%" },
-      { x: 8, y: 5, type: "elevation" as const, effect: "사거리 +1" },
-      { x: 12, y: 7, type: "obstacle" as const, effect: "이동 제한" },
-      { x: 6, y: 9, type: "hazard" as const, effect: "턴당 HP -5" },
-      { x: 10, y: 2, type: "cover" as const, effect: "방어력 +20%" },
-    ];
 
     switch (action.type) {
       case "MOVE":
@@ -153,7 +145,7 @@ export class BattleEngine {
           let baseDamage = Math.floor(Math.random() * 25) + 15;
           
           // Attacker terrain bonus
-          const attackerTerrain = terrainFeatures.find(t => 
+          const attackerTerrain = TERRAIN_FEATURES.find(t => 
             t.x === participant.position.x && t.y === participant.position.y
           );
           if (attackerTerrain?.type === "elevation") {
@@ -161,7 +153,7 @@ export class BattleEngine {
           }
           
           // Target terrain defense
-          const targetTerrain = terrainFeatures.find(t => 
+          const targetTerrain = TERRAIN_FEATURES.find(t => 
             t.x === target.position.x && t.y === target.position.y
           );
           if (targetTerrain?.type === "cover") {
@@ -238,7 +230,7 @@ export class BattleEngine {
     }
     
     // Apply hazard damage at end of turn
-    const hazard = terrainFeatures.find(t => 
+    const hazard = TERRAIN_FEATURES.find(t => 
       t.x === participant.position.x && 
       t.y === participant.position.y && 
       t.type === "hazard"
