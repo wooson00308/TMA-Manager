@@ -41,21 +41,33 @@ let tickMs = 800; // faster tick for more responsive AI
 
 function startLoop() {
   if (intervalId !== null || !currentState) {
-    console.log("Cannot start loop - already running or no state");
+    console.log("Cannot start loop - already running:", intervalId !== null, "or no state:", !currentState);
     return;
   }
   
-  console.log("Starting game loop worker with tick interval:", tickMs);
+  console.log("Starting game loop worker with tick interval:", tickMs, "ms");
+  console.log("Initial participants:", currentState.participants?.map(p => ({id: p.pilotId, hp: p.hp, team: p.team})));
   
   intervalId = setInterval(() => {
     if (!currentState) {
-      console.log("No current state, skipping tick");
+      console.log("No current state in loop, stopping");
+      stopLoop();
       return;
     }
     
-    console.log("Processing game tick in worker");
-    currentState = processGameTick(currentState, pilots, terrainFeatures);
-    const msg: StateUpdateMessage = { type: "STATE_UPDATE", state: currentState };
+    const activeUnits = currentState.participants?.filter(p => p.hp > 0) || [];
+    console.log(`Turn ${currentState.turn}: Processing ${activeUnits.length} active units`);
+    
+    if (activeUnits.length === 0) {
+      console.log("No active units, battle should end");
+      return;
+    }
+    
+    const newState = processGameTick(currentState, pilots, terrainFeatures);
+    currentState = newState;
+    
+    console.log(`Turn ${newState.turn} completed, sending update`);
+    const msg: StateUpdateMessage = { type: "STATE_UPDATE", state: newState };
     self.postMessage(msg);
 
     // Automatically halt the loop once the battle has finished.
@@ -86,8 +98,20 @@ self.onmessage = (evt: MessageEvent<InboundMessage>) => {
       console.log("Worker initialized with state:", {
         participants: currentState?.participants?.length,
         pilots: pilots.length,
-        terrainFeatures: terrainFeatures.length
+        terrainFeatures: terrainFeatures.length,
+        state: currentState
       });
+      
+      if (!currentState) {
+        console.error("ERROR: No battle state provided to worker!");
+        return;
+      }
+      
+      if (!currentState.participants || currentState.participants.length === 0) {
+        console.error("ERROR: No participants in battle state!");
+        return;
+      }
+      
       break;
     case "START":
       console.log("Starting worker loop");

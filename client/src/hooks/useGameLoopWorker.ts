@@ -32,11 +32,15 @@ export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) 
       workerRef.current = w;
 
       w.onmessage = (evt: MessageEvent<{ type: string; state: BattleState }>) => {
-        console.log("Received message from worker:", evt.data.type);
+        console.log("Received message from worker:", evt.data.type, evt.data);
         if (evt.data.type === "STATE_UPDATE") {
-          console.log("Updating battle state from worker");
+          console.log("Updating battle state from worker:", evt.data.state);
           setBattle(evt.data.state);
         }
+      };
+
+      w.onerror = (error) => {
+        console.error("Worker error:", error);
       };
 
       console.log("Initializing worker with battle state:", {

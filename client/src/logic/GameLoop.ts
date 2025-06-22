@@ -77,8 +77,14 @@ export function processGameTick(
   pilots: Pilot[],
   terrainFeatures: TerrainFeature[]
 ): BattleState {
+  console.log(`=== GAME TICK ${battleState.turn} START ===`);
+  console.log("Battle state:", { phase: battleState.phase, participants: battleState.participants?.length });
+  console.log("Pilots data:", pilots?.length || 0);
+  console.log("Terrain features:", terrainFeatures?.length || 0);
+  
   // If the battle is already marked as completed, do not process further ticks.
   if (battleState.phase === "completed") {
+    console.log("Battle already completed, skipping tick");
     return battleState;
   }
 
@@ -115,9 +121,10 @@ export function processGameTick(
     const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
     const actorInfo = getPilotInfo(pilots, actor.pilotId);
     
-    console.log(`Actor ${actor.pilotId} (${actorInfo.name}) taking action`);
+    console.log(`🎯 Actor ${actor.pilotId} (${actorInfo.name}) taking action`);
     
     const aiAction = determineAIAction(actor, newState, pilots, actorInfo);
+    console.log(`🎮 AI Action:`, aiAction);
     
     console.log(`AI Action: ${aiAction.type} - ${aiAction.message}`);
     
@@ -218,6 +225,11 @@ export function processGameTick(
   // Only increment turn if an action was taken
   if (availableUnits.length > 0) {
     newState.turn += 1;
+    console.log(`✅ Turn ${newState.turn} completed`);
+  } else {
+    console.log("❌ No units available for action this tick");
   }
+  
+  console.log(`=== GAME TICK ${battleState.turn} END ===`);
   return newState;
 }
