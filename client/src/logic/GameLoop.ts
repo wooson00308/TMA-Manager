@@ -1,4 +1,5 @@
 import type { BattleState, Pilot } from "@shared/schema";
+import { makeAIDecision } from "@shared/ai/decision";
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
 import type { PilotInfo, TerrainFeature, BattleParticipant } from "@shared/domain/types";
 
@@ -29,76 +30,34 @@ function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
 };
 
 function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo) {
-  const isLowHP = actor.hp < 30;
-  const isCriticalHP = actor.hp < 15;
-  const actorTeam = actor.team;
-  const allies = battleState.participants.filter((p: any) => p.team === actorTeam && p.status === 'active' && p.pilotId !== actor.pilotId);
-  const enemies = battleState.participants.filter((p: any) => p.team !== actorTeam && p.status === 'active');
-  
-  const damagedAllies = allies.filter((ally: any) => ally.hp < 50);
-  const nearbyEnemies = enemies.filter((enemy: any) => 
-    Math.abs(enemy.position.x - actor.position.x) <= 2 &&
-    Math.abs(enemy.position.y - actor.position.y) <= 2
-  );
+  // Enhanced terrain features for client-side AI
+  const terrainFeatures = [
+    { x: 4, y: 3, type: "cover" as const, effect: "방어력 +20%" },
+    { x: 8, y: 5, type: "elevation" as const, effect: "사거리 +1" },
+    { x: 12, y: 7, type: "obstacle" as const, effect: "이동 제한" },
+    { x: 6, y: 9, type: "hazard" as const, effect: "턴당 HP -5" },
+    { x: 10, y: 2, type: "cover" as const, effect: "방어력 +20%" },
+  ];
 
-  const random = Math.random();
-  
-  const personalities: { [key: string]: any } = {
-    'S': { aggressive: 0.8, tactical: 0.6, supportive: 0.4 },
-    'M': { aggressive: 0.4, tactical: 0.9, supportive: 0.8 },
-    'A': { aggressive: 0.9, tactical: 0.3, supportive: 0.5 },
-    'E': { aggressive: 0.6, tactical: 0.5, supportive: 0.2 }
+  // Use the enhanced shared AI decision system
+  const sharedDecision = makeAIDecision(actor, battleState, actor.team, {
+    getPilotInitial: (id: number) => actorInfo.initial,
+    terrainFeatures,
+  });
+
+  // Convert shared decision format to client format
+  const targetActor = sharedDecision.targetId 
+    ? battleState.participants.find((p: any) => p.pilotId === sharedDecision.targetId)
+    : null;
+
+  return {
+    type: sharedDecision.type,
+    actor,
+    target: targetActor,
+    newPosition: sharedDecision.newPosition,
+    ability: sharedDecision.ability,
+    message: sharedDecision.message
   };
-  const personality = personalities[actorInfo.initial] || personalities['E'];
-
-  if (isCriticalHP && random < 0.6) {
-    const retreatPos = calculateRetreatPosition(actor.position, actorTeam, enemies);
-    return {
-      type: 'RETREAT',
-      actor,
-      newPosition: retreatPos,
-      message: `긴급 후퇴! 재정비 필요!`
-    };
-  }
-
-  if (personality.supportive > 0.6 && damagedAllies.length > 0 && random < 0.25) {
-    const targetAlly = damagedAllies[0];
-    return {
-      type: 'SUPPORT',
-      actor,
-      target: targetAlly,
-      message: `지원 나간다! 버텨!`
-    };
-  }
-
-  if (nearbyEnemies.length >= 2 && random < 0.2) {
-    return {
-      type: 'DEFEND',
-      actor,
-      message: `방어 태세! 견고하게!`
-    };
-  }
-
-  if (personality.tactical > 0.7 && random < 0.3) {
-    const scoutPos = calculateScoutPosition(actor.position, actorTeam, enemies);
-    return {
-      type: 'SCOUT',
-      actor,
-      newPosition: scoutPos,
-      message: `정찰 이동! 상황 파악!`
-    };
-  }
-
-  if (battleState.turn > 5 && random < 0.15) {
-    const abilities = ['오버드라이브', '정밀 조준', '일제 사격', '은폐 기동'];
-    const ability = abilities[Math.floor(Math.random() * abilities.length)];
-    return {
-      type: 'SPECIAL',
-      actor,
-      ability,
-      message: `${ability} 발동!`
-    };
-  }
 
   if (enemies.length > 0 && random < 0.8) {
     const target = selectBestTarget(enemies, actor, personality);

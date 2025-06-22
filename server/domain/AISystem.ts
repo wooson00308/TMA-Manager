@@ -17,8 +17,14 @@ interface AIDecision {
 // such as persistence or transport are delegated to the application layer.
 export class AISystem {
   makeSimpleDecision(participant: any, battleState: BattleState, team: string): AIDecision {
-    // Delegate to the shared deterministic AI engine. We inject a lightweight
-    // helper that maps pilotId → initial required by the personality presets.
+    // Enhanced AI with terrain awareness
+    const terrainFeatures = [
+      { x: 4, y: 3, type: "cover" as const, effect: "방어력 +20%" },
+      { x: 8, y: 5, type: "elevation" as const, effect: "사거리 +1" },
+      { x: 12, y: 7, type: "obstacle" as const, effect: "이동 제한" },
+      { x: 6, y: 9, type: "hazard" as const, effect: "턴당 HP -5" },
+      { x: 10, y: 2, type: "cover" as const, effect: "방어력 +20%" },
+    ];
 
     const sharedDecision = makeAIDecision(participant, battleState, team, {
       getPilotInitial: (id: number) => {
@@ -27,6 +33,7 @@ export class AISystem {
         if (id === 3) return "A";
         return id >= 100 ? "E" : "A";
       },
+      terrainFeatures,
     });
 
     // Map shared decision -> server domain decision structure
