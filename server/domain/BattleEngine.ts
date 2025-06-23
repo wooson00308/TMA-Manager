@@ -1,6 +1,5 @@
 import { type BattleState } from "@shared/schema";
 import { AISystem } from "./AISystem";
-import { TERRAIN_FEATURES } from "@shared/terrain/config";
 
 export class BattleEngine {
   private aiSystem: AISystem;
@@ -124,127 +123,22 @@ export class BattleEngine {
 
   private executeAction(participant: any, action: any, battleState: BattleState) {
     const timestamp = Date.now();
-
     switch (action.type) {
       case "MOVE":
-        if (action.newPosition) {
-          participant.position = action.newPosition;
-          battleState.log.push({ 
-            timestamp, 
-            type: "movement", 
-            message: `${action.pilotName}이(가) ${action.dialogue}`, 
-            speaker: action.pilotName 
-          });
-        }
+        participant.position = action.newPosition;
+        battleState.log.push({ timestamp, type: "movement", message: action.dialogue, speaker: action.pilotName });
         break;
-        
       case "ATTACK":
         const target = battleState.participants[action.targetIndex];
-        if (target) {
-          // Enhanced damage calculation with terrain
-          let baseDamage = Math.floor(Math.random() * 25) + 15;
-          
-          // Attacker terrain bonus
-          const attackerTerrain = TERRAIN_FEATURES.find(t => 
-            t.x === participant.position.x && t.y === participant.position.y
-          );
-          if (attackerTerrain?.type === "elevation") {
-            baseDamage = Math.floor(baseDamage * 1.2); // 20% attack bonus
-          }
-          
-          // Target terrain defense
-          const targetTerrain = TERRAIN_FEATURES.find(t => 
-            t.x === target.position.x && t.y === target.position.y
-          );
-          if (targetTerrain?.type === "cover") {
-            baseDamage = Math.floor(baseDamage * 0.8); // 20% damage reduction
-          }
-          
-          target.hp = Math.max(0, target.hp - baseDamage);
-          if (target.hp === 0) target.status = "destroyed";
-          else if (target.hp < 30) target.status = "damaged";
-          
-          battleState.log.push({ 
-            timestamp, 
-            type: "attack", 
-            message: `${action.pilotName}이(가) ${baseDamage} 피해를 입혔습니다! ${action.dialogue}`, 
-            speaker: action.pilotName 
-          });
-        }
+        const dmg = Math.floor(Math.random() * 25) + 10;
+        target.hp = Math.max(0, target.hp - dmg);
+        if (target.hp === 0) target.status = "destroyed";
+        else if (target.hp < 30) target.status = "damaged";
+        battleState.log.push({ timestamp, type: "attack", message: action.dialogue, speaker: action.pilotName });
         break;
-        
-      case "SUPPORT":
-        const ally = battleState.participants.find(p => p.pilotId === action.targetId);
-        if (ally) {
-          const healAmount = Math.floor(Math.random() * 15) + 10;
-          ally.hp = Math.min(100, ally.hp + healAmount);
-          if (ally.status === "damaged" && ally.hp >= 30) ally.status = "active";
-          
-          battleState.log.push({ 
-            timestamp, 
-            type: "support", 
-            message: `${action.pilotName}이(가) 아군을 지원하여 ${healAmount} 회복시켰습니다!`, 
-            speaker: action.pilotName 
-          });
-        }
-        break;
-        
-      case "DEFEND":
-        battleState.log.push({ 
-          timestamp, 
-          type: "defense", 
-          message: `${action.pilotName}: ${action.dialogue}`, 
-          speaker: action.pilotName 
-        });
-        break;
-        
-      case "SCOUT":
-        if (action.newPosition) {
-          participant.position = action.newPosition;
-          battleState.log.push({ 
-            timestamp, 
-            type: "scout", 
-            message: `${action.pilotName}: ${action.dialogue}`, 
-            speaker: action.pilotName 
-          });
-        }
-        break;
-        
-      case "SPECIAL":
-        battleState.log.push({ 
-          timestamp, 
-          type: "special", 
-          message: `${action.pilotName}: ${action.dialogue}`, 
-          speaker: action.pilotName 
-        });
-        break;
-        
       case "COMMUNICATE":
-        battleState.log.push({ 
-          timestamp, 
-          type: "communication", 
-          message: `${action.pilotName}: ${action.dialogue}`, 
-          speaker: action.pilotName 
-        });
+        battleState.log.push({ timestamp, type: "communication", message: action.dialogue, speaker: action.pilotName });
         break;
-    }
-    
-    // Apply hazard damage at end of turn
-    const hazard = TERRAIN_FEATURES.find(t => 
-      t.x === participant.position.x && 
-      t.y === participant.position.y && 
-      t.type === "hazard"
-    );
-    if (hazard && participant.status === "active") {
-      participant.hp = Math.max(0, participant.hp - 5);
-      if (participant.hp === 0) participant.status = "destroyed";
-      
-      battleState.log.push({ 
-        timestamp: timestamp + 100, 
-        type: "environment", 
-        message: `${action.pilotName}이(가) 위험지대에서 5 피해를 받았습니다!`, 
-        speaker: "시스템" 
-      });
     }
   }
 

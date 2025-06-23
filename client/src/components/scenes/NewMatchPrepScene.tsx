@@ -297,9 +297,7 @@ export function NewMatchPrepScene() {
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
       const result = await response.json();
-      console.log('Battle API response:', result);
       
-      // Create proper battle state for the client
       setBattle({
         id: result.battleId.toString(),
         phase: 'active',

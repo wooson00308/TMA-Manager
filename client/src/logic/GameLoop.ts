@@ -1,10 +1,6 @@
 import type { BattleState, Pilot } from "@shared/schema";
-import { makeAIDecision } from "@shared/ai/core";
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
-import { TERRAIN_FEATURES } from "@shared/terrain/config";
-import { type SafeBattleParticipant, type SafeAIAction, isEnemyPilot } from "@shared/types/battle";
 import type { PilotInfo, TerrainFeature, BattleParticipant } from "@shared/domain/types";
-import type { GameEvent, AttackEvent, MoveEvent, SupportEvent } from "@shared/events";
 
 function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
   const found = pilots.find((p) => p.id === pilotId);
@@ -32,30 +28,94 @@ function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
   };
 };
 
-function determineAIAction(
-  actor: SafeBattleParticipant, 
-  battleState: BattleState, 
-  pilots: Pilot[], 
-  actorInfo: PilotInfo
-): SafeAIAction {
-  // Use the enhanced shared AI decision system
-  const sharedDecision = makeAIDecision(actor, battleState, actor.team, {
-    getPilotInitial: (id: number) => actorInfo.initial,
-    terrainFeatures: [...TERRAIN_FEATURES] as TerrainFeature[],
-  });
+function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo) {
+  const isLowHP = actor.hp < 30;
+  const isCriticalHP = actor.hp < 15;
+  const actorTeam = actor.team;
+  const allies = battleState.participants.filter((p: any) => p.team === actorTeam && p.status === 'active' && p.pilotId !== actor.pilotId);
+  const enemies = battleState.participants.filter((p: any) => p.team !== actorTeam && p.status === 'active');
+  
+  const damagedAllies = allies.filter((ally: any) => ally.hp < 50);
+  const nearbyEnemies = enemies.filter((enemy: any) => 
+    Math.abs(enemy.position.x - actor.position.x) <= 2 &&
+    Math.abs(enemy.position.y - actor.position.y) <= 2
+  );
 
-  // Convert shared decision format to client format with proper type safety
-  const targetActor = sharedDecision.targetId 
-    ? battleState.participants.find((p: any) => p.pilotId === sharedDecision.targetId) as SafeBattleParticipant
-    : undefined;
+  const random = Math.random();
+  
+  const personalities: { [key: string]: any } = {
+    'S': { aggressive: 0.8, tactical: 0.6, supportive: 0.4 },
+    'M': { aggressive: 0.4, tactical: 0.9, supportive: 0.8 },
+    'A': { aggressive: 0.9, tactical: 0.3, supportive: 0.5 },
+    'E': { aggressive: 0.6, tactical: 0.5, supportive: 0.2 }
+  };
+  const personality = personalities[actorInfo.initial] || personalities['E'];
 
+  if (isCriticalHP && random < 0.6) {
+    const retreatPos = calculateRetreatPosition(actor.position, actorTeam, enemies);
+    return {
+      type: 'RETREAT',
+      actor,
+      newPosition: retreatPos,
+      message: `긴급 후퇴! 재정비 필요!`
+    };
+  }
+
+  if (personality.supportive > 0.6 && damagedAllies.length > 0 && random < 0.25) {
+    const targetAlly = damagedAllies[0];
+    return {
+      type: 'SUPPORT',
+      actor,
+      target: targetAlly,
+      message: `지원 나간다! 버텨!`
+    };
+  }
+
+  if (nearbyEnemies.length >= 2 && random < 0.2) {
+    return {
+      type: 'DEFEND',
+      actor,
+      message: `방어 태세! 견고하게!`
+    };
+  }
+
+  if (personality.tactical > 0.7 && random < 0.3) {
+    const scoutPos = calculateScoutPosition(actor.position, actorTeam, enemies);
+    return {
+      type: 'SCOUT',
+      actor,
+      newPosition: scoutPos,
+      message: `정찰 이동! 상황 파악!`
+    };
+  }
+
+  if (battleState.turn > 5 && random < 0.15) {
+    const abilities = ['오버드라이브', '정밀 조준', '일제 사격', '은폐 기동'];
+    const ability = abilities[Math.floor(Math.random() * abilities.length)];
+    return {
+      type: 'SPECIAL',
+      actor,
+      ability,
+      message: `${ability} 발동!`
+    };
+  }
+
+  if (enemies.length > 0 && random < 0.8) {
+    const target = selectBestTarget(enemies, actor, personality);
+    return {
+      type: 'ATTACK',
+      actor,
+      target,
+      message: `타겟 확인! 공격 개시!`
+    };
+  }
+
+  const tacticalPos = calculateTacticalPosition(actor.position, actorTeam, enemies);
   return {
-    type: sharedDecision.type,
+    type: 'MOVE',
     actor,
-    target: targetActor,
-    newPosition: sharedDecision.newPosition,
-    ability: sharedDecision.ability,
-    message: sharedDecision.message
+    newPosition: tacticalPos,
+    message: `포지션 조정!`
   };
 };
 
@@ -73,68 +133,41 @@ function checkVictoryCondition(participants: any[]) {
   return { isGameOver: false, winner: null };
 };
 
-export interface TickResult {
-  state: BattleState;
-  events: GameEvent[];
-}
-
 export function processGameTick(
   battleState: BattleState,
   pilots: Pilot[],
   terrainFeatures: TerrainFeature[]
-): TickResult {
-  console.log(`=== GAME TICK ${battleState.turn} START ===`);
-  console.log("Battle state:", { phase: battleState.phase, participants: battleState.participants?.length });
-  console.log("Pilots data:", pilots?.length || 0);
-  console.log("Terrain features:", terrainFeatures?.length || 0);
-  
+): BattleState {
   // If the battle is already marked as completed, do not process further ticks.
   if (battleState.phase === "completed") {
-    console.log("Battle already completed, skipping tick");
-    return { state: battleState, events: [] };
+    return battleState;
   }
 
-  const newState: BattleState = {
+  const newState = {
     ...battleState,
     log: [...battleState.log],
     participants: JSON.parse(JSON.stringify(battleState.participants)),
   };
 
   const currentTime = Date.now();
-  const activeUnits = newState.participants.filter((p: any) => p.status === 'active');
+  const activeUnits = newState.participants.filter((p: BattleParticipant) => p.status === 'active');
   
   if (activeUnits.length === 0) {
-    console.log("No active units found");
-    return { state: battleState, events: [] }; // no-op
+    return battleState; // no-op
   }
   
-  console.log(`Active units: ${activeUnits.length}, Processing game tick at ${new Date().toLocaleTimeString()}`);
-  
-  // 초기 상태에서는 모든 유닛이 행동 가능하도록 설정
+  // 1초 쿨다운 시스템
   const availableUnits = activeUnits.filter((unit: any) => {
     const lastActionTime = unit.lastActionTime || 0;
-    const cooldownTime = 300; // 0.3초 쿨다운으로 더 단축
-    const isReady = currentTime - lastActionTime > cooldownTime;
-    if (!isReady) {
-      console.log(`Unit ${unit.pilotId} still on cooldown`);
-    }
-    return isReady;
+    const cooldownTime = 1000; // 1초 쿨다운
+    return currentTime - lastActionTime > cooldownTime;
   });
 
-  console.log(`Available units: ${availableUnits.length}`);
-
-  const events: GameEvent[] = [];
-
-  if (availableUnits.length > 0) { // 100% 확률로 행동
+  if (availableUnits.length > 0 && Math.random() < 0.6) { // 60% 확률로 행동
     const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
     const actorInfo = getPilotInfo(pilots, actor.pilotId);
     
-    console.log(`🎯 Actor ${actor.pilotId} (${actorInfo.name}) taking action`);
-    
     const aiAction = determineAIAction(actor, newState, pilots, actorInfo);
-    console.log(`🎮 AI Action:`, aiAction);
-    
-    console.log(`AI Action: ${aiAction.type} - ${aiAction.message}`);
     
     // Process action
     actor.lastActionTime = currentTime;
@@ -143,10 +176,10 @@ export function processGameTick(
       const target = aiAction.target;
       const attacker = aiAction.actor;
       
-      const attackerTerrain = TERRAIN_FEATURES.find(t => 
+      const attackerTerrain = terrainFeatures.find(t => 
         t.x === attacker.position.x && t.y === attacker.position.y
       );
-      const targetTerrain = TERRAIN_FEATURES.find(t => 
+      const targetTerrain = terrainFeatures.find(t => 
         t.x === target.position.x && t.y === target.position.y
       );
 
@@ -185,18 +218,9 @@ export function processGameTick(
         message: logMessage,
         speaker: actorInfo.name
       });
-
-      const attackEvent: AttackEvent = {
-        type: "attack",
-        attackerId: actor.pilotId,
-        targetId: target.pilotId,
-        damage: finalDamage,
-      };
-      events.push(attackEvent);
     }
     else if (aiAction.type === 'SUPPORT' && aiAction.target) {
-      const tgt = aiAction.target;
-      const targetParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === tgt.pilotId);
+      const targetParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === aiAction.target.pilotId);
       if(targetParticipant) {
         targetParticipant.hp = Math.min(100, targetParticipant.hp + 15);
       }
@@ -206,15 +230,6 @@ export function processGameTick(
         message: aiAction.message,
         speaker: actorInfo.name
       });
-
-      const supportEvent: SupportEvent = {
-        type: "support",
-        pilotId: actor.pilotId,
-        targetId: tgt.pilotId,
-        effect: "heal",
-        amount: 15,
-      };
-      events.push(supportEvent);
     }
     else if (aiAction.type === 'RETREAT' || aiAction.type === 'SCOUT' || aiAction.type === 'MOVE') {
       const actorParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === actor.pilotId);
@@ -227,16 +242,6 @@ export function processGameTick(
         message: aiAction.message,
         speaker: actorInfo.name
       });
-
-      if(aiAction.newPosition) {
-        const moveEvent: MoveEvent = {
-          type: "move",
-          pilotId: actor.pilotId,
-          from: actor.position,
-          to: aiAction.newPosition,
-        };
-        events.push(moveEvent);
-      }
     }
     else {
        newState.log.push({
@@ -258,14 +263,6 @@ export function processGameTick(
     }
   }
 
-  // Only increment turn if an action was taken
-  if (availableUnits.length > 0) {
-    newState.turn += 1;
-    console.log(`✅ Turn ${newState.turn} completed`);
-  } else {
-    console.log("❌ No units available for action this tick");
-  }
-  
-  console.log(`=== GAME TICK ${battleState.turn} END ===`);
-  return { state: newState, events };
+  newState.turn += 1;
+  return newState;
 }

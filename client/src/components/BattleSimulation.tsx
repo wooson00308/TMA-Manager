@@ -5,9 +5,8 @@ import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosi
 import CanvasRenderer from "@/presentation/CanvasRenderer";
 import { useBattleRender } from "@/hooks/useBattleRender";
 import { useGameLoopWorker } from "@/hooks/useGameLoopWorker";
-import type { BattleState } from '@shared/schema';
+import type { BattleState, Pilot } from '@shared/schema';
 import type { AttackEffect, PilotInfo, TerrainFeature } from '@shared/domain/types';
-import type { GameEvent } from "@shared/events";
 
 interface BattleSimulationProps {
   battle: BattleState;
@@ -20,7 +19,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const [isCountingDown, setIsCountingDown] = useState(true);
   const [animatingUnits, setAnimatingUnits] = useState<Set<number>>(new Set());
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
-  const [pendingEvents, setPendingEvents] = useState<GameEvent[]>([]);
+  const [lastLogCount, setLastLogCount] = useState(0);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
@@ -39,7 +38,6 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     } else if (isCountingDown && countdown === 0) {
       setIsCountingDown(false);
       setIsSimulating(true);
-      console.log("Starting battle simulation with enabled:", true);
       addBattleLog({
         type: 'system',
         message: '전투가 시작됩니다!',
@@ -60,13 +58,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   });
 
   // Phase B: leverage Web Worker for game loop when simulation is active
-  const workerEnabled = isSimulating && !isCountingDown;
-  console.log("Game loop worker enabled:", workerEnabled, { isSimulating, isCountingDown });
-  useGameLoopWorker(battle, workerEnabled, (events) => {
-    if(events && events.length) {
-      setPendingEvents((prev) => [...prev, ...events]);
-    }
-  });
+  useGameLoopWorker(battle, isSimulating && !isCountingDown);
 
   // Timer logic for battle time tracking
   useEffect(() => {
@@ -92,43 +84,98 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     }
   }, [battle.phase]);
 
-  // Handle structured events arriving from worker
+  // Trigger attack effects when new combat events occur
   useEffect(() => {
-    if(pendingEvents.length === 0) return;
-
-    pendingEvents.forEach((evt) => {
-      if(evt.type === "attack") {
-        const atk = evt as any;
-        const attacker = battle.participants.find(p => p.pilotId === atk.attackerId);
-        const target = battle.participants.find(p => p.pilotId === atk.targetId);
-        if(attacker && target) {
-          const weaponType: "laser" | "missile" | "beam" = "laser";
-          const effect: AttackEffect = {
-            id: `atk-${Date.now()}-${Math.random()}`,
+    if (!battle.log || battle.log.length === 0) return;
+    
+    const newLogs = battle.log.slice(lastLogCount);
+    setLastLogCount(battle.log.length);
+    
+    newLogs.forEach((log) => {
+      console.log('Battle log entry:', log); // Debug log
+      
+      // Look for any combat action (attack, movement, damage)
+      if (log.type === 'attack' || log.message.includes('공격') || log.message.includes('피해') || log.message.includes('데미지')) {
+        
+        // Try to find participants involved in the action
+        const participants = battle.participants || [];
+        let attacker: any = null;
+        let target: any = null;
+        
+        // Find attacker - look for pilot names in the message
+        for (const participant of participants) {
+          const pilotInfo = getPilotInfo(participant.pilotId);
+          if (log.message.includes(pilotInfo.name) || log.message.includes(pilotInfo.callsign)) {
+            if (!attacker && (log.message.includes('공격') || log.message.includes('사격'))) {
+              attacker = participant;
+            }
+          }
+        }
+        
+        // Find target - look for "~에게" or "~를" patterns
+        const targetPatterns = [/(\S+)에게/, /(\S+)를/, /(\S+)이/];
+        for (const pattern of targetPatterns) {
+          const match = log.message.match(pattern);
+          if (match) {
+            const targetName = match[1];
+            target = participants.find(p => {
+              const info = getPilotInfo(p.pilotId);
+              return info.name.includes(targetName) || info.callsign.includes(targetName);
+            });
+            if (target) break;
+          }
+        }
+        
+        // If we still don't have both, use random participants for demo
+        if (!attacker && participants.length > 0) {
+          attacker = participants[0];
+        }
+        if (!target && participants.length > 1) {
+          target = participants[participants.length - 1];
+        }
+        
+        if (attacker && target && attacker !== target) {
+          console.log('Creating attack effect:', { attacker: getPilotInfo(attacker.pilotId).name, target: getPilotInfo(target.pilotId).name });
+          
+          // Determine weapon type from message
+          let weaponType: "laser" | "missile" | "beam" = "laser";
+          if (log.message.includes('미사일') || log.message.includes('로켓') || log.message.includes('폭발')) {
+            weaponType = "missile";
+          } else if (log.message.includes('빔') || log.message.includes('플라즈마') || log.message.includes('에너지')) {
+            weaponType = "beam";
+          }
+          
+          // Create attack effect
+          const attackEffect: AttackEffect = {
+            id: `attack-${Date.now()}-${Math.random()}`,
             from: attacker.position,
             to: target.position,
             startTime: Date.now(),
-            type: weaponType,
+            type: weaponType
           };
-          setAttackEffects((prev) => [...prev, effect]);
-          setAnimatingUnits((prev) => {
-            const ns = new Set(prev);
-            ns.add(attacker.pilotId);
-            return ns;
+          
+          setAttackEffects(prev => {
+            console.log('Adding attack effect:', attackEffect);
+            return [...prev, attackEffect];
+          });
+          
+          // Animate attacking unit
+          setAnimatingUnits(prev => {
+            const newSet = new Set(prev);
+            newSet.add(attacker.pilotId);
+            return newSet;
           });
           setTimeout(() => {
-            setAnimatingUnits((prev) => {
-              const ns = new Set(prev);
-              ns.delete(attacker.pilotId);
-              return ns;
+            setAnimatingUnits(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(attacker.pilotId);
+              return newSet;
             });
           }, 1500);
         }
       }
     });
-
-    setPendingEvents([]);
-  }, [pendingEvents, battle.participants]);
+  }, [battle.log, lastLogCount, battle.participants, getPilotInfo]);
 
   // Auto-scroll combat log to the bottom whenever a new entry is added.
   useEffect(() => {
