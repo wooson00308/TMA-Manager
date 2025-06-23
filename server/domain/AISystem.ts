@@ -1,7 +1,7 @@
 import { type BattleState } from "@shared/schema";
 import { PilotService } from "../services/PilotService";
 import { calculateRetreatPosition as sharedCalculateRetreatPosition, calculateScoutPosition as sharedCalculateScoutPosition, calculateTacticalPosition as sharedCalculateTacticalPosition, selectBestTarget as sharedSelectBestTarget } from "@shared/ai/utils";
-import { makeAIDecision } from "@shared/ai/decision";
+import { makeAIDecision } from "@shared/ai/core";
 import { TERRAIN_FEATURES } from "@shared/terrain/config";
 
 interface AIDecision {
@@ -17,16 +17,21 @@ interface AIDecision {
 // completely framework-agnostic and free of side-effects.  External concerns
 // such as persistence or transport are delegated to the application layer.
 export class AISystem {
+  private personalityMap: Record<number, string>;
+
+  constructor(personalityMap: Record<number, string> = {}) {
+    this.personalityMap = personalityMap;
+  }
+
   makeSimpleDecision(participant: any, battleState: BattleState, team: string): AIDecision {
 
     const sharedDecision = makeAIDecision(participant, battleState, team, {
       getPilotInitial: (id: number) => {
-        if (id === 1) return "S";
-        if (id === 2) return "M";
-        if (id === 3) return "A";
+        // Prefer injected map; fallback simple heuristic
+        if (this.personalityMap[id]) return this.personalityMap[id];
         return id >= 100 ? "E" : "A";
       },
-      terrainFeatures: TERRAIN_FEATURES,
+      terrainFeatures: [...TERRAIN_FEATURES] as any,
     });
 
     // Map shared decision -> server domain decision structure

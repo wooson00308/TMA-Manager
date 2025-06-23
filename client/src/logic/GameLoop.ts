@@ -1,9 +1,10 @@
 import type { BattleState, Pilot } from "@shared/schema";
-import { makeAIDecision } from "@shared/ai/decision";
+import { makeAIDecision } from "@shared/ai/core";
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
 import { TERRAIN_FEATURES } from "@shared/terrain/config";
 import { type SafeBattleParticipant, type SafeAIAction, isEnemyPilot } from "@shared/types/battle";
 import type { PilotInfo, TerrainFeature, BattleParticipant } from "@shared/domain/types";
+import type { GameEvent, AttackEvent, MoveEvent, SupportEvent } from "@shared/events";
 
 function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
   const found = pilots.find((p) => p.id === pilotId);
@@ -40,7 +41,7 @@ function determineAIAction(
   // Use the enhanced shared AI decision system
   const sharedDecision = makeAIDecision(actor, battleState, actor.team, {
     getPilotInitial: (id: number) => actorInfo.initial,
-    terrainFeatures: TERRAIN_FEATURES,
+    terrainFeatures: [...TERRAIN_FEATURES] as TerrainFeature[],
   });
 
   // Convert shared decision format to client format with proper type safety
@@ -72,11 +73,16 @@ function checkVictoryCondition(participants: any[]) {
   return { isGameOver: false, winner: null };
 };
 
+export interface TickResult {
+  state: BattleState;
+  events: GameEvent[];
+}
+
 export function processGameTick(
   battleState: BattleState,
   pilots: Pilot[],
   terrainFeatures: TerrainFeature[]
-): BattleState {
+): TickResult {
   console.log(`=== GAME TICK ${battleState.turn} START ===`);
   console.log("Battle state:", { phase: battleState.phase, participants: battleState.participants?.length });
   console.log("Pilots data:", pilots?.length || 0);
@@ -85,10 +91,10 @@ export function processGameTick(
   // If the battle is already marked as completed, do not process further ticks.
   if (battleState.phase === "completed") {
     console.log("Battle already completed, skipping tick");
-    return battleState;
+    return { state: battleState, events: [] };
   }
 
-  const newState = {
+  const newState: BattleState = {
     ...battleState,
     log: [...battleState.log],
     participants: JSON.parse(JSON.stringify(battleState.participants)),
@@ -99,7 +105,7 @@ export function processGameTick(
   
   if (activeUnits.length === 0) {
     console.log("No active units found");
-    return battleState; // no-op
+    return { state: battleState, events: [] }; // no-op
   }
   
   console.log(`Active units: ${activeUnits.length}, Processing game tick at ${new Date().toLocaleTimeString()}`);
@@ -116,6 +122,8 @@ export function processGameTick(
   });
 
   console.log(`Available units: ${availableUnits.length}`);
+
+  const events: GameEvent[] = [];
 
   if (availableUnits.length > 0) { // 100% 확률로 행동
     const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
@@ -177,9 +185,18 @@ export function processGameTick(
         message: logMessage,
         speaker: actorInfo.name
       });
+
+      const attackEvent: AttackEvent = {
+        type: "attack",
+        attackerId: actor.pilotId,
+        targetId: target.pilotId,
+        damage: finalDamage,
+      };
+      events.push(attackEvent);
     }
     else if (aiAction.type === 'SUPPORT' && aiAction.target) {
-      const targetParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === aiAction.target.pilotId);
+      const tgt = aiAction.target;
+      const targetParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === tgt.pilotId);
       if(targetParticipant) {
         targetParticipant.hp = Math.min(100, targetParticipant.hp + 15);
       }
@@ -189,6 +206,15 @@ export function processGameTick(
         message: aiAction.message,
         speaker: actorInfo.name
       });
+
+      const supportEvent: SupportEvent = {
+        type: "support",
+        pilotId: actor.pilotId,
+        targetId: tgt.pilotId,
+        effect: "heal",
+        amount: 15,
+      };
+      events.push(supportEvent);
     }
     else if (aiAction.type === 'RETREAT' || aiAction.type === 'SCOUT' || aiAction.type === 'MOVE') {
       const actorParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === actor.pilotId);
@@ -201,6 +227,16 @@ export function processGameTick(
         message: aiAction.message,
         speaker: actorInfo.name
       });
+
+      if(aiAction.newPosition) {
+        const moveEvent: MoveEvent = {
+          type: "move",
+          pilotId: actor.pilotId,
+          from: actor.position,
+          to: aiAction.newPosition,
+        };
+        events.push(moveEvent);
+      }
     }
     else {
        newState.log.push({
@@ -231,5 +267,5 @@ export function processGameTick(
   }
   
   console.log(`=== GAME TICK ${battleState.turn} END ===`);
-  return newState;
+  return { state: newState, events };
 }

@@ -1,6 +1,7 @@
-import { processGameTick } from "../logic/GameLoop";
+import { processGameTick, type TickResult } from "../logic/GameLoop";
 import type { BattleState, Pilot } from "@shared/schema";
 import type { TerrainFeature } from "@shared/domain/types";
+import type { GameEvent } from "@shared/events";
 
 interface InitMessage {
   type: "INIT";
@@ -26,6 +27,7 @@ type InboundMessage = InitMessage | StartMessage | StopMessage;
 interface StateUpdateMessage {
   type: "STATE_UPDATE";
   state: BattleState;
+  events: GameEvent[];
 }
 
 // For type safety in web-worker context
@@ -63,11 +65,11 @@ function startLoop() {
       return;
     }
     
-    const newState = processGameTick(currentState, pilots, terrainFeatures);
-    currentState = newState;
+    const tickResult: TickResult = processGameTick(currentState, pilots, terrainFeatures);
+    currentState = tickResult.state;
     
-    console.log(`Turn ${newState.turn} completed, sending update`);
-    const msg: StateUpdateMessage = { type: "STATE_UPDATE", state: newState };
+    console.log(`Turn ${tickResult.state.turn} completed, sending update`);
+    const msg: StateUpdateMessage = { type: "STATE_UPDATE", state: tickResult.state, events: tickResult.events };
     self.postMessage(msg);
 
     // Automatically halt the loop once the battle has finished.

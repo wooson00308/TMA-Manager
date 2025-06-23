@@ -3,7 +3,11 @@ import type { BattleState } from "@shared/schema";
 import { useBattleStore } from "@/stores/battleStore";
 import { useGameStore } from "@/stores/gameStore";
 
-export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) {
+export function useGameLoopWorker(
+  battle: BattleState | null,
+  enabled: boolean,
+  onEvents?: (events: import("@shared/events").GameEvent[]) => void,
+) {
   const workerRef = useRef<Worker | null>(null);
   const { setBattle } = useBattleStore();
   const { pilots, terrainFeatures } = useGameStore();
@@ -31,11 +35,12 @@ export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) 
       });
       workerRef.current = w;
 
-      w.onmessage = (evt: MessageEvent<{ type: string; state: BattleState }>) => {
+      w.onmessage = (evt: MessageEvent<{ type: string; state: BattleState; events: import("@shared/events").GameEvent[] }>) => {
         console.log("Received message from worker:", evt.data.type, evt.data);
         if (evt.data.type === "STATE_UPDATE") {
           console.log("Updating battle state from worker:", evt.data.state);
           setBattle(evt.data.state);
+          onEvents?.(evt.data.events);
         }
       };
 
@@ -68,5 +73,5 @@ export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) 
       workerRef.current?.postMessage({ type: "STOP" });
     };
     // Only re-run when enabled or battle changes
-  }, [battle, enabled, setBattle, pilots, terrainFeatures]);
+  }, [battle, enabled, setBattle, pilots, terrainFeatures, onEvents]);
 } 
