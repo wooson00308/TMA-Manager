@@ -733,7 +733,9 @@ export function NewMatchPrepScene() {
             )}
 
             {/* 메크 배정 */}
-            {championSelect.selectedMechs.player.length === 3 && (
+            {championSelect.selectedMechs.player.length === 3 && 
+             championSelect.selectedMechs.enemy.length === 3 && 
+             championSelect.turnCount > 10 && (
               <div className="bg-slate-800/50 rounded-xl border border-cyan-400/20 p-6">
                 <h3 className="text-lg font-bold text-cyan-400 mb-4">파일럿-메크 배정</h3>
                 
