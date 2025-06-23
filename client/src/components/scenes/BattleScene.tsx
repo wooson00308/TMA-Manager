@@ -25,8 +25,21 @@ export function BattleScene() {
     };
 
     const handleBattleUpdate = (data: any) => {
-      if (data.update.type === 'STATE_UPDATE') {
-        setBattle(data.update.state);
+      if (data.update.type === 'TURN_UPDATE') {
+        // Update battle state
+        if (currentBattle) {
+          const updatedBattle = {
+            ...currentBattle,
+            turn: data.update.turn,
+            participants: data.update.participants
+          };
+          setBattle(updatedBattle);
+        }
+
+        // Add recent logs
+        if (data.update.recentLogs) {
+          data.update.recentLogs.forEach((log: any) => addBattleLog(log));
+        }
       }
     };
 

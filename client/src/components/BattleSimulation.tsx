@@ -55,7 +55,7 @@ export function BattleSimulation(): JSX.Element {
   });
 
   // Phase B: leverage Web Worker for game loop when simulation is active
-  useGameLoopWorker(currentBattle, false);
+  useGameLoopWorker(currentBattle, isSimulating && !isCountingDown);
 
   // Timer logic for battle time tracking
   useEffect(() => {
