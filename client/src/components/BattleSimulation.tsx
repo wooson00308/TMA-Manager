@@ -342,6 +342,7 @@ export function BattleSimulation(): JSX.Element {
               .map(participant => {
                 const pilot = getPilotInfoWithBattle(participant.pilotId, currentBattle.participants);
                 const isDestroyed = participant.status === 'destroyed';
+                const hpPercent = participant.maxHp > 0 ? (participant.hp / participant.maxHp) * 100 : 0;
                 return (
                   <div key={participant.pilotId} className={`bg-blue-900/30 border border-blue-400/40 rounded-lg p-3 transition-opacity ${isDestroyed ? 'opacity-50' : ''}`}>
                     <div className="flex items-center space-x-2 mb-2">
@@ -356,16 +357,16 @@ export function BattleSimulation(): JSX.Element {
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-blue-300">HP</span>
-                        <span className="text-white font-bold">{participant.hp}%</span>
+                        <span className="text-white font-bold">{Math.round(hpPercent)}%</span>
                       </div>
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full transition-all ${
                             isDestroyed ? 'bg-gray-500' :
-                            participant.hp > 70 ? 'bg-green-500' :
-                            participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                            hpPercent > 70 ? 'bg-green-500' :
+                            hpPercent > 30 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
-                          style={{ width: `${Math.min(participant.hp, 100)}%` }}
+                          style={{ width: `${hpPercent}%` }}
                         ></div>
                       </div>
                     </div>
@@ -503,6 +504,7 @@ export function BattleSimulation(): JSX.Element {
               .map(participant => {
                 const pilot = getPilotInfoWithBattle(participant.pilotId, currentBattle.participants);
                 const isDestroyed = participant.status === 'destroyed';
+                const hpPercent = participant.maxHp > 0 ? (participant.hp / participant.maxHp) * 100 : 0;
                 return (
                   <div key={participant.pilotId} className={`bg-red-900/30 border border-red-400/40 rounded-lg p-3 transition-opacity ${isDestroyed ? 'opacity-50' : ''}`}>
                     <div className="flex items-center space-x-2 mb-2">
@@ -517,16 +519,16 @@ export function BattleSimulation(): JSX.Element {
                     <div className="space-y-1">
                       <div className="flex justify-between text-xs">
                         <span className="text-red-300">HP</span>
-                        <span className="text-white font-bold">{participant.hp}%</span>
+                        <span className="text-white font-bold">{Math.round(hpPercent)}%</span>
                       </div>
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full transition-all ${
                             isDestroyed ? 'bg-gray-500' :
-                            participant.hp > 70 ? 'bg-green-500' :
-                            participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                            hpPercent > 70 ? 'bg-green-500' :
+                            hpPercent > 30 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
-                          style={{ width: `${Math.min(participant.hp, 100)}%` }}
+                          style={{ width: `${hpPercent}%` }}
                         ></div>
                       </div>
                     </div>
