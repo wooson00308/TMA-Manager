@@ -137,8 +137,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   getPilotInfo: (pilotId: number): PilotInfo => {
     const { pilots } = get();
     const found = pilots.find((p: Pilot) => p.id === pilotId);
+    
+    console.log(`getPilotInfo called with pilotId: ${pilotId}`);
+    
     if (found) {
       // All pilots held in the local store belong to the player's roster, therefore they are allies.
+      console.log(`Found pilot in local store: ${found.name}`);
       return {
         id: found.id,
         name: found.name,
@@ -160,7 +164,10 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
       
       const enemy = enemyData[pilotId];
+      console.log(`Looking for enemy pilot ${pilotId}:`, enemy);
+      
       if (enemy) {
+        console.log(`Found enemy pilot: ${enemy.name}`);
         return {
           id: pilotId,
           name: enemy.name,
@@ -171,6 +178,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       }
       
       // 기본 적군 정보
+      console.log(`Using fallback for enemy pilot ${pilotId}`);
       return {
         id: pilotId,
         name: `적군 파일럿 ${String.fromCharCode(65 + (pilotId - 101))}`,
@@ -181,6 +189,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
 
     // 기본값 - 알 수 없는 파일럿
+    console.log(`Using unknown pilot fallback for pilotId: ${pilotId}`);
     return {
       id: pilotId,
       name: `Unknown Pilot ${pilotId}`,
