@@ -80,6 +80,30 @@ export class SQLiteStorage implements IStorage {
     return db.select().from(pilots).where(eq(pilots.isActive, true));
   }
 
+  async getPilotsByTeam(teamId: number): Promise<Pilot[]> {
+    const teamFormation = await db
+      .select()
+      .from(formations)
+      .where(and(eq(formations.teamId, teamId), eq(formations.isActive, true)))
+      .limit(1);
+
+    if (teamFormation.length === 0) {
+      return [];
+    }
+
+    const formation = teamFormation[0];
+    const pilotIds: number[] = [];
+    if (formation.pilot1Id) pilotIds.push(formation.pilot1Id);
+    if (formation.pilot2Id) pilotIds.push(formation.pilot2Id);
+    if (formation.pilot3Id) pilotIds.push(formation.pilot3Id);
+
+    if (pilotIds.length === 0) {
+      return [];
+    }
+
+    return db.select().from(pilots).where(inArray(pilots.id, pilotIds));
+  }
+
   //───────────────────────────────────────────────────────────────────────────┐
   // Mech management                                                          │
   //───────────────────────────────────────────────────────────────────────────┘

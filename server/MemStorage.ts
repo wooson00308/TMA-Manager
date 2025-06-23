@@ -450,6 +450,36 @@ export class MemStorage implements IStorage {
     ];
 
     this.nextId = 100; // Start IDs higher to avoid conflicts
+    
+    // Initialize default formations
+    this.formations = [
+      // Trinity Squad formation
+      {
+        id: 1,
+        teamId: 1,
+        pilot1Id: 1, // 사샤 볼코프
+        pilot2Id: 2, // 헬레나 파아라  
+        pilot3Id: 3, // 아즈마
+        mech1Id: 9,  // Kn-센츄리온
+        mech2Id: 10, // Kn-에퀴테스
+        mech3Id: 1,  // Rv-케식
+        formation: "standard",
+        isActive: true,
+      },
+      // Steel Phoenixes formation
+      {
+        id: 2,
+        teamId: 2,
+        pilot1Id: 101, // 레이븐 스카이
+        pilot2Id: 102, // 아이언 울프
+        pilot3Id: 103, // 블레이즈 피닉스
+        mech1Id: 5,    // Ab-판저
+        mech2Id: 13,   // TH-타이런트
+        mech3Id: 2,    // Rv-칸
+        formation: "aggressive",
+        isActive: true,
+      },
+    ];
   }
 
   // User management
@@ -509,6 +539,20 @@ export class MemStorage implements IStorage {
 
   async getActivePilots(): Promise<Pilot[]> {
     return this.pilots.filter(p => p.isActive);
+  }
+
+  async getPilotsByTeam(teamId: number): Promise<Pilot[]> {
+    const teamFormation = this.formations.find(f => f.teamId === teamId && f.isActive);
+    if (!teamFormation) {
+      return [];
+    }
+
+    const pilotIds: number[] = [];
+    if (teamFormation.pilot1Id) pilotIds.push(teamFormation.pilot1Id);
+    if (teamFormation.pilot2Id) pilotIds.push(teamFormation.pilot2Id);
+    if (teamFormation.pilot3Id) pilotIds.push(teamFormation.pilot3Id);
+
+    return this.pilots.filter(p => pilotIds.includes(p.id));
   }
 
   // Mech management

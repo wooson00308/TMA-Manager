@@ -18,6 +18,7 @@ export interface IStorage {
   createPilot(pilot: InsertPilot): Promise<Pilot>;
   updatePilot(id: number, updates: Partial<Pilot>): Promise<Pilot | undefined>;
   getActivePilots(): Promise<Pilot[]>;
+  getPilotsByTeam(teamId: number): Promise<Pilot[]>;
 
   // Mech management
   getAllMechs(): Promise<Mech[]>;

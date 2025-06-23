@@ -86,6 +86,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/pilots/team/:teamId", async (req, res) => {
+    try {
+      const teamId = parseInt(req.params.teamId);
+      const pilots = await storage.getPilotsByTeam(teamId);
+      res.json(pilots);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch team pilots" });
+    }
+  });
+
   // Enhanced pilot analytics endpoint
   app.get("/api/pilots/:id/analytics", async (req, res) => {
     try {

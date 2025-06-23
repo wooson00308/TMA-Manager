@@ -276,16 +276,44 @@ export function NewMatchPrepScene() {
 
         formation2 = { teamId: selectedEnemyTeam.id, pilots };
       } else {
-        // Fallback: use previously selected enemy mechs and dummy pilots
-        formation2 = {
-          teamId: 2,
-          pilots: championSelect.selectedMechs.enemy.slice(0, 3).map((mech, index) => ({
-            pilotId: 100 + index,
-            mechId: mech.id,
-            pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
-            mech,
-          })),
-        };
+        // Fallback: Fetch enemy team pilots from API and use selected enemy mechs
+        try {
+          const enemyPilotsResponse = await fetch('/api/pilots/team/2');
+          if (enemyPilotsResponse.ok) {
+            const enemyPilots = await enemyPilotsResponse.json();
+            formation2 = {
+              teamId: 2,
+              pilots: championSelect.selectedMechs.enemy.slice(0, 3).map((mech, index) => ({
+                pilotId: enemyPilots[index]?.id || (100 + index),
+                mechId: mech.id,
+                pilot: enemyPilots[index] || { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
+                mech,
+              })),
+            };
+          } else {
+            // Ultimate fallback if API fails
+            formation2 = {
+              teamId: 2,
+              pilots: championSelect.selectedMechs.enemy.slice(0, 3).map((mech, index) => ({
+                pilotId: 100 + index,
+                mechId: mech.id,
+                pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
+                mech,
+              })),
+            };
+          }
+        } catch (error) {
+          console.warn('Failed to fetch enemy pilots, using fallback data:', error);
+          formation2 = {
+            teamId: 2,
+            pilots: championSelect.selectedMechs.enemy.slice(0, 3).map((mech, index) => ({
+              pilotId: 100 + index,
+              mechId: mech.id,
+              pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
+              mech,
+            })),
+          };
+        }
       }
 
       const response = await fetch('/api/battle/start', {
@@ -309,6 +337,11 @@ export function NewMatchPrepScene() {
             team: 'team1' as const,
             position: { x: 2 + i * 2, y: 6 },
             hp: (p.mech as any).hp || 100,
+            maxHp: (p.mech as any).hp || 100,
+            armor: (p.mech as any).armor ?? 50,
+            speed: (p.mech as any).speed ?? 50,
+            firepower: (p.mech as any).firepower ?? 50,
+            range: (p.mech as any).range ?? 50,
             status: 'active' as const,
           })),
           ...formation2.pilots.map((p: any, i: number) => ({
@@ -317,6 +350,11 @@ export function NewMatchPrepScene() {
             team: 'team2' as const,
             position: { x: 10 + i * 2, y: 6 },
             hp: (p.mech as any).hp || 100,
+            maxHp: (p.mech as any).hp || 100,
+            armor: (p.mech as any).armor ?? 50,
+            speed: (p.mech as any).speed ?? 50,
+            firepower: (p.mech as any).firepower ?? 50,
+            range: (p.mech as any).range ?? 50,
             status: 'active' as const,
           })),
         ],

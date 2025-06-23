@@ -234,23 +234,37 @@ export function MatchPrepScene() {
 
   const handleStartBattle = async () => {
     try {
+      // Formation for player team (Team 1)
       const formation1 = {
         teamId: 1,
-        pilots: matchState.selectedRoster.map(pilot => ({
-          pilotId: pilot.id,
-          mechId: matchState.pilotMechAssignments[pilot.id]?.id || matchState.pickedMechs.player[0]?.id,
-          pilot,
-          mech: matchState.pilotMechAssignments[pilot.id] || matchState.pickedMechs.player[0]
-        }))
+        pilots: matchState.selectedRoster.map((pilot, index) => {
+          const assignedMech = matchState.pilotMechAssignments[pilot.id];
+          if (!assignedMech) {
+            throw new Error(`Pilot ${pilot.name} has no assigned mech`);
+          }
+          return {
+            pilotId: pilot.id,
+            mechId: assignedMech.id,
+            pilot,
+            mech: assignedMech
+          };
+        })
       };
-      
+
+      // Fetch enemy team pilots from API (Team 2 - Steel Phoenixes)
+      const enemyPilotsResponse = await fetch('/api/pilots/team/2');
+      if (!enemyPilotsResponse.ok) {
+        throw new Error('Failed to fetch enemy pilots');
+      }
+      const enemyPilots = await enemyPilotsResponse.json();
+
+      // Formation for enemy team (Team 2)
       const formation2 = {
         teamId: 2,
         pilots: matchState.pickedMechs.enemy.slice(0, 3).map((mech, index) => ({
-          // Enemy pilot IDs start at 101 to align with gameStore enemy data mapping
-          pilotId: 101 + index,
+          pilotId: enemyPilots[index]?.id || (101 + index), // Fallback to old ID if API fails
           mechId: mech.id,
-          pilot: { id: 101 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
+          pilot: enemyPilots[index] || { id: 101 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
           mech
         }))
       };
