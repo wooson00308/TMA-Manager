@@ -1,123 +1,113 @@
 import type { BattleState, Pilot } from "@shared/schema";
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
 import type { PilotInfo, TerrainFeature, BattleParticipant } from "@shared/domain/types";
+import { makeAIDecision } from "@shared/ai/decision";
 
 function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
-  const found = pilots.find((p) => p.id === pilotId);
-
-  // Determine allegiance purely by convention: IDs >= 100 belong to enemy units.
-  const isEnemy = pilotId >= 100;
-
-  if (found) {
+  const pilot = pilots.find(p => p.id === pilotId);
+  if (pilot) {
     return {
-      id: found.id,
-      name: found.name,
-      callsign: found.callsign,
-      team: isEnemy ? "enemy" : "ally",
-      initial: isEnemy ? "E" : found.name.charAt(0).toUpperCase(),
+      id: pilot.id,
+      name: pilot.name,
+      callsign: pilot.callsign,
+      team: pilotId < 100 ? "ally" : "enemy",
+      initial: pilot.name.charAt(0).toUpperCase()
     };
   }
-
-  // Fallback placeholder when pilot data is missing from store
+  
+  // Fallback for missing pilots
+  const isEnemy = pilotId >= 100;
   return {
     id: pilotId,
-    name: isEnemy ? `Enemy ${pilotId}` : `Pilot ${pilotId}`,
-    callsign: isEnemy ? `E${pilotId}` : `P${pilotId}`,
+    name: isEnemy ? `Enemy ${pilotId - 100}` : `Pilot ${pilotId}`,
+    callsign: isEnemy ? `E-${pilotId - 100}` : `P-${pilotId}`,
     team: isEnemy ? "enemy" : "ally",
-    initial: isEnemy ? "E" : String.fromCharCode(65 + (pilotId % 26)),
+    initial: isEnemy ? "E" : "P"
   };
+}
+
+// 메카 스탯 데이터베이스 (클라이언트용)
+const CLIENT_MECH_STATS: { [mechId: number]: { firepower: number; speed: number; armor: number } } = {
+  1: { firepower: 85, speed: 60, armor: 75 }, // Knight type
+  2: { firepower: 90, speed: 55, armor: 70 }, // Arbiter type
+  3: { firepower: 75, speed: 90, armor: 65 }, // River type
+  4: { firepower: 80, speed: 70, armor: 80 }, // Balanced type
+  5: { firepower: 95, speed: 50, armor: 75 }, // Heavy artillery
+  6: { firepower: 70, speed: 85, armor: 60 }, // Scout type
+  7: { firepower: 88, speed: 65, armor: 78 }, // Assault type
+  8: { firepower: 92, speed: 58, armor: 72 }, // Sniper type
+  // 적 메카들 (100번대)
+  101: { firepower: 82, speed: 68, armor: 73 },
+  102: { firepower: 87, speed: 62, armor: 76 },
+  103: { firepower: 78, speed: 83, armor: 68 },
 };
 
-function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo) {
-  const isLowHP = actor.hp < 30;
-  const isCriticalHP = actor.hp < 15;
-  const actorTeam = actor.team;
-  const allies = battleState.participants.filter((p: any) => p.team === actorTeam && p.status === 'active' && p.pilotId !== actor.pilotId);
-  const enemies = battleState.participants.filter((p: any) => p.team !== actorTeam && p.status === 'active');
-  
-  const damagedAllies = allies.filter((ally: any) => ally.hp < 50);
-  const nearbyEnemies = enemies.filter((enemy: any) => 
-    Math.abs(enemy.position.x - actor.position.x) <= 2 &&
-    Math.abs(enemy.position.y - actor.position.y) <= 2
+function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo, terrainFeatures: TerrainFeature[]) {
+  // 새로운 AI 시스템 사용
+  const sharedDecision = makeAIDecision(
+    {
+      pilotId: actor.pilotId,
+      mechId: actor.mechId,
+      position: actor.position,
+      hp: actor.hp,
+      status: actor.status
+    },
+    battleState,
+    actor.team,
+    {
+      getPilotInitial: (id: number) => {
+        if (id === 1) return "S";
+        if (id === 2) return "M"; 
+        if (id === 3) return "A";
+        return id >= 100 ? "E" : "A";
+      },
+      terrainFeatures: terrainFeatures,
+      getMechStats: (mechId: number) => {
+        return CLIENT_MECH_STATS[mechId] || { firepower: 75, speed: 70, armor: 70 };
+      }
+    }
   );
 
-  const random = Math.random();
+  // shared decision을 기존 형식으로 변환
+  const enemies = battleState.participants.filter((p: any) => p.team !== actor.team && p.status === 'active');
   
-  const personalities: { [key: string]: any } = {
-    'S': { aggressive: 0.8, tactical: 0.6, supportive: 0.4 },
-    'M': { aggressive: 0.4, tactical: 0.9, supportive: 0.8 },
-    'A': { aggressive: 0.9, tactical: 0.3, supportive: 0.5 },
-    'E': { aggressive: 0.6, tactical: 0.5, supportive: 0.2 }
-  };
-  const personality = personalities[actorInfo.initial] || personalities['E'];
-
-  if (isCriticalHP && random < 0.6) {
-    const retreatPos = calculateRetreatPosition(actor.position, actorTeam, enemies);
-    return {
-      type: 'RETREAT',
-      actor,
-      newPosition: retreatPos,
-      message: `긴급 후퇴! 재정비 필요!`
-    };
-  }
-
-  if (personality.supportive > 0.6 && damagedAllies.length > 0 && random < 0.25) {
-    const targetAlly = damagedAllies[0];
-    return {
-      type: 'SUPPORT',
-      actor,
-      target: targetAlly,
-      message: `지원 나간다! 버텨!`
-    };
-  }
-
-  if (nearbyEnemies.length >= 2 && random < 0.2) {
-    return {
-      type: 'DEFEND',
-      actor,
-      message: `방어 태세! 견고하게!`
-    };
-  }
-
-  if (personality.tactical > 0.7 && random < 0.3) {
-    const scoutPos = calculateScoutPosition(actor.position, actorTeam, enemies);
-    return {
-      type: 'SCOUT',
-      actor,
-      newPosition: scoutPos,
-      message: `정찰 이동! 상황 파악!`
-    };
-  }
-
-  if (battleState.turn > 5 && random < 0.15) {
-    const abilities = ['오버드라이브', '정밀 조준', '일제 사격', '은폐 기동'];
-    const ability = abilities[Math.floor(Math.random() * abilities.length)];
-    return {
-      type: 'SPECIAL',
-      actor,
-      ability,
-      message: `${ability} 발동!`
-    };
-  }
-
-  if (enemies.length > 0 && random < 0.8) {
-    const target = selectBestTarget(enemies, actor, personality);
+  if (sharedDecision.type === 'ATTACK' && sharedDecision.targetId) {
+    const target = battleState.participants.find((p: any) => p.pilotId === sharedDecision.targetId);
     return {
       type: 'ATTACK',
       actor,
       target,
-      message: `타겟 확인! 공격 개시!`
+      message: sharedDecision.message
     };
   }
-
-  const tacticalPos = calculateTacticalPosition(actor.position, actorTeam, enemies);
+  
+  if (sharedDecision.type === 'SUPPORT' && sharedDecision.targetId) {
+    const target = battleState.participants.find((p: any) => p.pilotId === sharedDecision.targetId);
+    return {
+      type: 'SUPPORT',
+      actor,
+      target,
+      message: sharedDecision.message
+    };
+  }
+  
+  if (sharedDecision.newPosition) {
+    return {
+      type: sharedDecision.type,
+      actor,
+      newPosition: sharedDecision.newPosition,
+      message: sharedDecision.message,
+      ability: sharedDecision.ability
+    };
+  }
+  
   return {
-    type: 'MOVE',
+    type: sharedDecision.type,
     actor,
-    newPosition: tacticalPos,
-    message: `포지션 조정!`
+    message: sharedDecision.message,
+    ability: sharedDecision.ability
   };
-};
+}
 
 function checkVictoryCondition(participants: any[]) {
   const allies = participants.filter((p: any) => p.team === "team1" && p.status === "active");
@@ -167,7 +157,7 @@ export function processGameTick(
     const actor = availableUnits[Math.floor(Math.random() * availableUnits.length)];
     const actorInfo = getPilotInfo(pilots, actor.pilotId);
     
-    const aiAction = determineAIAction(actor, newState, pilots, actorInfo);
+    const aiAction = determineAIAction(actor, newState, pilots, actorInfo, terrainFeatures);
     
     // Process action
     actor.lastActionTime = currentTime;
@@ -176,48 +166,82 @@ export function processGameTick(
       const target = aiAction.target;
       const attacker = aiAction.actor;
       
+      // 사거리 체크
+      const distance = Math.abs(attacker.position.x - target.position.x) + 
+                       Math.abs(attacker.position.y - target.position.y);
+      const mechStats = CLIENT_MECH_STATS[attacker.mechId] || { firepower: 75, speed: 70, armor: 70 };
+      
+      // 기본 사거리 계산
+      let baseRange = 2;
+      if (mechStats.firepower >= 85) baseRange = 4;
+      else if (mechStats.firepower >= 70) baseRange = 3;
+      
+      // 지형 사거리 보너스
       const attackerTerrain = terrainFeatures.find(t => 
         t.x === attacker.position.x && t.y === attacker.position.y
       );
-      const targetTerrain = terrainFeatures.find(t => 
-        t.x === target.position.x && t.y === target.position.y
-      );
+      const rangeBonus = attackerTerrain?.type === 'elevation' ? 1 : 0;
+      const finalRange = baseRange + rangeBonus;
+      
+      // 사거리 내에 있는 경우에만 공격
+      if (distance <= finalRange) {
+        const targetTerrain = terrainFeatures.find(t => 
+          t.x === target.position.x && t.y === target.position.y
+        );
 
-      let baseDamage = Math.floor(Math.random() * 30) + 10;
-      let finalDamage = baseDamage;
-      
-      if (attackerTerrain?.type === 'elevation') {
-        finalDamage += Math.floor(baseDamage * 0.2);
-      }
-      
-      if (targetTerrain?.type === 'cover') {
-        finalDamage = Math.floor(finalDamage * 0.8);
-      }
-      
-      if (targetTerrain?.type === 'hazard') {
-        finalDamage += 5;
-      }
-
-      const targetParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === target.pilotId);
-      if (targetParticipant) {
-        targetParticipant.hp = Math.max(0, targetParticipant.hp - finalDamage);
-        if (targetParticipant.hp === 0) {
-          targetParticipant.status = 'destroyed';
+        let baseDamage = Math.floor(Math.random() * 30) + 10;
+        let finalDamage = baseDamage;
+        
+        // 메카 화력 보너스
+        if (mechStats.firepower >= 85) {
+          finalDamage += Math.floor(baseDamage * 0.3); // 30% 화력 보너스
+        } else if (mechStats.firepower >= 70) {
+          finalDamage += Math.floor(baseDamage * 0.15); // 15% 화력 보너스
         }
-      }
+        
+        // 지형 공격 보너스
+        if (attackerTerrain?.type === 'elevation') {
+          finalDamage += Math.floor(baseDamage * 0.2);
+        }
+        
+        // 지형 방어 보너스
+        if (targetTerrain?.type === 'cover') {
+          finalDamage = Math.floor(finalDamage * 0.8);
+        }
+        
+        if (targetTerrain?.type === 'hazard') {
+          finalDamage += 5;
+        }
 
-      const logMessage = `${aiAction.message} ${finalDamage} 데미지!${
-        attackerTerrain?.type === 'elevation' ? ' [고지대]' : ''
-      }${targetTerrain?.type === 'cover' ? ' [엄폐]' : ''}${
-        targetTerrain?.type === 'hazard' ? ' [위험지대]' : ''
-      }`;
-      
-      newState.log.push({
-        timestamp: Date.now(),
-        type: 'attack',
-        message: logMessage,
-        speaker: actorInfo.name
-      });
+        const targetParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === target.pilotId);
+        if (targetParticipant) {
+          targetParticipant.hp = Math.max(0, targetParticipant.hp - finalDamage);
+          if (targetParticipant.hp === 0) {
+            targetParticipant.status = 'destroyed';
+          }
+        }
+
+        const logMessage = `${aiAction.message} ${finalDamage} 데미지! (사거리: ${distance}/${finalRange})${
+          attackerTerrain?.type === 'elevation' ? ' [고지대]' : ''
+        }${targetTerrain?.type === 'cover' ? ' [엄폐]' : ''}${
+          targetTerrain?.type === 'hazard' ? ' [위험지대]' : ''
+        }`;
+        
+        newState.log.push({
+          timestamp: Date.now(),
+          type: 'attack',
+          message: logMessage,
+          speaker: actorInfo.name
+        });
+      } else {
+        // 사거리 밖이면 공격 실패
+        newState.log.push({
+          timestamp: Date.now(),
+          type: 'system',
+          message: `${actorInfo.name}: 사거리 밖! (거리: ${distance}, 사거리: ${finalRange})`,
+          speaker: actorInfo.name
+        });
+      }
     }
     else if (aiAction.type === 'SUPPORT' && aiAction.target) {
       const targetParticipant = newState.participants.find((p: BattleParticipant) => p.pilotId === aiAction.target.pilotId);

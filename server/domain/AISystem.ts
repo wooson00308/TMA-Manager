@@ -12,6 +12,31 @@ interface AIDecision {
   actionData?: any;
 }
 
+// 하드코딩된 메카 스탯 데이터 (추후 데이터베이스 연동)
+const MECH_STATS_DATABASE: { [mechId: number]: { firepower: number; speed: number; armor: number } } = {
+  1: { firepower: 85, speed: 60, armor: 75 }, // Knight type - 근접 탱커
+  2: { firepower: 90, speed: 55, armor: 70 }, // Arbiter type - 장거리 공격
+  3: { firepower: 75, speed: 90, armor: 65 }, // River type - 고속 기동
+  4: { firepower: 80, speed: 70, armor: 80 }, // Balanced type
+  5: { firepower: 95, speed: 50, armor: 75 }, // Heavy artillery
+  6: { firepower: 70, speed: 85, armor: 60 }, // Scout type
+  7: { firepower: 88, speed: 65, armor: 78 }, // Assault type
+  8: { firepower: 92, speed: 58, armor: 72 }, // Sniper type
+  // 적 메카들 (100번대)
+  101: { firepower: 82, speed: 68, armor: 73 },
+  102: { firepower: 87, speed: 62, armor: 76 },
+  103: { firepower: 78, speed: 83, armor: 68 },
+};
+
+// 하드코딩된 지형 데이터 (추후 동적 로딩)
+const DEFAULT_TERRAIN_FEATURES = [
+  { x: 4, y: 3, type: "cover" as const, effect: "방어력 +20%" },
+  { x: 8, y: 5, type: "elevation" as const, effect: "사거리 +1" },
+  { x: 12, y: 7, type: "obstacle" as const, effect: "이동 제한" },
+  { x: 6, y: 9, type: "hazard" as const, effect: "턴당 HP -5" },
+  { x: 10, y: 2, type: "cover" as const, effect: "방어력 +20%" },
+];
+
 // The core AI decision-making logic resides in the domain layer so that it is
 // completely framework-agnostic and free of side-effects.  External concerns
 // such as persistence or transport are delegated to the application layer.
@@ -26,6 +51,12 @@ export class AISystem {
         if (id === 2) return "M";
         if (id === 3) return "A";
         return id >= 100 ? "E" : "A";
+      },
+      // 지형 정보 추가
+      terrainFeatures: DEFAULT_TERRAIN_FEATURES,
+      // 메카 스탯 조회 함수 추가
+      getMechStats: (mechId: number) => {
+        return MECH_STATS_DATABASE[mechId] || { firepower: 75, speed: 70, armor: 70 };
       },
     });
 
