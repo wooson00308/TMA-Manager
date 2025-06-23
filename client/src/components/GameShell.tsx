@@ -8,6 +8,7 @@ import { ReconScene } from './scenes/ReconScene';
 import { BanPickScene } from './scenes/BanPickScene';
 import { BattleScene } from './scenes/BattleScene';
 import { AnalysisScene } from './scenes/AnalysisScene';
+import { MatchPrepScene } from './scenes/MatchPrepScene';
 import { NewMatchPrepScene } from './scenes/NewMatchPrepScene';
 import { StatusPanel } from './ui/StatusPanel';
 
@@ -112,7 +113,7 @@ export function GameShell() {
         </nav>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ height: 'calc(100vh - 128px)' }}>
+        <main className="flex-1 p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800" style={{ height: 'calc(100vh - 160px)' }}>
           <CurrentSceneComponent />
         </main>
       </div>
