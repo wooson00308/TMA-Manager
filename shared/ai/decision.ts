@@ -191,13 +191,13 @@ export function makeAIDecision(
   const enemies = battleState.participants.filter((p: any) => {
     // team 필드를 직접 사용하여 적군 구분
     const isEnemy = team === "team1" || team === "ally" ? p.team === "team2" : p.team === "team1";
-    return isEnemy && p.status === "active";
+    return isEnemy && p.status !== "destroyed";
   }) as Participant[];
 
   const allies = battleState.participants.filter((p: any) => {
     // team 필드를 직접 사용하여 아군 구분
     const isAlly = team === "team1" || team === "ally" ? p.team === "team1" : p.team === "team2";
-    return isAlly && p.status === "active" && p.pilotId !== actor.pilotId;
+    return isAlly && p.status !== "destroyed" && p.pilotId !== actor.pilotId;
   }) as Participant[];
 
   const damagedAllies = allies.filter((a) => a.hp < 50);

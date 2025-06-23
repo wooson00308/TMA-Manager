@@ -215,8 +215,9 @@ function calculateNewPosition(
 }
 
 function checkVictoryCondition(participants: any[]) {
-  const allyCount = participants.filter(p => p.team === 'team1' && p.status === 'active').length;
-  const enemyCount = participants.filter(p => p.team === 'team2' && p.status === 'active').length;
+  // Treat any unit that is not `destroyed` as still alive ("damaged" included)
+  const allyCount = participants.filter(p => p.team === 'team1' && p.status !== 'destroyed').length;
+  const enemyCount = participants.filter(p => p.team === 'team2' && p.status !== 'destroyed').length;
   
   if (allyCount === 0) return 'defeat';
   if (enemyCount === 0) return 'victory';
