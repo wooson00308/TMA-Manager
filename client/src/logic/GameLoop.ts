@@ -228,36 +228,40 @@ export function processGameTick(
   pilots: Pilot[],
   terrainFeatures: TerrainFeature[]
 ): BattleState {
-  const newState = { ...battleState };
-  
-  // Process each active participant
-  newState.participants = newState.participants.map(participant => {
-    if (participant.status !== 'active') return participant;
-    
-    const pilotInfo = getPilotInfo(pilots, participant.pilotId, participant);
-    const action = determineAIAction(participant, newState, pilots, pilotInfo, terrainFeatures);
-    
-    // Execute action
-    const newParticipant = { ...participant };
+  const nextParticipants = battleState.participants.map(p => ({ ...p }));
+  const newLog = [...battleState.log];
+
+  const actions = battleState.participants
+    .filter(p => p.status === 'active')
+    .map(participant => {
+      const pilotInfo = getPilotInfo(pilots, participant.pilotId, participant);
+      const action = determineAIAction(participant, battleState, pilots, pilotInfo, terrainFeatures);
+      return {
+        ...action,
+        pilotId: participant.pilotId, 
+      };
+    });
+
+  actions.forEach(action => {
+    const actor = nextParticipants.find(p => p.pilotId === action.pilotId);
+    if (!actor) return;
     
     switch (action.type) {
       case 'MOVE':
         if (action.newPosition) {
-          newParticipant.position = action.newPosition;
+          actor.position = action.newPosition;
+          newLog.push({ timestamp: Date.now(), type: 'movement', message: action.dialogue || "...", speaker: action.pilotName });
         }
         break;
-        
       case 'ATTACK':
         if (action.targetIndex !== undefined) {
-          const target = newState.participants[action.targetIndex];
-          if (target) {
-            // Calculate damage using actual pilot and mech stats
-            const attackerAccuracy = participant.pilotStats?.accuracy || 70;
-            const attackerFirepower = participant.firepower || 75;
+          const target = nextParticipants[action.targetIndex];
+          if (target && target.status === 'active') {
+            const attackerAccuracy = actor.pilotStats?.accuracy || 70;
+            const attackerFirepower = actor.firepower || 75;
             const targetArmor = target.armor || 70;
             const targetReaction = target.pilotStats?.reaction || 70;
             
-            // Hit chance calculation
             const hitChance = Math.max(0.1, Math.min(0.95, (attackerAccuracy - targetReaction + 50) / 100));
             
             if (Math.random() < hitChance) {
@@ -270,14 +274,14 @@ export function processGameTick(
                 target.status = 'damaged';
               }
               
-              newState.log.push({
+              newLog.push({
                 timestamp: Date.now(),
                 type: 'attack',
                 message: `${action.dialogue} (${Math.floor(damage)} 데미지!)`,
                 speaker: action.pilotName
               });
             } else {
-              newState.log.push({
+              newLog.push({
                 timestamp: Date.now(),
                 type: 'attack',
                 message: `${action.dialogue} (빗나감!)`,
@@ -287,9 +291,8 @@ export function processGameTick(
           }
         }
         break;
-        
       case 'COMMUNICATE':
-        newState.log.push({
+        newLog.push({
           timestamp: Date.now(),
           type: 'communication',
           message: action.dialogue || "...",
@@ -297,11 +300,14 @@ export function processGameTick(
         });
         break;
     }
-    
-    return newParticipant;
   });
-  
-  // Check victory condition
+
+  const newState = {
+    ...battleState,
+    participants: nextParticipants,
+    log: newLog,
+  };
+
   const victory = checkVictoryCondition(newState.participants);
   if (victory) {
     newState.phase = 'completed';
@@ -312,7 +318,6 @@ export function processGameTick(
     });
   }
   
-  // Increment turn
   newState.turn = battleState.turn + 1;
   
   return newState;
