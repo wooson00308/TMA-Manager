@@ -51,6 +51,40 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
   const isLowHP = actor.hp < (actor.maxHp || 100) * 0.3;
   const isEarlyBattle = battleState.turn < 3;
 
+  // 적이 있으면 공격을 최우선으로 (확률을 80%로 증가)
+  if (enemies.length > 0 && randomAction < 0.8) {
+    // 가장 가까운 적 선택
+    const closestEnemy = enemies.reduce((closest: any, enemy: any) => {
+      const currentDistance = Math.abs(actor.position.x - enemy.position.x) + Math.abs(actor.position.y - enemy.position.y);
+      const closestDistance = Math.abs(actor.position.x - closest.position.x) + Math.abs(actor.position.y - closest.position.y);
+      return currentDistance < closestDistance ? enemy : closest;
+    });
+    
+    const distance = Math.abs(closestEnemy.position.x - actor.position.x) + Math.abs(closestEnemy.position.y - actor.position.y);
+    
+    // 사거리를 더 관대하게 (실제 range 값이나 기본 100 사용)
+    const effectiveRange = Math.max(actor.range || 100, 8); // 최소 8칸 사거리 보장
+    
+    if (distance <= effectiveRange) {
+      const targetIndex = battleState.participants.findIndex((p: any) => p.pilotId === closestEnemy.pilotId);
+      return {
+        type: "ATTACK",
+        pilotName: actorInfo.name,
+        targetIndex,
+        dialogue: getDialogue(actorInfo, "combat")
+      };
+    }
+    
+    // 사거리 밖이면 적에게 접근
+    const newPosition = moveTowardsTarget(actor.position, closestEnemy.position, actorInfo.team, mechStats);
+    return {
+      type: "MOVE",
+      pilotName: actorInfo.name,
+      newPosition,
+      dialogue: getDialogue(actorInfo, "movement")
+    };
+  }
+
   // Early battle communication
   if (isEarlyBattle && randomAction < 0.3) {
     return {
@@ -69,25 +103,8 @@ function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorI
     };
   }
 
-  // Attack if enemies in range
-  if (randomAction < 0.5 && enemies.length > 0) {
-    const target = enemies[0];
-    const distance = Math.abs(target.position.x - actor.position.x) + Math.abs(target.position.y - actor.position.y);
-    
-    // Use actual range from participant
-    if (distance <= (actor.range || 50)) {
-      const targetIndex = battleState.participants.findIndex((p: any) => p.pilotId === target.pilotId);
-      return {
-        type: "ATTACK",
-        pilotName: actorInfo.name,
-        targetIndex,
-        dialogue: getDialogue(actorInfo, "combat")
-      };
-    }
-  }
-
-  // Movement
-  if (randomAction < 0.8) {
+  // Default movement
+  if (randomAction < 0.9) {
     const newPosition = calculateNewPosition(actor.position, actorInfo.team, enemies, mechStats);
     return {
       type: "MOVE",
@@ -117,6 +134,24 @@ function getDialogue(pilotInfo: PilotInfo, situation: string): string {
   return options[Math.floor(Math.random() * options.length)];
 }
 
+function moveTowardsTarget(
+  current: { x: number; y: number },
+  target: { x: number; y: number },
+  team: "ally" | "enemy",
+  mechStats: { firepower: number; speed: number; armor: number }
+): { x: number; y: number } {
+  const moveDistance = Math.max(1, Math.floor(mechStats.speed / 30));
+  
+  // 타겟 방향으로 이동
+  const dx = target.x > current.x ? moveDistance : target.x < current.x ? -moveDistance : 0;
+  const dy = target.y > current.y ? moveDistance : target.y < current.y ? -moveDistance : 0;
+  
+  return {
+    x: Math.max(2, Math.min(17, current.x + dx)), // 맵 경계: 2~17
+    y: Math.max(1, Math.min(12, current.y + dy))  // 맵 경계: 1~12
+  };
+}
+
 function calculateNewPosition(
   current: { x: number; y: number }, 
   team: "ally" | "enemy", 
@@ -128,8 +163,8 @@ function calculateNewPosition(
   const direction = team === "ally" ? 1 : -1;
   
   return {
-    x: Math.max(1, Math.min(18, current.x + direction * moveDistance)),
-    y: Math.max(1, Math.min(10, current.y + (Math.random() > 0.5 ? 1 : -1)))
+    x: Math.max(2, Math.min(17, current.x + direction * moveDistance)), // 수정된 경계: 2~17
+    y: Math.max(1, Math.min(12, current.y + (Math.random() > 0.5 ? 1 : -1))) // 수정된 경계: 1~12
   };
 }
 
