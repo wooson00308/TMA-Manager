@@ -16,21 +16,9 @@ function applyTacticalEffects(participant: any, formation: TacticalFormation): a
   return modifiedParticipant;
 }
 
-// 팀별 전술 정보 저장
-const teamFormations: { [teamId: string]: TacticalFormation } = {
-  'team1': {
-    name: 'balanced',
-    effects: []
-  },
-  'team2': {
-    name: 'balanced', 
-    effects: []
-  }
-};
-
-// 전술 설정 함수
+// 전술 설정 함수 (BattleState에서 전술 정보를 가져오도록 변경)
 export function setTeamFormation(teamId: string, formation: TacticalFormation) {
-  teamFormations[teamId] = formation;
+  console.log(`Setting formation for ${teamId}:`, formation);
 }
 
 function getPilotInfo(pilots: Pilot[], pilotId: number, participant?: any): PilotInfo {
@@ -58,8 +46,11 @@ function getPilotInfo(pilots: Pilot[], pilotId: number, participant?: any): Pilo
 }
 
 function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo, terrainFeatures: TerrainFeature[]) {
-  // 전술 효과 적용
-  const formation = teamFormations[actor.team] || teamFormations['team1'];
+  // 전술 효과 적용 - BattleState에서 전술 정보 가져오기
+  const formation = battleState.teamFormations?.[actor.team] || {
+    name: 'balanced',
+    effects: []
+  };
   const enhancedActor = applyTacticalEffects(actor, formation);
   
   const enemies = battleState.participants.filter((p: any) => {

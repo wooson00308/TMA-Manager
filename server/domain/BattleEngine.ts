@@ -11,9 +11,58 @@ export class BattleEngine {
     this.storage = storage;
   }
 
-  async initializeBattle(formation1: any, formation2: any): Promise<BattleState> {
+  private getTacticalFormation(tacticName: string): any {
+    const formations: { [key: string]: any } = {
+      'balanced': {
+        name: 'balanced',
+        effects: [
+          { stat: 'firepower', modifier: 0 },
+          { stat: 'speed', modifier: 0 },
+          { stat: 'armor', modifier: 0 }
+        ]
+      },
+      'aggressive': {
+        name: 'aggressive',
+        effects: [
+          { stat: 'firepower', modifier: 15 },
+          { stat: 'speed', modifier: 10 },
+          { stat: 'armor', modifier: -5 }
+        ]
+      },
+      'defensive': {
+        name: 'defensive',
+        effects: [
+          { stat: 'armor', modifier: 20 },
+          { stat: 'reaction', modifier: 10 },
+          { stat: 'firepower', modifier: -10 }
+        ]
+      },
+      'mobile': {
+        name: 'mobile',
+        effects: [
+          { stat: 'speed', modifier: 25 },
+          { stat: 'reaction', modifier: 15 },
+          { stat: 'armor', modifier: -15 }
+        ]
+      }
+    };
+    
+    return formations[tacticName] || formations['balanced'];
+  }
+
+  async initializeBattle(formation1: any, formation2: any, playerTactics?: string): Promise<BattleState> {
     const battleId = `battle_${Date.now()}`;
     const participants: any[] = [];
+    
+    // 플레이어 전술 정보
+    const playerFormation = this.getTacticalFormation(playerTactics || 'balanced');
+    
+    // AI 적군 전술 선택
+    const enemyFormation = this.aiSystem.selectEnemyTactics(
+      playerFormation,
+      formation2.pilots || [],
+      formation2.pilots || []
+    );
 
     // Team 1 participants with actual data from storage
     if (formation1.pilots && Array.isArray(formation1.pilots)) {
@@ -143,11 +192,15 @@ export class BattleEngine {
       }
     }
 
-    return {
+    const battleState = {
       id: battleId,
       phase: "preparation",
       turn: 0,
       participants,
+      teamFormations: {
+        team1: playerFormation,
+        team2: enemyFormation
+      },
       log: [
         {
           timestamp: Date.now(),
@@ -157,10 +210,13 @@ export class BattleEngine {
         {
           timestamp: Date.now() + 1000,
           type: "system",
-          message: "전술 분석 시작. 교전 준비 완료.",
+          message: `전술 분석 완료. 아군: ${playerFormation.name}, 적군: ${enemyFormation.name}`,
         },
       ],
     } as BattleState;
+
+    console.log(`Battle initialized - Player: ${playerFormation.name}, Enemy: ${enemyFormation.name}`);
+    return battleState;
   }
 
   async runBattle(battleState: BattleState, onUpdate: (update: any) => void): Promise<void> {

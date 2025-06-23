@@ -65,6 +65,10 @@ export type BattleState = {
   phase: "preparation" | "active" | "completed";
   turn: number;
   participants: BattleParticipant[];
+  teamFormations?: {
+    team1: TacticalFormation;
+    team2: TacticalFormation;
+  };
   log: Array<{
     timestamp: number;
     type: "movement" | "attack" | "communication" | "system";

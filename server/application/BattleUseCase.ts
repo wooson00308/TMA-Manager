@@ -17,8 +17,8 @@ export class BattleUseCase {
     this.engine = new BattleEngine(storage);
   }
 
-  initializeBattle(formation1: any, formation2: any): Promise<BattleState> {
-    return this.engine.initializeBattle(formation1, formation2);
+  initializeBattle(formation1: any, formation2: any, playerTactics?: string): Promise<BattleState> {
+    return this.engine.initializeBattle(formation1, formation2, playerTactics);
   }
 
   runBattle(battleState: BattleState, onUpdate: (update: any) => void): Promise<void> {

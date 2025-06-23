@@ -18,7 +18,7 @@ interface TacticalSetting {
 }
 
 export function FormationScene() {
-  const { setScene, pilots, mechs, selectedMechs } = useGameStore();
+  const { setScene, pilots, mechs, selectedMechs, setPlayerTacticalFormation } = useGameStore();
   
   const [formation, setFormation] = useState<FormationSlot[]>([
     { pilot: null, mech: null, role: 'Knight', position: { x: 1, y: 2 } },
@@ -360,7 +360,10 @@ export function FormationScene() {
             {tacticalSettings.map((setting) => (
               <button
                 key={setting.name}
-                onClick={() => setTacticalSetting(setting.name)}
+                onClick={() => {
+                  setTacticalSetting(setting.name);
+                  setPlayerTacticalFormation(setting.name);
+                }}
                 className={`cyber-border p-4 text-left transition-all ${
                   tacticalSetting === setting.name
                     ? 'bg-green-900/30 border-green-400/50'

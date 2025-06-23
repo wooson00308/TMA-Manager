@@ -44,6 +44,9 @@ interface GameState {
   terrainFeatures: TerrainFeature[];
   activeFormation: Formation | null;
   enemyTeams: Team[];
+  
+  // 전술 정보 추가
+  playerTacticalFormation: string;
 
   // Ban/Pick results
   selectedMechs: {
@@ -61,6 +64,7 @@ interface GameState {
   setActiveFormation: (formation: Formation | null) => void;
   setEnemyTeams: (teams: Team[]) => void;
   setSelectedMechs: (mechs: { player: Mech[]; enemy: Mech[] }) => void;
+  setPlayerTacticalFormation: (formation: string) => void;
   initializePlayerTeam: () => Promise<void>;
   loadEnemyPilots: () => Promise<void>;
   getPilotInfo: (pilotId: number) => PilotInfo;
@@ -80,6 +84,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   terrainFeatures: TFM_TERRAIN_FEATURES,
   activeFormation: null,
   enemyTeams: [],
+  playerTacticalFormation: "",
   selectedMechs: {
     player: [],
     enemy: [],
@@ -124,6 +129,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setEnemyTeams: (teams: Team[]) => set({ enemyTeams: teams }),
   setSelectedMechs: (mechs: { player: Mech[]; enemy: Mech[] }) =>
     set({ selectedMechs: mechs }),
+  setPlayerTacticalFormation: (formation: string) => set({ playerTacticalFormation: formation }),
 
   initializePlayerTeam: async () => {
     if (get().playerTeam) return;

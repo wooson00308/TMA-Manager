@@ -316,10 +316,16 @@ export function NewMatchPrepScene() {
         }
       }
 
+      console.log('Starting battle with formation:', teamLineup.formation);
+      
       const response = await fetch('/api/battle/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formation1, formation2 }),
+        body: JSON.stringify({ 
+          formation1, 
+          formation2, 
+          playerTactics: teamLineup.formation 
+        }),
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

@@ -754,11 +754,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Battle API endpoints
   app.post("/api/battle/start", async (req, res) => {
     try {
-      const { formation1, formation2 } = req.body;
+      const { formation1, formation2, playerTactics } = req.body;
       
       if (!formation1 || !formation2) {
         return res.status(400).json({ error: "Both formations are required" });
       }
+
+      console.log('Starting battle with tactics:', playerTactics);
 
       // Create battle record in storage
       const battleData = {
@@ -771,14 +773,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         battleData: {
           formation1,
           formation2,
+          playerTactics: playerTactics || 'balanced',
           startTime: new Date().toISOString()
         }
       };
 
       const battle = await storage.createBattle(battleData);
       
-      // Initialize battle state
-      const battleState = await battleEngine.initializeBattle(formation1, formation2);
+      // Initialize battle state with tactics
+      const battleState = await battleEngine.initializeBattle(formation1, formation2, playerTactics);
       activeBattles.set(battle.id.toString(), battleState);
 
       res.json({
