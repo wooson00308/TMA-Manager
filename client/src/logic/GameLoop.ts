@@ -258,7 +258,7 @@ export function processGameTick(
       case 'ATTACK':
         if (action.targetIndex !== undefined) {
           const target = nextParticipants[action.targetIndex];
-          if (target && target.status === 'active') {
+          if (target && target.status !== 'destroyed') {
             const attackerAccuracy = actor.pilotStats?.accuracy || 70;
             const attackerFirepower = actor.firepower || 75;
             const targetArmor = target.armor || 70;
