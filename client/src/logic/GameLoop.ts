@@ -233,7 +233,8 @@ export function processGameTick(
   const newLog = [...battleState.log];
 
   const actions = battleState.participants
-    .filter(p => p.status === 'active')
+    // Allow any unit that is not destroyed to take an action (damaged still acts)
+    .filter(p => p.status !== 'destroyed')
     .map(participant => {
       const pilotInfo = getPilotInfo(pilots, participant.pilotId, participant);
       const action = determineAIAction(participant, battleState, pilots, pilotInfo, terrainFeatures);
