@@ -70,7 +70,7 @@ export function BattleScene() {
       wsManager.off('BATTLE_COMPLETE', handleBattleComplete);
       wsManager.off('PHASE_CHANGE', handlePhaseChange);
     };
-  }, [currentBattle, addBattleLog, setBattle]);
+  }, [addBattleLog, setBattle]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

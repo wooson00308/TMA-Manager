@@ -7,7 +7,7 @@ import { BattleSimulation } from '@/components/BattleSimulation';
 import { Pilot, Mech, Team } from '@shared/schema';
 import { wsManager } from '@/lib/websocket';
 
-type MatchPhase = 'lineup' | 'champion_select' | 'pre_battle' | 'battle';
+type MatchPhase = 'lineup' | 'champion_select' | 'pre_battle';
 
 interface TeamLineup {
   pilots: Pilot[];
@@ -28,7 +28,7 @@ interface ChampionSelectState {
 }
 
 export function NewMatchPrepScene() {
-  const { pilots, mechs, enemyTeams } = useGameStore();
+  const { pilots, mechs, enemyTeams, setScene } = useGameStore();
   const { currentBattle, setBattle, setConnected } = useBattleStore();
   
   const [currentPhase, setCurrentPhase] = useState<MatchPhase>('lineup');
@@ -332,50 +332,13 @@ export function NewMatchPrepScene() {
 
       const result = await response.json();
       
-      setBattle({
-        id: result.battleId.toString(),
-        phase: 'active',
-        turn: 1,
-        participants: [
-          ...formation1.pilots.map((p, i) => ({
-            pilotId: p.pilot.id,
-            mechId: p.mech.id,
-            team: 'team1' as const,
-            position: { x: 2 + i * 2, y: 6 },
-            hp: (p.mech as any).hp || 100,
-            maxHp: (p.mech as any).hp || 100,
-            armor: (p.mech as any).armor ?? 50,
-            speed: (p.mech as any).speed ?? 50,
-            firepower: (p.mech as any).firepower ?? 50,
-            range: (p.mech as any).range ?? 50,
-            status: 'active' as const,
-          })),
-          ...formation2.pilots.map((p: any, i: number) => ({
-            pilotId: p.pilot.id,
-            mechId: p.mech.id,
-            team: 'team2' as const,
-            position: { x: 10 + i * 2, y: 6 },
-            hp: (p.mech as any).hp || 100,
-            maxHp: (p.mech as any).hp || 100,
-            armor: (p.mech as any).armor ?? 50,
-            speed: (p.mech as any).speed ?? 50,
-            firepower: (p.mech as any).firepower ?? 50,
-            range: (p.mech as any).range ?? 50,
-            status: 'active' as const,
-          })),
-        ],
-        log: [{
-          timestamp: Date.now(),
-          type: 'system',
-          message: '전투 시스템 초기화 완료. 전투가 시작됩니다!',
-        }]
-      });
+      setBattle(result.battleState);
 
       setTimeout(() => {
         wsManager.startBattle(formation1, formation2);
       }, 500);
 
-      setCurrentPhase('battle');
+      setScene('battle');
 
     } catch (error) {
       console.error('Failed to start battle:', error);
@@ -409,10 +372,6 @@ export function NewMatchPrepScene() {
       default: return '🤖';
     }
   };
-
-  if (currentPhase === 'battle' && currentBattle) {
-    return <BattleSimulation />;
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-800 to-black text-white">
