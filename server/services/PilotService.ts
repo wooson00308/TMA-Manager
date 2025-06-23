@@ -112,8 +112,8 @@ export class PilotService {
     const isLowHP = participant.hp < 50;
     const isEarlyBattle = battleState.turn < 3;
     const enemyTargets = team === "team1" 
-      ? battleState.participants.filter((p: any) => p.pilotId >= 100 && p.status === 'active')
-      : battleState.participants.filter((p: any) => p.pilotId < 100 && p.status === 'active');
+      ? battleState.participants.filter((p: any) => p.team === 'team2' && p.status === 'active')
+      : battleState.participants.filter((p: any) => p.team === 'team1' && p.status === 'active');
 
     // 초반 전투 시 커뮤니케이션
     if (isEarlyBattle && randomAction < 0.4) {

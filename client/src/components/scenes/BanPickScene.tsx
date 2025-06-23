@@ -199,7 +199,7 @@ export function BanPickScene() {
       // 메카 타입별로 최적의 파일럿 매칭 (중복 방지)
       const usedPilots = new Set<number>();
       const pilotMechPairs = enemyMechs.map((mech, index) => {
-        let bestPilot = enemyPilots[index]; // 기본값
+        let bestPilot = enemyPilots[index % enemyPilots.length]; // 기본값 - 안전한 인덱싱
         
         // 메카 타입에 따른 파일럿 선호도
         if (mech.type === "Arbiter" && mech.variant === "Sniper") {
@@ -218,14 +218,15 @@ export function BanPickScene() {
         
         // 이미 사용된 파일럿이면 사용 가능한 다른 파일럿 찾기
         if (usedPilots.has(bestPilot.id)) {
-          bestPilot = enemyPilots.find(p => !usedPilots.has(p.id)) || enemyPilots[index];
+          bestPilot = enemyPilots.find(p => !usedPilots.has(p.id)) || enemyPilots[index % enemyPilots.length];
         }
         
         usedPilots.add(bestPilot.id);
         
         return {
           pilotId: bestPilot.id,
-          mechId: mech.id
+          mechId: mech.id,
+          mech: mech // 메카 정보도 함께 저장
         };
       });
 
@@ -238,13 +239,18 @@ export function BanPickScene() {
         mech3Id: pilotMechPairs[2]?.mechId || banPickState.selectedMechs.enemy[2].id,
       };
 
+      // 플레이어 메카 정보 가져오기
+      const playerMech1 = banPickState.selectedMechs.player[0];
+      const playerMech2 = banPickState.selectedMechs.player[1];
+      const playerMech3 = banPickState.selectedMechs.player[2];
+
       // Store battle data in battle store
       setBattle({
         id: `battle_${Date.now()}`,
         phase: 'preparation',
         turn: 0,
         participants: [
-          // Player team (team1) - 타입 안전성을 위해 필수 프로퍼티 추가
+          // Player team (team1) - 실제 메카 스탯 사용
           { 
             pilotId: playerFormation.pilot1Id, 
             mechId: playerFormation.mech1Id, 
@@ -252,10 +258,10 @@ export function BanPickScene() {
             position: { x: 2, y: 2 }, 
             hp: 100, 
             maxHp: 100,
-            armor: 70,
-            speed: 70,
-            firepower: 70,
-            range: 50,
+            armor: playerMech1?.armor || 70,
+            speed: playerMech1?.speed || 70,
+            firepower: playerMech1?.firepower || 70,
+            range: playerMech1?.range || 50,
             status: 'active' as const
           },
           { 
@@ -265,10 +271,10 @@ export function BanPickScene() {
             position: { x: 2, y: 4 }, 
             hp: 100, 
             maxHp: 100,
-            armor: 70,
-            speed: 70,
-            firepower: 70,
-            range: 50,
+            armor: playerMech2?.armor || 70,
+            speed: playerMech2?.speed || 70,
+            firepower: playerMech2?.firepower || 70,
+            range: playerMech2?.range || 50,
             status: 'active' as const
           },
           { 
@@ -278,13 +284,13 @@ export function BanPickScene() {
             position: { x: 2, y: 6 }, 
             hp: 100, 
             maxHp: 100,
-            armor: 70,
-            speed: 70,
-            firepower: 70,
-            range: 50,
+            armor: playerMech3?.armor || 70,
+            speed: playerMech3?.speed || 70,
+            firepower: playerMech3?.firepower || 70,
+            range: playerMech3?.range || 50,
             status: 'active' as const
           },
-          // Enemy team (team2) - 동적 매칭된 파일럿 사용
+          // Enemy team (team2) - 실제 메카 스탯 사용
           { 
             pilotId: pilotMechPairs[0]?.pilotId || 101, 
             mechId: pilotMechPairs[0]?.mechId || enemyFormation.mech1Id, 
@@ -292,10 +298,10 @@ export function BanPickScene() {
             position: { x: 12, y: 2 }, 
             hp: 100, 
             maxHp: 100,
-            armor: 70,
-            speed: 70,
-            firepower: 70,
-            range: 50,
+            armor: pilotMechPairs[0]?.mech?.armor || 70,
+            speed: pilotMechPairs[0]?.mech?.speed || 70,
+            firepower: pilotMechPairs[0]?.mech?.firepower || 70,
+            range: pilotMechPairs[0]?.mech?.range || 50,
             status: 'active' as const
           },
           { 
@@ -305,10 +311,10 @@ export function BanPickScene() {
             position: { x: 12, y: 4 }, 
             hp: 100, 
             maxHp: 100,
-            armor: 70,
-            speed: 70,
-            firepower: 70,
-            range: 50,
+            armor: pilotMechPairs[1]?.mech?.armor || 70,
+            speed: pilotMechPairs[1]?.mech?.speed || 70,
+            firepower: pilotMechPairs[1]?.mech?.firepower || 70,
+            range: pilotMechPairs[1]?.mech?.range || 50,
             status: 'active' as const
           },
           { 
@@ -318,10 +324,10 @@ export function BanPickScene() {
             position: { x: 12, y: 6 }, 
             hp: 100, 
             maxHp: 100,
-            armor: 70,
-            speed: 70,
-            firepower: 70,
-            range: 50,
+            armor: pilotMechPairs[2]?.mech?.armor || 70,
+            speed: pilotMechPairs[2]?.mech?.speed || 70,
+            firepower: pilotMechPairs[2]?.mech?.firepower || 70,
+            range: pilotMechPairs[2]?.mech?.range || 50,
             status: 'active' as const
           },
         ],

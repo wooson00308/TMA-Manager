@@ -26,6 +26,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   const { addBattleLog } = useBattleStore();
   const terrainFeatures = useGameStore(state => state.terrainFeatures);
   const getPilotInfo = useGameStore(state => state.getPilotInfo);
+  const getPilotInfoWithBattle = useGameStore(state => state.getPilotInfoWithBattle);
 
   // 3초 카운트다운 및 자동 시작 로직
   useEffect(() => {
@@ -54,7 +55,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     attackEffects,
     setAttackEffects,
     terrainFeatures,
-    getPilotInfo,
+    getPilotInfo: (pilotId: number) => getPilotInfoWithBattle(pilotId, battle.participants),
   });
 
   // Phase B: leverage Web Worker for game loop when simulation is active
@@ -104,7 +105,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         
         // Find attacker - look for pilot names in the message
         for (const participant of participants) {
-          const pilotInfo = getPilotInfo(participant.pilotId);
+          const pilotInfo = getPilotInfoWithBattle(participant.pilotId, participants);
           if (log.message.includes(pilotInfo.name) || log.message.includes(pilotInfo.callsign)) {
             if (!attacker && (log.message.includes('공격') || log.message.includes('사격'))) {
               attacker = participant;
@@ -119,7 +120,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           if (match) {
             const targetName = match[1];
             target = participants.find(p => {
-              const info = getPilotInfo(p.pilotId);
+              const info = getPilotInfoWithBattle(p.pilotId, participants);
               return info.name.includes(targetName) || info.callsign.includes(targetName);
             });
             if (target) break;
@@ -135,7 +136,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         }
         
         if (attacker && target && attacker !== target) {
-          console.log('Creating attack effect:', { attacker: getPilotInfo(attacker.pilotId).name, target: getPilotInfo(target.pilotId).name });
+          console.log('Creating attack effect:', { attacker: getPilotInfoWithBattle(attacker.pilotId, participants).name, target: getPilotInfoWithBattle(target.pilotId, participants).name });
           
           // Determine weapon type from message
           let weaponType: "laser" | "missile" | "beam" = "laser";
@@ -302,7 +303,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             {(battle.participants || [])
               .filter(p => p.team === 'team1')
               .map(participant => {
-                const pilot = getPilotInfo(participant.pilotId);
+                const pilot = getPilotInfoWithBattle(participant.pilotId, battle.participants);
                 return (
                   <div key={participant.pilotId} className="bg-blue-900/30 border border-blue-400/40 rounded-lg p-3">
                     <div className="flex items-center space-x-2 mb-2">
@@ -461,7 +462,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             {(battle.participants || [])
               .filter(p => p.team === 'team2')
               .map(participant => {
-                const pilot = getPilotInfo(participant.pilotId);
+                const pilot = getPilotInfoWithBattle(participant.pilotId, battle.participants);
                 return (
                   <div key={participant.pilotId} className="bg-red-900/30 border border-red-400/40 rounded-lg p-3">
                     <div className="flex items-center space-x-2 mb-2">

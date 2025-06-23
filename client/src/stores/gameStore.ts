@@ -61,6 +61,9 @@ interface GameState {
   setSelectedMechs: (mechs: { player: Mech[]; enemy: Mech[] }) => void;
   initializePlayerTeam: () => Promise<void>;
   getPilotInfo: (pilotId: number) => PilotInfo;
+
+  // 전투 상태를 고려한 파일럿 정보 가져오기
+  getPilotInfoWithBattle: (pilotId: number, battleParticipants?: any[]) => PilotInfo;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -145,13 +148,47 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }
 
-    const isEnemy = pilotId >= 100;
+    // 하드코딩된 적군 정보 - 실제로는 서버에서 가져와야 함
+    // 임시로 적군 파일럿 정보 생성
+    if (pilotId >= 100) {
+      const enemyNames = ['Raven', 'Wolf', 'Blaze', 'Storm', 'Shadow', 'Phoenix'];
+      const enemyCallsigns = ['RAVEN-01', 'WOLF-02', 'BLAZE-03', 'STORM-04', 'SHADOW-05', 'PHOENIX-06'];
+      const index = (pilotId - 101) % enemyNames.length;
+      
+      return {
+        id: pilotId,
+        name: enemyNames[index] || `Enemy ${pilotId}`,
+        callsign: enemyCallsigns[index] || `E-${pilotId}`,
+        team: "enemy",
+        initial: (enemyNames[index] || `E${pilotId}`).charAt(0).toUpperCase(),
+      };
+    }
+
+    // 기본값 - 알 수 없는 파일럿
     return {
       id: pilotId,
-      name: isEnemy ? `Enemy ${pilotId}` : `Pilot ${pilotId}`,
-      callsign: isEnemy ? `E${pilotId}` : `P${pilotId}`,
-      team: isEnemy ? "enemy" : "ally",
-      initial: isEnemy ? "E" : String.fromCharCode(65 + (pilotId % 26)),
+      name: `Unknown Pilot ${pilotId}`,
+      callsign: `UNK-${pilotId}`,
+      team: "ally", // 기본값은 아군으로 설정
+      initial: "U",
     };
+  },
+
+  // 전투 상태를 고려한 파일럿 정보 가져오기
+  getPilotInfoWithBattle: (pilotId: number, battleParticipants?: any[]) => {
+    const basicInfo = get().getPilotInfo(pilotId);
+    
+    // 전투 참가자 정보가 있으면 실제 팀 정보 사용
+    if (battleParticipants) {
+      const participant = battleParticipants.find(p => p.pilotId === pilotId);
+      if (participant) {
+        return {
+          ...basicInfo,
+          team: participant.team === 'team1' ? 'ally' : 'enemy'
+        };
+      }
+    }
+    
+    return basicInfo;
   },
 }));

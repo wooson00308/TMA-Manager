@@ -189,12 +189,14 @@ export function makeAIDecision(
   const terrainFeatures = options.terrainFeatures || [];
 
   const enemies = battleState.participants.filter((p: any) => {
-    const isEnemy = team === "team1" || team === "ally" ? p.pilotId >= 100 : p.pilotId < 100;
+    // team 필드를 직접 사용하여 적군 구분
+    const isEnemy = team === "team1" || team === "ally" ? p.team === "team2" : p.team === "team1";
     return isEnemy && p.status === "active";
   }) as Participant[];
 
   const allies = battleState.participants.filter((p: any) => {
-    const isAlly = team === "team1" || team === "ally" ? p.pilotId < 100 : p.pilotId >= 100;
+    // team 필드를 직접 사용하여 아군 구분
+    const isAlly = team === "team1" || team === "ally" ? p.team === "team1" : p.team === "team2";
     return isAlly && p.status === "active" && p.pilotId !== actor.pilotId;
   }) as Participant[];
 

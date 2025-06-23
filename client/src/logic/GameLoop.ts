@@ -3,7 +3,7 @@ import type { TerrainFeature, PilotInfo, BattleParticipant } from "@shared/domai
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
 import { makeAIDecision } from "@shared/ai/decision";
 
-function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
+function getPilotInfo(pilots: Pilot[], pilotId: number, participant?: any): PilotInfo {
   const pilot = pilots.find(p => p.id === pilotId);
   
   if (pilot) {
@@ -11,19 +11,21 @@ function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
       id: pilot.id,
       name: pilot.name,
       callsign: pilot.callsign,
-      team: pilotId >= 100 ? "enemy" : "ally",
+      team: participant?.team === "team2" ? "enemy" : "ally", // participant의 team 정보 사용
       initial: pilot.name.charAt(0).toUpperCase()
     };
   }
   
   // Enemy pilot fallback
   if (pilotId >= 100) {
+    const enemyNames = ['Raven', 'Wolf', 'Blaze', 'Storm', 'Shadow', 'Phoenix'];
+    const index = (pilotId - 101) % enemyNames.length;
     return {
       id: pilotId,
-      name: `Enemy ${String.fromCharCode(65 + (pilotId - 100))}`,
+      name: enemyNames[index] || `Enemy ${pilotId}`,
       callsign: `TARGET-${pilotId}`,
-      team: "enemy",
-      initial: "E"
+      team: participant?.team === "team1" ? "ally" : "enemy", // participant의 team 정보 사용
+      initial: (enemyNames[index] || `E${pilotId}`).charAt(0).toUpperCase()
     };
   }
   
@@ -32,19 +34,21 @@ function getPilotInfo(pilots: Pilot[], pilotId: number): PilotInfo {
     id: pilotId,
     name: `Unknown Pilot ${pilotId}`,
     callsign: `PILOT-${pilotId}`,
-    team: "ally",
+    team: participant?.team === "team2" ? "enemy" : "ally", // participant의 team 정보 사용
     initial: "U"
   };
 }
 
 function determineAIAction(actor: any, battleState: any, pilots: Pilot[], actorInfo: PilotInfo, terrainFeatures: TerrainFeature[]) {
   const enemies = battleState.participants.filter((p: any) => {
-    const isEnemy = actorInfo.team === "ally" ? p.pilotId >= 100 : p.pilotId < 100;
+    // team 필드를 직접 사용하여 적군 구분
+    const isEnemy = actorInfo.team === "ally" ? p.team === "team2" : p.team === "team1";
     return isEnemy && p.status === 'active';
   });
 
   const allies = battleState.participants.filter((p: any) => {
-    const isAlly = actorInfo.team === "ally" ? p.pilotId < 100 : p.pilotId >= 100;
+    // team 필드를 직접 사용하여 아군 구분
+    const isAlly = actorInfo.team === "ally" ? p.team === "team1" : p.team === "team2";
     return isAlly && p.status === 'active' && p.pilotId !== actor.pilotId;
   });
 
@@ -142,8 +146,8 @@ function calculateNewPosition(
 }
 
 function checkVictoryCondition(participants: any[]) {
-  const allyCount = participants.filter(p => p.pilotId < 100 && p.status === 'active').length;
-  const enemyCount = participants.filter(p => p.pilotId >= 100 && p.status === 'active').length;
+  const allyCount = participants.filter(p => p.team === 'team1' && p.status === 'active').length;
+  const enemyCount = participants.filter(p => p.team === 'team2' && p.status === 'active').length;
   
   if (allyCount === 0) return 'defeat';
   if (enemyCount === 0) return 'victory';
@@ -161,7 +165,7 @@ export function processGameTick(
   newState.participants = newState.participants.map(participant => {
     if (participant.status !== 'active') return participant;
     
-    const pilotInfo = getPilotInfo(pilots, participant.pilotId);
+    const pilotInfo = getPilotInfo(pilots, participant.pilotId, participant);
     const action = determineAIAction(participant, newState, pilots, pilotInfo, terrainFeatures);
     
     // Execute action
