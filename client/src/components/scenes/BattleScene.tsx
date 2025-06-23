@@ -25,21 +25,8 @@ export function BattleScene() {
     };
 
     const handleBattleUpdate = (data: any) => {
-      if (data.update.type === 'TURN_UPDATE') {
-        // Update battle state
-        if (currentBattle) {
-          const updatedBattle = {
-            ...currentBattle,
-            turn: data.update.turn,
-            participants: data.update.participants
-          };
-          setBattle(updatedBattle);
-        }
-
-        // Add recent logs
-        if (data.update.recentLogs) {
-          data.update.recentLogs.forEach((log: any) => addBattleLog(log));
-        }
+      if (data.update.type === 'STATE_UPDATE') {
+        setBattle(data.update.state);
       }
     };
 
@@ -220,48 +207,44 @@ export function BattleScene() {
       {/* Unit Status Panel */}
       {currentBattle && (
         <div className="mt-4 grid grid-cols-3 gap-4">
-          {currentBattle.participants.slice(0, 3).map((participant, index) => {
-            const hpPercent = participant.maxHp > 0 ? (participant.hp / participant.maxHp) * 100 : 0;
-
-            return (
-              <div key={index} className="cyber-border p-3 bg-slate-800">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <div className="text-green-400 font-semibold">
-                      PILOT-{index + 1}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      Position: {participant.position.x}-{participant.position.y}
-                    </div>
+          {currentBattle.participants.slice(0, 3).map((participant, index) => (
+            <div key={index} className="cyber-border p-3 bg-slate-800">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <div className="text-green-400 font-semibold">
+                    PILOT-{index + 1}
                   </div>
-                  <div className={`text-sm font-bold ${getStatusColor(participant.status)}`}>
-                    {participant.status.toUpperCase()}
+                  <div className="text-xs text-gray-400">
+                    Position: {participant.position.x}-{participant.position.y}
                   </div>
                 </div>
-                
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">Hull Integrity:</span>
-                    <span className={`font-semibold ${
-                      hpPercent > 70 ? 'text-green-400' :
-                      hpPercent > 30 ? 'text-yellow-400' : 'text-red-400'
-                    }`}>
-                      {Math.round(hpPercent)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-700 rounded h-1">
-                    <div 
-                      className={`h-1 rounded transition-all duration-300 ${
-                        hpPercent > 70 ? 'bg-green-400' :
-                        hpPercent > 30 ? 'bg-yellow-400' : 'bg-red-400'
-                      }`}
-                      style={{ width: `${hpPercent}%` }}
-                    ></div>
-                  </div>
+                <div className={`text-sm font-bold ${getStatusColor(participant.status)}`}>
+                  {participant.status.toUpperCase()}
                 </div>
               </div>
-            );
-          })}
+              
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-400">Hull Integrity:</span>
+                  <span className={`font-semibold ${
+                    participant.hp > 70 ? 'text-green-400' :
+                    participant.hp > 30 ? 'text-yellow-400' : 'text-red-400'
+                  }`}>
+                    {participant.hp}%
+                  </span>
+                </div>
+                <div className="w-full bg-gray-700 rounded h-1">
+                  <div 
+                    className={`h-1 rounded transition-all duration-300 ${
+                      participant.hp > 70 ? 'bg-green-400' :
+                      participant.hp > 30 ? 'bg-yellow-400' : 'bg-red-400'
+                    }`}
+                    style={{ width: `${participant.hp}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

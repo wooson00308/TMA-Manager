@@ -248,7 +248,7 @@ export class BattleEngine {
         }
       });
 
-      onUpdate({ type: "TURN_UPDATE", turn, participants: battleState.participants, recentLogs: battleState.log.slice(-3) });
+      onUpdate({ type: "STATE_UPDATE", state: battleState });
     }, 2000);
   }
 
