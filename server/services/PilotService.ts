@@ -61,6 +61,28 @@ export class PilotService {
     
     // 적군 정보 (ID 100 이상)
     if (pilotId >= 100) {
+      const enemyData: { [key: number]: { name: string; callsign: string } } = {
+        101: { name: "레이븐 스카이", callsign: "RAVEN-01" },
+        102: { name: "아이언 울프", callsign: "WOLF-02" },
+        103: { name: "블레이즈 피닉스", callsign: "BLAZE-03" },
+        104: { name: "스톰 라이더", callsign: "STORM-04" },
+        105: { name: "섀도우 헌터", callsign: "SHADOW-05" },
+        106: { name: "피닉스 윙", callsign: "PHOENIX-06" },
+      };
+      
+      const enemy = enemyData[pilotId];
+      if (enemy) {
+        return {
+          id: pilotId,
+          name: enemy.name,
+          callsign: enemy.callsign,
+          dormitory: "UNKNOWN",
+          traits: ["BALANCED"],
+          isEnemy: true
+        };
+      }
+      
+      // 기본 적군 정보
       return {
         id: pilotId,
         name: `Enemy ${String.fromCharCode(65 + (pilotId - 101))}`, // Enemy A, B, C

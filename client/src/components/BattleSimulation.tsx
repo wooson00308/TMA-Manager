@@ -103,18 +103,29 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         let attacker: any = null;
         let target: any = null;
         
-        // Find attacker - look for pilot names in the message
-        for (const participant of participants) {
-          const pilotInfo = getPilotInfoWithBattle(participant.pilotId, participants);
-          if (log.message.includes(pilotInfo.name) || log.message.includes(pilotInfo.callsign)) {
-            if (!attacker && (log.message.includes('공격') || log.message.includes('사격'))) {
-              attacker = participant;
+        // 로그에 speaker가 있으면 그것을 우선 사용
+        if (log.speaker) {
+          attacker = participants.find(p => {
+            const pilotInfo = getPilotInfoWithBattle(p.pilotId, participants);
+            return pilotInfo.name === log.speaker || pilotInfo.callsign === log.speaker;
+          });
+        }
+        
+        // speaker가 없거나 찾지 못했으면 메시지에서 파일럿 이름 찾기
+        if (!attacker) {
+          for (const participant of participants) {
+            const pilotInfo = getPilotInfoWithBattle(participant.pilotId, participants);
+            if (log.message.includes(pilotInfo.name) || log.message.includes(pilotInfo.callsign)) {
+              if (!attacker && (log.message.includes('공격') || log.message.includes('사격'))) {
+                attacker = participant;
+                break;
+              }
             }
           }
         }
         
         // Find target - look for "~에게" or "~를" patterns
-        const targetPatterns = [/(\S+)에게/, /(\S+)를/, /(\S+)이/];
+        const targetPatterns = [/(\S+)에게/, /(\S+)를/, /(\S+)이/, /(\S+)가/];
         for (const pattern of targetPatterns) {
           const match = log.message.match(pattern);
           if (match) {
@@ -127,16 +138,40 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           }
         }
         
+        // 타겟을 찾지 못했으면 공격자와 다른 팀에서 가장 가까운 적 선택
+        if (attacker && !target) {
+          const enemyTeam = attacker.team === 'team1' ? 'team2' : 'team1';
+          const enemies = participants.filter(p => p.team === enemyTeam && p.status === 'active');
+          if (enemies.length > 0) {
+            // 가장 가까운 적 선택
+            target = enemies.reduce((closest, enemy) => {
+              const attackerPos = attacker.position;
+              const enemyPos = enemy.position;
+              const closestPos = closest.position;
+              
+              const enemyDist = Math.abs(attackerPos.x - enemyPos.x) + Math.abs(attackerPos.y - enemyPos.y);
+              const closestDist = Math.abs(attackerPos.x - closestPos.x) + Math.abs(attackerPos.y - closestPos.y);
+              
+              return enemyDist < closestDist ? enemy : closest;
+            });
+          }
+        }
+        
         // If we still don't have both, use random participants for demo
         if (!attacker && participants.length > 0) {
           attacker = participants[0];
         }
         if (!target && participants.length > 1) {
-          target = participants[participants.length - 1];
+          target = participants.find(p => p !== attacker) || participants[participants.length - 1];
         }
         
         if (attacker && target && attacker !== target) {
-          console.log('Creating attack effect:', { attacker: getPilotInfoWithBattle(attacker.pilotId, participants).name, target: getPilotInfoWithBattle(target.pilotId, participants).name });
+          console.log('Creating attack effect:', { 
+            attacker: getPilotInfoWithBattle(attacker.pilotId, participants).name, 
+            target: getPilotInfoWithBattle(target.pilotId, participants).name,
+            attackerPilotId: attacker.pilotId,
+            targetPilotId: target.pilotId
+          });
           
           // Determine weapon type from message
           let weaponType: "laser" | "missile" | "beam" = "laser";
@@ -160,23 +195,25 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             return [...prev, attackEffect];
           });
           
-          // Animate attacking unit
+          // Animate attacking unit - pilotId를 정확히 사용
           setAnimatingUnits(prev => {
             const newSet = new Set(prev);
             newSet.add(attacker.pilotId);
+            console.log('Animating unit:', attacker.pilotId, 'Current animating units:', Array.from(newSet));
             return newSet;
           });
           setTimeout(() => {
             setAnimatingUnits(prev => {
               const newSet = new Set(prev);
               newSet.delete(attacker.pilotId);
+              console.log('Stopped animating unit:', attacker.pilotId, 'Remaining animating units:', Array.from(newSet));
               return newSet;
             });
           }, 1500);
         }
       }
     });
-  }, [battle.log, lastLogCount, battle.participants, getPilotInfo]);
+  }, [battle.log, lastLogCount, battle.participants, getPilotInfoWithBattle]);
 
   // Auto-scroll combat log to the bottom whenever a new entry is added.
   useEffect(() => {
@@ -197,6 +234,8 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     const attacker = battle.participants[0];
     const target = battle.participants[battle.participants.length - 1];
     
+    console.log('Test animation - Attacker:', attacker.pilotId, 'Target:', target.pilotId);
+    
     const testEffect: AttackEffect = {
       id: `test-${Date.now()}`,
       from: attacker.position,
@@ -209,6 +248,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     setAnimatingUnits(prev => {
       const newSet = new Set(prev);
       newSet.add(attacker.pilotId);
+      console.log('Test animation - Adding unit to animation:', attacker.pilotId);
       return newSet;
     });
     
@@ -216,6 +256,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       setAnimatingUnits(prev => {
         const newSet = new Set(prev);
         newSet.delete(attacker.pilotId);
+        console.log('Test animation - Removing unit from animation:', attacker.pilotId);
         return newSet;
       });
     }, 1500);

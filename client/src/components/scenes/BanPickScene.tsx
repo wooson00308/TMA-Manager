@@ -239,108 +239,62 @@ export function BanPickScene() {
         mech3Id: pilotMechPairs[2]?.mechId || banPickState.selectedMechs.enemy[2].id,
       };
 
-      // 플레이어 메카 정보 가져오기
-      const playerMech1 = banPickState.selectedMechs.player[0];
-      const playerMech2 = banPickState.selectedMechs.player[1];
-      const playerMech3 = banPickState.selectedMechs.player[2];
-
-      // Store battle data in battle store
-      setBattle({
-        id: `battle_${Date.now()}`,
-        phase: 'preparation',
-        turn: 0,
-        participants: [
-          // Player team (team1) - 실제 메카 스탯 사용
-          { 
-            pilotId: playerFormation.pilot1Id, 
-            mechId: playerFormation.mech1Id, 
-            team: 'team1' as const, 
-            position: { x: 2, y: 2 }, 
-            hp: 100, 
-            maxHp: 100,
-            armor: playerMech1?.armor || 70,
-            speed: playerMech1?.speed || 70,
-            firepower: playerMech1?.firepower || 70,
-            range: playerMech1?.range || 50,
-            status: 'active' as const
-          },
-          { 
-            pilotId: playerFormation.pilot2Id, 
-            mechId: playerFormation.mech2Id, 
-            team: 'team1' as const, 
-            position: { x: 2, y: 4 }, 
-            hp: 100, 
-            maxHp: 100,
-            armor: playerMech2?.armor || 70,
-            speed: playerMech2?.speed || 70,
-            firepower: playerMech2?.firepower || 70,
-            range: playerMech2?.range || 50,
-            status: 'active' as const
-          },
-          { 
-            pilotId: playerFormation.pilot3Id, 
-            mechId: playerFormation.mech3Id, 
-            team: 'team1' as const, 
-            position: { x: 2, y: 6 }, 
-            hp: 100, 
-            maxHp: 100,
-            armor: playerMech3?.armor || 70,
-            speed: playerMech3?.speed || 70,
-            firepower: playerMech3?.firepower || 70,
-            range: playerMech3?.range || 50,
-            status: 'active' as const
-          },
-          // Enemy team (team2) - 실제 메카 스탯 사용
-          { 
-            pilotId: pilotMechPairs[0]?.pilotId || 101, 
-            mechId: pilotMechPairs[0]?.mechId || enemyFormation.mech1Id, 
-            team: 'team2' as const, 
-            position: { x: 12, y: 2 }, 
-            hp: 100, 
-            maxHp: 100,
-            armor: pilotMechPairs[0]?.mech?.armor || 70,
-            speed: pilotMechPairs[0]?.mech?.speed || 70,
-            firepower: pilotMechPairs[0]?.mech?.firepower || 70,
-            range: pilotMechPairs[0]?.mech?.range || 50,
-            status: 'active' as const
-          },
-          { 
-            pilotId: pilotMechPairs[1]?.pilotId || 102, 
-            mechId: pilotMechPairs[1]?.mechId || enemyFormation.mech2Id, 
-            team: 'team2' as const, 
-            position: { x: 12, y: 4 }, 
-            hp: 100, 
-            maxHp: 100,
-            armor: pilotMechPairs[1]?.mech?.armor || 70,
-            speed: pilotMechPairs[1]?.mech?.speed || 70,
-            firepower: pilotMechPairs[1]?.mech?.firepower || 70,
-            range: pilotMechPairs[1]?.mech?.range || 50,
-            status: 'active' as const
-          },
-          { 
-            pilotId: pilotMechPairs[2]?.pilotId || 103, 
-            mechId: pilotMechPairs[2]?.mechId || enemyFormation.mech3Id, 
-            team: 'team2' as const, 
-            position: { x: 12, y: 6 }, 
-            hp: 100, 
-            maxHp: 100,
-            armor: pilotMechPairs[2]?.mech?.armor || 70,
-            speed: pilotMechPairs[2]?.mech?.speed || 70,
-            firepower: pilotMechPairs[2]?.mech?.firepower || 70,
-            range: pilotMechPairs[2]?.mech?.range || 50,
-            status: 'active' as const
-          },
-        ],
-        log: [{
-          timestamp: Date.now(),
-          type: 'system',
-          message: '전투 시스템 초기화 완료. 모든 유닛 대기 중.'
-        }]
-      });
-
-      // Start battle via WebSocket if connected
+      // 서버에서 전투 상태를 생성하도록 요청
       if (wsManager.isConnected()) {
+        // WebSocket을 통해 서버에서 전투 초기화
         wsManager.startBattle(playerFormation, enemyFormation);
+        
+        // 서버에서 전투 상태가 올 때까지 대기
+        const handleBattleStarted = (data: any) => {
+          setBattle(data.state);
+          wsManager.off('BATTLE_STARTED', handleBattleStarted);
+        };
+        
+        wsManager.on('BATTLE_STARTED', handleBattleStarted);
+      } else {
+        // 오프라인 모드: 임시 전투 상태 생성 (서버 로직과 유사하게)
+        const offlineBattleState = {
+          id: `offline_battle_${Date.now()}`,
+          phase: 'preparation' as const,
+          turn: 0,
+          participants: [
+            // Player team (team1)
+            ...activePilots.map((pilot, index) => ({
+              pilotId: pilot.id,
+              mechId: banPickState.selectedMechs.player[index].id,
+              team: 'team1' as const,
+              position: { x: 2, y: 2 + index * 2 },
+              hp: 100,
+              maxHp: 100,
+              armor: banPickState.selectedMechs.player[index].armor,
+              speed: banPickState.selectedMechs.player[index].speed,
+              firepower: banPickState.selectedMechs.player[index].firepower,
+              range: banPickState.selectedMechs.player[index].range || 50,
+              status: 'active' as const
+            })),
+            // Enemy team (team2)
+            ...pilotMechPairs.map((pair, index) => ({
+              pilotId: pair.pilotId,
+              mechId: pair.mechId,
+              team: 'team2' as const,
+              position: { x: 12, y: 2 + index * 2 },
+              hp: 100,
+              maxHp: 100,
+              armor: pair.mech.armor,
+              speed: pair.mech.speed,
+              firepower: pair.mech.firepower,
+              range: pair.mech.range || 50,
+              status: 'active' as const
+            }))
+          ],
+          log: [{
+            timestamp: Date.now(),
+            type: 'system' as const,
+            message: '전투 시스템 초기화 완료. 모든 유닛 대기 중.'
+          }]
+        };
+        
+        setBattle(offlineBattleState);
       }
       
       // Navigate to battle scene

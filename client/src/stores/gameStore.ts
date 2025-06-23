@@ -148,19 +148,35 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }
 
-    // 하드코딩된 적군 정보 - 실제로는 서버에서 가져와야 함
-    // 임시로 적군 파일럿 정보 생성
+    // 서버 AISystem과 일치하는 적군 정보
     if (pilotId >= 100) {
-      const enemyNames = ['Raven', 'Wolf', 'Blaze', 'Storm', 'Shadow', 'Phoenix'];
-      const enemyCallsigns = ['RAVEN-01', 'WOLF-02', 'BLAZE-03', 'STORM-04', 'SHADOW-05', 'PHOENIX-06'];
-      const index = (pilotId - 101) % enemyNames.length;
+      const enemyData: { [key: number]: { name: string; callsign: string; initial: string } } = {
+        101: { name: "레이븐 스카이", callsign: "RAVEN-01", initial: "R" },
+        102: { name: "아이언 울프", callsign: "WOLF-02", initial: "W" },
+        103: { name: "블레이즈 피닉스", callsign: "BLAZE-03", initial: "B" },
+        104: { name: "스톰 라이더", callsign: "STORM-04", initial: "S" },
+        105: { name: "섀도우 헌터", callsign: "SHADOW-05", initial: "H" },
+        106: { name: "피닉스 윙", callsign: "PHOENIX-06", initial: "P" },
+      };
       
+      const enemy = enemyData[pilotId];
+      if (enemy) {
+        return {
+          id: pilotId,
+          name: enemy.name,
+          callsign: enemy.callsign,
+          team: "enemy",
+          initial: enemy.initial,
+        };
+      }
+      
+      // 기본 적군 정보
       return {
         id: pilotId,
-        name: enemyNames[index] || `Enemy ${pilotId}`,
-        callsign: enemyCallsigns[index] || `E-${pilotId}`,
+        name: `Enemy ${String.fromCharCode(65 + (pilotId - 101))}`,
+        callsign: `E-${pilotId}`,
         team: "enemy",
-        initial: (enemyNames[index] || `E${pilotId}`).charAt(0).toUpperCase(),
+        initial: String.fromCharCode(65 + (pilotId - 101)),
       };
     }
 

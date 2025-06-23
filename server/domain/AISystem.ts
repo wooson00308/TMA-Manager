@@ -67,6 +67,9 @@ export class AISystem {
       101: "레이븐 스카이",
       102: "아이언 울프",
       103: "블레이즈 피닉스",
+      104: "스톰 라이더",
+      105: "섀도우 헌터",
+      106: "피닉스 윙",
     };
 
     const pilotName = pilotNames[participant.pilotId] || `Unit-${participant.pilotId}`;
