@@ -1,103 +1,46 @@
-import React, { useState, useEffect, useRef } from "react";
-import type { AttackEffect, BattleEvent } from "@shared/domain/types";
-import { useBattleStore } from "@/stores/battleStore";
-import { useGameStore } from "@/stores/gameStore";
-import CanvasRenderer from "@/presentation/CanvasRenderer";
-import { useGameLoopWorker } from "@/hooks/useGameLoopWorker";
-import { useBattleRender } from "@/hooks/useBattleRender";
-import { useAnimationQueue } from "@/hooks/useAnimationQueue";
-import { type PilotInfo } from "@shared/domain/types";
+import { useState, useEffect, useRef } from 'react';
+import { useBattleStore } from '@/stores/battleStore';
+import { useGameStore } from '@/stores/gameStore';
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
-
-// getPilotInfoWithBattle helper function
-function getPilotInfoWithBattle(pilotId: number, participants: any[] | undefined): PilotInfo {
-  const { pilots, enemyPilots } = useGameStore.getState();
-  const participant = participants?.find(p => p.pilotId === pilotId);
-  const team = participant?.team === 'team2' ? 'enemy' : 'ally';
-  
-  // Find pilot in both arrays
-  const pilot = [...pilots, ...enemyPilots].find(p => p.id === pilotId);
-  
-  if (pilot) {
-    return {
-      id: pilot.id,
-      name: pilot.name,
-      callsign: pilot.callsign,
-      team,
-      initial: pilot.name.charAt(0).toUpperCase()
-    };
-  }
-  
-  // Fallback if pilot not found
-  return {
-    id: pilotId,
-    name: `Unknown Pilot ${pilotId}`,
-    callsign: `PILOT-${pilotId}`,
-    team,
-    initial: "U"
-  };
-}
+import CanvasRenderer from "@/presentation/CanvasRenderer";
+import { useBattleRender } from "@/hooks/useBattleRender";
+import { useGameLoopWorker } from "@/hooks/useGameLoopWorker";
+import type { BattleState, Pilot } from '@shared/schema';
+import type { AttackEffect, PilotInfo, TerrainFeature } from '@shared/domain/types';
 
 export function BattleSimulation(): JSX.Element {
   const [currentTick, setCurrentTick] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
   const [countdown, setCountdown] = useState(3);
   const [isCountingDown, setIsCountingDown] = useState(true);
-  const [lastEventIndex, setLastEventIndex] = useState(0);
+  const [animatingUnits, setAnimatingUnits] = useState<Set<number>>(new Set());
+  const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
+  const [lastLogCount, setLastLogCount] = useState(0);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const { currentBattle, addBattleLog, eventBuffer } = useBattleStore();
+  const { currentBattle, addBattleLog, setBattle } = useBattleStore();
   const terrainFeatures = useGameStore(state => state.terrainFeatures);
-
-  // Use the animation queue system
-  const {
-    attackEffects,
-    animatingUnits,
-    addAnimation,
-    createAnimationFromEvent,
-    clearQueue,
-    updateParticipants
-  } = useAnimationQueue({
-    maxConcurrent: 3,
-    defaultDuration: 1500
-  });
-
-  // Update participants in animation queue when battle changes
-  useEffect(() => {
-    if (currentBattle?.participants) {
-      updateParticipants(currentBattle.participants);
-    }
-  }, [currentBattle?.participants, updateParticipants]);
+  const getPilotInfo = useGameStore(state => state.getPilotInfo);
+  const getPilotInfoWithBattle = useGameStore(state => state.getPilotInfoWithBattle);
 
   // 3초 카운트다운 및 자동 시작 로직
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    
-    if (isCountingDown) {
-      if (countdown > 0) {
-        timer = setTimeout(() => {
-          setCountdown(prev => prev - 1);
-        }, 1000);
-      } else {
-        // 카운트다운 종료
-        setIsCountingDown(false);
-        setIsSimulating(true);
-        
-        // 시작 메시지 추가
-        addBattleLog({
-          timestamp: Date.now(),
-          type: 'system',
-          message: '전투 시작!'
-        });
-      }
+    if (isCountingDown && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    } else if (isCountingDown && countdown === 0) {
+      setIsCountingDown(false);
+      setIsSimulating(true);
+      addBattleLog({
+        type: 'system',
+        message: '전투가 시작됩니다!',
+        timestamp: Date.now()
+      });
     }
-    
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    };
   }, [countdown, isCountingDown, addBattleLog]);
 
   // Canvas 애니메이션 렌더링 -> migrated to useBattleRender hook
@@ -106,6 +49,7 @@ export function BattleSimulation(): JSX.Element {
     battle: currentBattle,
     animatingUnits,
     attackEffects,
+    setAttackEffects,
     terrainFeatures,
     getPilotInfo: (pilotId: number) => getPilotInfoWithBattle(pilotId, currentBattle?.participants),
   });
@@ -137,44 +81,135 @@ export function BattleSimulation(): JSX.Element {
     }
   }, [currentBattle?.phase]);
 
-  // Process battle events from eventBuffer using animation queue
+  // Trigger attack effects when new combat events occur
   useEffect(() => {
-    const newEvents = eventBuffer.slice(lastEventIndex);
-    if (newEvents.length === 0) return;
+    if (!currentBattle?.log || currentBattle.log.length === 0) return;
     
-    setLastEventIndex(eventBuffer.length);
+    const newLogs = currentBattle.log.slice(lastLogCount);
+    setLastLogCount(currentBattle.log.length);
     
-    newEvents.forEach((event) => {
-      console.log('Processing event:', event);
+    newLogs.forEach((log) => {
+      console.log('Battle log entry:', log); // Debug log
       
-      // Create animation item from event
-      const animationItem = createAnimationFromEvent(event, currentBattle?.participants);
-      
-      if (animationItem) {
-        // For attack events, we need to update the positions in the attack effect
-        if (event.type === "UNIT_ATTACK" && currentBattle?.participants) {
-          const { attackerId, targetId } = event.data;
-          const attacker = currentBattle.participants.find(p => p.pilotId === attackerId);
-          const target = currentBattle.participants.find(p => p.pilotId === targetId);
-          
-          if (attacker && target) {
-            // We'll need to pass positions through the animation system
-            // For now, the positions are handled in the queue processor
+      // Look for any combat action (attack, movement, damage)
+      if (log.type === 'attack' || log.message.includes('공격') || log.message.includes('피해') || log.message.includes('데미지')) {
+        
+        // Try to find participants involved in the action
+        const participants = currentBattle.participants || [];
+        let attacker: any = null;
+        let target: any = null;
+        
+        // 로그에 speaker가 있으면 그것을 우선 사용
+        if (log.speaker) {
+          attacker = participants.find(p => {
+            const pilotInfo = getPilotInfoWithBattle(p.pilotId, participants);
+            return pilotInfo.name === log.speaker || pilotInfo.callsign === log.speaker;
+          });
+        }
+        
+        // speaker가 없거나 찾지 못했으면 메시지에서 파일럿 이름 찾기
+        if (!attacker) {
+          for (const participant of participants) {
+            const pilotInfo = getPilotInfoWithBattle(participant.pilotId, participants);
+            if (log.message.includes(pilotInfo.name) || log.message.includes(pilotInfo.callsign)) {
+              if (!attacker && (log.message.includes('공격') || log.message.includes('사격'))) {
+                attacker = participant;
+                break;
+              }
+            }
           }
         }
         
-        // Add animation to queue
-        addAnimation(animationItem);
+        // Find target - look for "~에게" or "~를" patterns
+        const targetPatterns = [/(\S+)에게/, /(\S+)를/, /(\S+)이/, /(\S+)가/];
+        for (const pattern of targetPatterns) {
+          const match = log.message.match(pattern);
+          if (match) {
+            const targetName = match[1];
+            target = participants.find(p => {
+              const info = getPilotInfoWithBattle(p.pilotId, participants);
+              return info.name.includes(targetName) || info.callsign.includes(targetName);
+            });
+            if (target) break;
+          }
+        }
+        
+        // 타겟을 찾지 못했으면 공격자와 다른 팀에서 가장 가까운 적 선택
+        if (attacker && !target) {
+          const enemyTeam = attacker.team === 'team1' ? 'team2' : 'team1';
+          const enemies = participants.filter(p => p.team === enemyTeam && p.status === 'active');
+          if (enemies.length > 0) {
+            // 가장 가까운 적 선택
+            target = enemies.reduce((closest, enemy) => {
+              const attackerPos = attacker.position;
+              const enemyPos = enemy.position;
+              const closestPos = closest.position;
+              
+              const enemyDist = Math.abs(attackerPos.x - enemyPos.x) + Math.abs(attackerPos.y - enemyPos.y);
+              const closestDist = Math.abs(attackerPos.x - closestPos.x) + Math.abs(attackerPos.y - closestPos.y);
+              
+              return enemyDist < closestDist ? enemy : closest;
+            });
+          }
+        }
+        
+        // If we still don't have both, use random participants for demo
+        if (!attacker && participants.length > 0) {
+          attacker = participants[0];
+        }
+        if (!target && participants.length > 1) {
+          target = participants.find(p => p !== attacker) || participants[participants.length - 1];
+        }
+        
+        if (attacker && target && attacker !== target) {
+          console.log('Creating attack effect:', { 
+            attacker: getPilotInfoWithBattle(attacker.pilotId, participants).name, 
+            target: getPilotInfoWithBattle(target.pilotId, participants).name,
+            attackerPilotId: attacker.pilotId,
+            targetPilotId: target.pilotId
+          });
+          
+          // Determine weapon type from message
+          let weaponType: "laser" | "missile" | "beam" = "laser";
+          if (log.message.includes('미사일') || log.message.includes('로켓') || log.message.includes('폭발')) {
+            weaponType = "missile";
+          } else if (log.message.includes('빔') || log.message.includes('플라즈마') || log.message.includes('에너지')) {
+            weaponType = "beam";
+          }
+          
+          // Create attack effect
+          const attackEffect: AttackEffect = {
+            id: `attack-${Date.now()}-${Math.random()}`,
+            from: attacker.position,
+            to: target.position,
+            startTime: Date.now(),
+            type: weaponType
+          };
+          
+          setAttackEffects(prev => {
+            console.log('Adding attack effect:', attackEffect);
+            return [...prev, attackEffect];
+          });
+          
+          // Animate attacking unit - pilotId를 정확히 사용
+          setAnimatingUnits(prev => {
+            const newSet = new Set(prev);
+            newSet.add(attacker.pilotId);
+            console.log('Animating unit:', attacker.pilotId, 'Current animating units:', Array.from(newSet));
+            return newSet;
+          });
+          setTimeout(() => {
+            setAnimatingUnits(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(attacker.pilotId);
+              console.log('Stopped animating unit:', attacker.pilotId, 'Remaining animating units:', Array.from(newSet));
+              return newSet;
+            });
+          }, 1500);
+        }
       }
     });
-  }, [eventBuffer, lastEventIndex, currentBattle?.participants, createAnimationFromEvent, addAnimation]);
-
-  // Clear animation queue when battle ends
-  useEffect(() => {
-    if (currentBattle?.phase === "completed") {
-      clearQueue();
-    }
-  }, [currentBattle?.phase, clearQueue]);
+  }, [currentBattle?.log, lastLogCount, getPilotInfoWithBattle, currentBattle?.participants]);
 
   // Auto-scroll combat log to the bottom whenever a new entry is added.
   useEffect(() => {
@@ -197,27 +232,30 @@ export function BattleSimulation(): JSX.Element {
     
     console.log('Test animation - Attacker:', attacker.pilotId, 'Target:', target.pilotId);
     
-    // Create a test attack event
-    const testEvent: BattleEvent = {
-      type: "UNIT_ATTACK",
-      timestamp: Date.now(),
-      data: {
-        attackerId: attacker.pilotId,
-        attackerName: getPilotInfoWithBattle(attacker.pilotId, currentBattle.participants).name,
-        targetId: target.pilotId,
-        targetName: getPilotInfoWithBattle(target.pilotId, currentBattle.participants).name,
-        damage: 10,
-        weaponType: "missile",
-        hitResult: "hit"
-      }
+    const testEffect: AttackEffect = {
+      id: `test-${Date.now()}`,
+      from: attacker.position,
+      to: target.position,
+      startTime: Date.now(),
+      type: "missile"
     };
     
-    // Create animation item from event
-    const animationItem = createAnimationFromEvent(testEvent, currentBattle.participants);
+    setAttackEffects(prev => [...prev, testEffect]);
+    setAnimatingUnits(prev => {
+      const newSet = new Set(prev);
+      newSet.add(attacker.pilotId);
+      console.log('Test animation - Adding unit to animation:', attacker.pilotId);
+      return newSet;
+    });
     
-    if (animationItem) {
-      addAnimation(animationItem);
-    }
+    setTimeout(() => {
+      setAnimatingUnits(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(attacker.pilotId);
+        console.log('Test animation - Removing unit from animation:', attacker.pilotId);
+        return newSet;
+      });
+    }, 1500);
   };
 
   if (!currentBattle) {
