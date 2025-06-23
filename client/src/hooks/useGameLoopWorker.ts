@@ -30,7 +30,10 @@ export function useGameLoopWorker(
     if (!workerRef.current) {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore – vite will inline the worker during build
-      const w = new Worker(new URL("@/workers/gameLoopWorker.ts", import.meta.url), {
+      // Use a RELATIVE path here so that Vite can correctly transform and bundle the worker.
+      // The previous alias-based path (`@/workers/...`) prevented the worker from loading
+      // which in turn stopped the game tick loop and AI actions.
+      const w = new Worker(new URL("../workers/gameLoopWorker.ts", import.meta.url), {
         type: "module",
       });
       workerRef.current = w;
