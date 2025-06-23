@@ -2,6 +2,7 @@ import { type BattleState } from "@shared/schema";
 import { PilotService } from "../services/PilotService";
 import { calculateRetreatPosition as sharedCalculateRetreatPosition, calculateScoutPosition as sharedCalculateScoutPosition, calculateTacticalPosition as sharedCalculateTacticalPosition, selectBestTarget as sharedSelectBestTarget } from "@shared/ai/utils";
 import { makeAIDecision } from "@shared/ai/decision";
+import type { IStorage } from "../storage";
 
 interface AIDecision {
   type: "MOVE" | "ATTACK" | "COMMUNICATE" | "DEFEND" | "SUPPORT" | "SCOUT" | "RETREAT" | "SPECIAL";
@@ -11,22 +12,6 @@ interface AIDecision {
   targetIndex?: number;
   actionData?: any;
 }
-
-// 하드코딩된 메카 스탯 데이터 (추후 데이터베이스 연동)
-const MECH_STATS_DATABASE: { [mechId: number]: { firepower: number; speed: number; armor: number } } = {
-  1: { firepower: 85, speed: 60, armor: 75 }, // Knight type - 근접 탱커
-  2: { firepower: 90, speed: 55, armor: 70 }, // Arbiter type - 장거리 공격
-  3: { firepower: 75, speed: 90, armor: 65 }, // River type - 고속 기동
-  4: { firepower: 80, speed: 70, armor: 80 }, // Balanced type
-  5: { firepower: 95, speed: 50, armor: 75 }, // Heavy artillery
-  6: { firepower: 70, speed: 85, armor: 60 }, // Scout type
-  7: { firepower: 88, speed: 65, armor: 78 }, // Assault type
-  8: { firepower: 92, speed: 58, armor: 72 }, // Sniper type
-  // 적 메카들 (100번대)
-  101: { firepower: 82, speed: 68, armor: 73 },
-  102: { firepower: 87, speed: 62, armor: 76 },
-  103: { firepower: 78, speed: 83, armor: 68 },
-};
 
 // 하드코딩된 지형 데이터 (추후 동적 로딩)
 const DEFAULT_TERRAIN_FEATURES = [
@@ -41,6 +26,12 @@ const DEFAULT_TERRAIN_FEATURES = [
 // completely framework-agnostic and free of side-effects.  External concerns
 // such as persistence or transport are delegated to the application layer.
 export class AISystem {
+  private storage: IStorage;
+
+  constructor(storage: IStorage) {
+    this.storage = storage;
+  }
+
   makeSimpleDecision(participant: any, battleState: BattleState, team: string): AIDecision {
     // Delegate to the shared deterministic AI engine. We inject a lightweight
     // helper that maps pilotId → initial required by the personality presets.
@@ -54,22 +45,28 @@ export class AISystem {
       },
       // 지형 정보 추가
       terrainFeatures: DEFAULT_TERRAIN_FEATURES,
-      // 메카 스탯 조회 함수 추가
+      // 메카 스탯 조회 함수 - 실제 participant에서 가져오기
       getMechStats: (mechId: number) => {
-        return MECH_STATS_DATABASE[mechId] || { firepower: 75, speed: 70, armor: 70 };
+        // participant에 이미 메카 스탯이 포함되어 있으므로 그것을 사용
+        return {
+          firepower: participant.firepower || 75,
+          speed: participant.speed || 70,
+          armor: participant.armor || 70
+        };
       },
     });
 
     // Map shared decision -> server domain decision structure
     const pilotNames: { [key: number]: string } = {
-      1: "Sasha Volkov",
-      2: "Mei Chen",
-      3: "Alex Rodriguez",
-      4: "Jin Watanabe",
-      5: "Elena Vasquez",
-      101: "Enemy Alpha",
-      102: "Enemy Beta",
-      103: "Enemy Gamma",
+      1: "사샤 볼코프",
+      2: "헬레나 파아라", 
+      3: "아즈마",
+      4: "하나",
+      5: "파우스트",
+      6: "멘테",
+      101: "레이븐 스카이",
+      102: "아이언 울프",
+      103: "블레이즈 피닉스",
     };
 
     const pilotName = pilotNames[participant.pilotId] || `Unit-${participant.pilotId}`;

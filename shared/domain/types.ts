@@ -43,8 +43,20 @@ export type BattleParticipant = {
   team: "team1" | "team2";
   position: { x: number; y: number };
   hp: number;
+  maxHp: number;
+  armor: number;
+  speed: number;
+  firepower: number;
+  range: number;
   status: "active" | "damaged" | "destroyed";
   lastActionTime?: number;
+  pilotStats?: {
+    reaction: number;
+    accuracy: number;
+    tactical: number;
+    teamwork: number;
+    traits: string[];
+  };
 };
 
 // Runtime battle state that is streamed between client and server

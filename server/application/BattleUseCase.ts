@@ -1,5 +1,6 @@
 import { type BattleState } from "@shared/schema";
 import { BattleEngine } from "../domain/BattleEngine";
+import type { IStorage } from "../storage";
 
 /**
  * BattleUseCase acts as the application-layer façade sitting between the
@@ -12,8 +13,8 @@ import { BattleEngine } from "../domain/BattleEngine";
 export class BattleUseCase {
   private engine: BattleEngine;
 
-  constructor() {
-    this.engine = new BattleEngine();
+  constructor(storage: IStorage) {
+    this.engine = new BattleEngine(storage);
   }
 
   initializeBattle(formation1: any, formation2: any): Promise<BattleState> {

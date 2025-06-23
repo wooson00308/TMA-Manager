@@ -1,71 +1,146 @@
 import { type BattleState } from "@shared/schema";
 import { AISystem } from "./AISystem";
+import type { IStorage } from "../storage";
 
 export class BattleEngine {
   private aiSystem: AISystem;
+  private storage: IStorage;
 
-  constructor() {
-    this.aiSystem = new AISystem();
+  constructor(storage: IStorage) {
+    this.aiSystem = new AISystem(storage);
+    this.storage = storage;
   }
 
   async initializeBattle(formation1: any, formation2: any): Promise<BattleState> {
     const battleId = `battle_${Date.now()}`;
     const participants: any[] = [];
 
+    // Team 1 participants with actual data from storage
     if (formation1.pilots && Array.isArray(formation1.pilots)) {
-      formation1.pilots.forEach((pilot: any, index: number) => {
-        participants.push({
-          pilotId: pilot.pilotId,
-          mechId: pilot.mechId,
-          team: "team1" as const,
-          position: { x: 2, y: 2 + index * 2 },
-          hp: 100,
-          status: "active" as const,
-        });
-      });
+      for (let index = 0; index < formation1.pilots.length; index++) {
+        const pilotData = formation1.pilots[index];
+        const pilot = await this.storage.getPilot(pilotData.pilotId);
+        const mech = await this.storage.getMech(pilotData.mechId);
+        
+        if (pilot && mech) {
+          participants.push({
+            pilotId: pilot.id,
+            mechId: mech.id,
+            team: "team1" as const,
+            position: { x: 2, y: 2 + index * 2 },
+            hp: mech.hp,
+            maxHp: mech.hp,
+            armor: mech.armor,
+            speed: mech.speed,
+            firepower: mech.firepower,
+            range: mech.range,
+            status: "active" as const,
+            pilotStats: {
+              reaction: pilot.reaction,
+              accuracy: pilot.accuracy,
+              tactical: pilot.tactical,
+              teamwork: pilot.teamwork,
+              traits: pilot.traits
+            }
+          });
+        }
+      }
     } else if (formation1.pilot1Id) {
-      [0, 1, 2].forEach((idx) => {
+      for (let idx = 0; idx < 3; idx++) {
         const pid = formation1[`pilot${idx + 1}Id`];
         const mid = formation1[`mech${idx + 1}Id`];
         if (pid && mid) {
-          participants.push({
-            pilotId: pid,
-            mechId: mid,
-            team: "team1" as const,
-            position: { x: 2, y: 2 + idx * 2 },
-            hp: 100,
-            status: "active" as const,
-          });
+          const pilot = await this.storage.getPilot(pid);
+          const mech = await this.storage.getMech(mid);
+          
+          if (pilot && mech) {
+            participants.push({
+              pilotId: pilot.id,
+              mechId: mech.id,
+              team: "team1" as const,
+              position: { x: 2, y: 2 + idx * 2 },
+              hp: mech.hp,
+              maxHp: mech.hp,
+              armor: mech.armor,
+              speed: mech.speed,
+              firepower: mech.firepower,
+              range: mech.range,
+              status: "active" as const,
+              pilotStats: {
+                reaction: pilot.reaction,
+                accuracy: pilot.accuracy,
+                tactical: pilot.tactical,
+                teamwork: pilot.teamwork,
+                traits: pilot.traits
+              }
+            });
+          }
         }
-      });
+      }
     }
 
+    // Team 2 participants with actual data from storage
     if (formation2.pilots && Array.isArray(formation2.pilots)) {
-      formation2.pilots.forEach((pilot: any, index: number) => {
-        participants.push({
-          pilotId: pilot.pilotId,
-          mechId: pilot.mechId,
-          team: "team2" as const,
-          position: { x: 17, y: 2 + index * 2 },
-          hp: 100,
-          status: "active" as const,
-        });
-      });
+      for (let index = 0; index < formation2.pilots.length; index++) {
+        const pilotData = formation2.pilots[index];
+        const pilot = await this.storage.getPilot(pilotData.pilotId);
+        const mech = await this.storage.getMech(pilotData.mechId);
+        
+        if (pilot && mech) {
+          participants.push({
+            pilotId: pilot.id,
+            mechId: mech.id,
+            team: "team2" as const,
+            position: { x: 17, y: 2 + index * 2 },
+            hp: mech.hp,
+            maxHp: mech.hp,
+            armor: mech.armor,
+            speed: mech.speed,
+            firepower: mech.firepower,
+            range: mech.range,
+            status: "active" as const,
+            pilotStats: {
+              reaction: pilot.reaction,
+              accuracy: pilot.accuracy,
+              tactical: pilot.tactical,
+              teamwork: pilot.teamwork,
+              traits: pilot.traits
+            }
+          });
+        }
+      }
     } else if (formation2.pilot1Id) {
-      [0, 1, 2].forEach((idx) => {
+      for (let idx = 0; idx < 3; idx++) {
         const pid = formation2[`pilot${idx + 1}Id`];
         const mid = formation2[`mech${idx + 1}Id`];
         if (pid && mid) {
-          participants.push({
-            pilotId: pid,
-            mechId: mid,
-            team: "team2" as const,
-            position: { x: 17, y: 2 + idx * 2 },
-            hp: 100,
-            status: "active" as const,
-          });
+          const pilot = await this.storage.getPilot(pid);
+          const mech = await this.storage.getMech(mid);
+          
+          if (pilot && mech) {
+            participants.push({
+              pilotId: pilot.id,
+              mechId: mech.id,
+              team: "team2" as const,
+              position: { x: 17, y: 2 + idx * 2 },
+              hp: mech.hp,
+              maxHp: mech.hp,
+              armor: mech.armor,
+              speed: mech.speed,
+              firepower: mech.firepower,
+              range: mech.range,
+              status: "active" as const,
+              pilotStats: {
+                reaction: pilot.reaction,
+                accuracy: pilot.accuracy,
+                tactical: pilot.tactical,
+                teamwork: pilot.teamwork,
+                traits: pilot.traits
+              }
+            });
+          }
         }
-      });
+      }
     }
 
     return {
@@ -130,11 +205,40 @@ export class BattleEngine {
         break;
       case "ATTACK":
         const target = battleState.participants[action.targetIndex];
-        const dmg = Math.floor(Math.random() * 25) + 10;
-        target.hp = Math.max(0, target.hp - dmg);
-        if (target.hp === 0) target.status = "destroyed";
-        else if (target.hp < 30) target.status = "damaged";
-        battleState.log.push({ timestamp, type: "attack", message: action.dialogue, speaker: action.pilotName });
+        if (target) {
+          // 실제 파일럿 능력치와 메카 스탯을 반영한 데미지 계산
+          const attackerAccuracy = participant.pilotStats?.accuracy || 70;
+          const attackerFirepower = participant.firepower || 75;
+          const targetArmor = target.armor || 70;
+          const targetPilotReaction = target.pilotStats?.reaction || 70;
+          
+          // 명중률 계산 (파일럿 정확도 vs 상대 반응속도)
+          const hitChance = Math.max(0.1, Math.min(0.95, (attackerAccuracy - targetPilotReaction + 50) / 100));
+          
+          if (Math.random() < hitChance) {
+            // 데미지 계산 (화력 - 방어력)
+            const baseDamage = Math.max(5, attackerFirepower - targetArmor + Math.random() * 20);
+            const finalDamage = Math.floor(baseDamage);
+            
+            target.hp = Math.max(0, target.hp - finalDamage);
+            if (target.hp === 0) target.status = "destroyed";
+            else if (target.hp < target.maxHp * 0.3) target.status = "damaged";
+            
+            battleState.log.push({ 
+              timestamp, 
+              type: "attack", 
+              message: `${action.dialogue} (${finalDamage} 데미지!)`, 
+              speaker: action.pilotName 
+            });
+          } else {
+            battleState.log.push({ 
+              timestamp, 
+              type: "attack", 
+              message: `${action.dialogue} (빗나감!)`, 
+              speaker: action.pilotName 
+            });
+          }
+        }
         break;
       case "COMMUNICATE":
         battleState.log.push({ timestamp, type: "communication", message: action.dialogue, speaker: action.pilotName });

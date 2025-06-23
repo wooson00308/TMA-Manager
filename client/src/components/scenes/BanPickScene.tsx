@@ -188,13 +188,54 @@ export function BanPickScene() {
         mech3Id: banPickState.selectedMechs.player[2].id,
       };
 
+      // 적군 파일럿-메카 매칭 로직 (메카 타입과 파일럿 특성에 따라 매칭)
+      const enemyPilots = [
+        { id: 101, name: "Raven", specialty: ["Veteran", "Aggressive"] },
+        { id: 102, name: "Wolf", specialty: ["Ace", "Analytical"] },
+        { id: 103, name: "Blaze", specialty: ["Genius", "Aggressive"] }
+      ];
+      const enemyMechs = banPickState.selectedMechs.enemy;
+      
+      // 메카 타입별로 최적의 파일럿 매칭 (중복 방지)
+      const usedPilots = new Set<number>();
+      const pilotMechPairs = enemyMechs.map((mech, index) => {
+        let bestPilot = enemyPilots[index]; // 기본값
+        
+        // 메카 타입에 따른 파일럿 선호도
+        if (mech.type === "Arbiter" && mech.variant === "Sniper") {
+          // 저격형은 분석적인 파일럿 선호
+          const preferredPilot = enemyPilots.find(p => p.specialty.includes("Analytical") && !usedPilots.has(p.id));
+          if (preferredPilot) bestPilot = preferredPilot;
+        } else if (mech.type === "River" && mech.variant === "Assault") {
+          // 돌격형은 공격적인 파일럿 선호
+          const preferredPilot = enemyPilots.find(p => p.specialty.includes("Aggressive") && !usedPilots.has(p.id));
+          if (preferredPilot) bestPilot = preferredPilot;
+        } else if (mech.type === "Knight") {
+          // 나이트는 천재형 파일럿 선호
+          const preferredPilot = enemyPilots.find(p => p.specialty.includes("Genius") && !usedPilots.has(p.id));
+          if (preferredPilot) bestPilot = preferredPilot;
+        }
+        
+        // 이미 사용된 파일럿이면 사용 가능한 다른 파일럿 찾기
+        if (usedPilots.has(bestPilot.id)) {
+          bestPilot = enemyPilots.find(p => !usedPilots.has(p.id)) || enemyPilots[index];
+        }
+        
+        usedPilots.add(bestPilot.id);
+        
+        return {
+          pilotId: bestPilot.id,
+          mechId: mech.id
+        };
+      });
+
       const enemyFormation = {
-        pilot1Id: 101, // Enemy pilot IDs
-        pilot2Id: 102,
-        pilot3Id: 103,
-        mech1Id: banPickState.selectedMechs.enemy[0].id,
-        mech2Id: banPickState.selectedMechs.enemy[1].id,
-        mech3Id: banPickState.selectedMechs.enemy[2].id,
+        pilot1Id: pilotMechPairs[0]?.pilotId || 101,
+        pilot2Id: pilotMechPairs[1]?.pilotId || 102,
+        pilot3Id: pilotMechPairs[2]?.pilotId || 103,
+        mech1Id: pilotMechPairs[0]?.mechId || banPickState.selectedMechs.enemy[0].id,
+        mech2Id: pilotMechPairs[1]?.mechId || banPickState.selectedMechs.enemy[1].id,
+        mech3Id: pilotMechPairs[2]?.mechId || banPickState.selectedMechs.enemy[2].id,
       };
 
       // Store battle data in battle store
@@ -203,14 +244,86 @@ export function BanPickScene() {
         phase: 'preparation',
         turn: 0,
         participants: [
-          // Player team (team1)
-          { pilotId: playerFormation.pilot1Id, mechId: playerFormation.mech1Id, team: 'team1' as const, position: { x: 2, y: 2 }, hp: 100, status: 'active' },
-          { pilotId: playerFormation.pilot2Id, mechId: playerFormation.mech2Id, team: 'team1' as const, position: { x: 2, y: 4 }, hp: 100, status: 'active' },
-          { pilotId: playerFormation.pilot3Id, mechId: playerFormation.mech3Id, team: 'team1' as const, position: { x: 2, y: 6 }, hp: 100, status: 'active' },
-          // Enemy team (team2)
-          { pilotId: 101, mechId: enemyFormation.mech1Id, team: 'team2' as const, position: { x: 12, y: 2 }, hp: 100, status: 'active' },
-          { pilotId: 102, mechId: enemyFormation.mech2Id, team: 'team2' as const, position: { x: 12, y: 4 }, hp: 100, status: 'active' },
-          { pilotId: 103, mechId: enemyFormation.mech3Id, team: 'team2' as const, position: { x: 12, y: 6 }, hp: 100, status: 'active' },
+          // Player team (team1) - 타입 안전성을 위해 필수 프로퍼티 추가
+          { 
+            pilotId: playerFormation.pilot1Id, 
+            mechId: playerFormation.mech1Id, 
+            team: 'team1' as const, 
+            position: { x: 2, y: 2 }, 
+            hp: 100, 
+            maxHp: 100,
+            armor: 70,
+            speed: 70,
+            firepower: 70,
+            range: 50,
+            status: 'active' as const
+          },
+          { 
+            pilotId: playerFormation.pilot2Id, 
+            mechId: playerFormation.mech2Id, 
+            team: 'team1' as const, 
+            position: { x: 2, y: 4 }, 
+            hp: 100, 
+            maxHp: 100,
+            armor: 70,
+            speed: 70,
+            firepower: 70,
+            range: 50,
+            status: 'active' as const
+          },
+          { 
+            pilotId: playerFormation.pilot3Id, 
+            mechId: playerFormation.mech3Id, 
+            team: 'team1' as const, 
+            position: { x: 2, y: 6 }, 
+            hp: 100, 
+            maxHp: 100,
+            armor: 70,
+            speed: 70,
+            firepower: 70,
+            range: 50,
+            status: 'active' as const
+          },
+          // Enemy team (team2) - 동적 매칭된 파일럿 사용
+          { 
+            pilotId: pilotMechPairs[0]?.pilotId || 101, 
+            mechId: pilotMechPairs[0]?.mechId || enemyFormation.mech1Id, 
+            team: 'team2' as const, 
+            position: { x: 12, y: 2 }, 
+            hp: 100, 
+            maxHp: 100,
+            armor: 70,
+            speed: 70,
+            firepower: 70,
+            range: 50,
+            status: 'active' as const
+          },
+          { 
+            pilotId: pilotMechPairs[1]?.pilotId || 102, 
+            mechId: pilotMechPairs[1]?.mechId || enemyFormation.mech2Id, 
+            team: 'team2' as const, 
+            position: { x: 12, y: 4 }, 
+            hp: 100, 
+            maxHp: 100,
+            armor: 70,
+            speed: 70,
+            firepower: 70,
+            range: 50,
+            status: 'active' as const
+          },
+          { 
+            pilotId: pilotMechPairs[2]?.pilotId || 103, 
+            mechId: pilotMechPairs[2]?.mechId || enemyFormation.mech3Id, 
+            team: 'team2' as const, 
+            position: { x: 12, y: 6 }, 
+            hp: 100, 
+            maxHp: 100,
+            armor: 70,
+            speed: 70,
+            firepower: 70,
+            range: 50,
+            status: 'active' as const
+          },
         ],
         log: [{
           timestamp: Date.now(),

@@ -10,7 +10,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WebSocket server for real-time battle updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  const battleEngine = new BattleUseCase();
+  const battleEngine = new BattleUseCase(storage);
   const activeBattles = new Map<string, BattleState>();
 
   wss.on('connection', (ws: WebSocket) => {
