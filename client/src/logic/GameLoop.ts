@@ -16,20 +16,8 @@ function getPilotInfo(pilots: Pilot[], pilotId: number, participant?: any): Pilo
     };
   }
   
-  // Enemy pilot fallback
-  if (pilotId >= 100) {
-    const enemyNames = ['Raven', 'Wolf', 'Blaze', 'Storm', 'Shadow', 'Phoenix'];
-    const index = (pilotId - 101) % enemyNames.length;
-    return {
-      id: pilotId,
-      name: enemyNames[index] || `Enemy ${pilotId}`,
-      callsign: `TARGET-${pilotId}`,
-      team: participant?.team === "team1" ? "ally" : "enemy", // participant의 team 정보 사용
-      initial: (enemyNames[index] || `E${pilotId}`).charAt(0).toUpperCase()
-    };
-  }
-  
-  // Unknown pilot fallback
+  // Pilot not found in data - use fallback
+  console.warn(`Pilot ${pilotId} not found in pilots data`);
   return {
     id: pilotId,
     name: `Unknown Pilot ${pilotId}`,

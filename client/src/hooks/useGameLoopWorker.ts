@@ -6,7 +6,7 @@ import { useGameStore } from "@/stores/gameStore";
 export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) {
   const workerRef = useRef<Worker | null>(null);
   const { setBattle } = useBattleStore();
-  const { pilots, terrainFeatures } = useGameStore();
+  const { pilots, enemyPilots, terrainFeatures } = useGameStore();
 
   useEffect(() => {
     if (!enabled || !battle) {
@@ -34,11 +34,14 @@ export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) 
         }
       };
 
+      // 아군과 적군 파일럿 모두 전달
+      const allPilots = [...pilots, ...enemyPilots];
+      
       w.postMessage({ 
         type: "INIT", 
         payload: { 
           state: battle,
-          pilots,
+          pilots: allPilots,
           terrainFeatures
         } 
       });
@@ -52,5 +55,5 @@ export function useGameLoopWorker(battle: BattleState | null, enabled: boolean) 
       workerRef.current?.postMessage({ type: "STOP" });
     };
     // Only re-run when enabled or battle changes
-  }, [battle, enabled, setBattle, pilots, terrainFeatures]);
+  }, [battle, enabled, setBattle, pilots, enemyPilots, terrainFeatures]);
 } 

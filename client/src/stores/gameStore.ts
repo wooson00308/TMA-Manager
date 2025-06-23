@@ -39,6 +39,7 @@ interface GameState {
   currentWeek: number;
   playerTeam: Team | null;
   pilots: Pilot[];
+  enemyPilots: Pilot[];
   mechs: Mech[];
   terrainFeatures: TerrainFeature[];
   activeFormation: Formation | null;
@@ -55,11 +56,13 @@ interface GameState {
   initializeGameData: () => Promise<void>;
   setPlayerTeam: (team: Team) => void;
   setPilots: (pilots: Pilot[]) => void;
+  setEnemyPilots: (pilots: Pilot[]) => void;
   setMechs: (mechs: Mech[]) => void;
   setActiveFormation: (formation: Formation | null) => void;
   setEnemyTeams: (teams: Team[]) => void;
   setSelectedMechs: (mechs: { player: Mech[]; enemy: Mech[] }) => void;
   initializePlayerTeam: () => Promise<void>;
+  loadEnemyPilots: () => Promise<void>;
   getPilotInfo: (pilotId: number) => PilotInfo;
 
   // 전투 상태를 고려한 파일럿 정보 가져오기
@@ -72,6 +75,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   currentWeek: 8,
   playerTeam: null,
   pilots: [],
+  enemyPilots: [],
   mechs: [],
   terrainFeatures: TFM_TERRAIN_FEATURES,
   activeFormation: null,
@@ -85,22 +89,27 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   initializeGameData: async () => {
     try {
-      const [pilotsRes, mechsRes, teamsRes] = await Promise.all([
+      const [pilotsRes, mechsRes, teamsRes, enemyPilotsRes] = await Promise.all([
         apiRequest("GET", "/api/pilots"),
         apiRequest("GET", "/api/mechs"),
         apiRequest("GET", "/api/teams"),
+        apiRequest("GET", "/api/pilots/team/2"), // 적군 파일럿 로드
       ]);
 
       const pilots = await pilotsRes.json();
       const mechs = await mechsRes.json();
       const teams = await teamsRes.json();
+      const enemyPilots = await enemyPilotsRes.json();
 
       set({
         pilots,
+        enemyPilots,
         mechs,
         enemyTeams: teams.filter((t: Team) => t.id !== 1), // Assuming player is team 1
         playerTeam: teams.find((t: Team) => t.id === 1) || null,
       });
+      
+      console.log("Game data initialized - pilots:", pilots.length, "enemy pilots:", enemyPilots.length);
     } catch (error) {
       console.error("Failed to initialize game data", error);
     }
@@ -108,6 +117,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setPlayerTeam: (team: Team) => set({ playerTeam: team }),
   setPilots: (pilots: Pilot[]) => set({ pilots }),
+  setEnemyPilots: (pilots: Pilot[]) => set({ enemyPilots: pilots }),
   setMechs: (mechs: Mech[]) => set({ mechs }),
   setActiveFormation: (formation: Formation | null) =>
     set({ activeFormation: formation }),
@@ -134,15 +144,26 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
+  loadEnemyPilots: async () => {
+    try {
+      const res = await apiRequest("GET", "/api/pilots/team/2");
+      const enemyPilots = await res.json();
+      set({ enemyPilots });
+      console.log("Loaded enemy pilots:", enemyPilots);
+    } catch (error) {
+      console.error("Failed to load enemy pilots:", error);
+    }
+  },
+
   getPilotInfo: (pilotId: number): PilotInfo => {
-    const { pilots } = get();
-    const found = pilots.find((p: Pilot) => p.id === pilotId);
+    const { pilots, enemyPilots } = get();
     
     console.log(`getPilotInfo called with pilotId: ${pilotId}`);
     
+    // 아군 파일럿 확인
+    const found = pilots.find((p: Pilot) => p.id === pilotId);
     if (found) {
-      // All pilots held in the local store belong to the player's roster, therefore they are allies.
-      console.log(`Found pilot in local store: ${found.name}`);
+      console.log(`Found ally pilot in local store: ${found.name}`);
       return {
         id: found.id,
         name: found.name,
@@ -152,49 +173,26 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }
 
-    // 서버 AISystem과 일치하는 적군 정보
-    if (pilotId >= 100) {
-      const enemyData: { [key: number]: { name: string; callsign: string; initial: string } } = {
-        101: { name: "레이븐 스카이", callsign: "RAVEN-01", initial: "R" },
-        102: { name: "아이언 울프", callsign: "WOLF-02", initial: "W" },
-        103: { name: "블레이즈 피닉스", callsign: "BLAZE-03", initial: "B" },
-        104: { name: "스톰 라이더", callsign: "STORM-04", initial: "S" },
-        105: { name: "섀도우 헌터", callsign: "SHADOW-05", initial: "H" },
-        106: { name: "피닉스 윙", callsign: "PHOENIX-06", initial: "P" },
-      };
-      
-      const enemy = enemyData[pilotId];
-      console.log(`Looking for enemy pilot ${pilotId}:`, enemy);
-      
-      if (enemy) {
-        console.log(`Found enemy pilot: ${enemy.name}`);
-        return {
-          id: pilotId,
-          name: enemy.name,
-          callsign: enemy.callsign,
-          team: "enemy",
-          initial: enemy.initial,
-        };
-      }
-      
-      // 기본 적군 정보
-      console.log(`Using fallback for enemy pilot ${pilotId}`);
+    // 적군 파일럿 확인
+    const enemyFound = enemyPilots.find((p: Pilot) => p.id === pilotId);
+    if (enemyFound) {
+      console.log(`Found enemy pilot in store: ${enemyFound.name}`);
       return {
-        id: pilotId,
-        name: `적군 파일럿 ${String.fromCharCode(65 + (pilotId - 101))}`,
-        callsign: `ENEMY-${String.fromCharCode(65 + (pilotId - 101))}`,
+        id: enemyFound.id,
+        name: enemyFound.name,
+        callsign: enemyFound.callsign,
         team: "enemy",
-        initial: String.fromCharCode(65 + (pilotId - 101)),
+        initial: enemyFound.name.charAt(0).toUpperCase(),
       };
     }
 
-    // 기본값 - 알 수 없는 파일럿
-    console.log(`Using unknown pilot fallback for pilotId: ${pilotId}`);
+    // 파일럿을 찾을 수 없는 경우
+    console.log(`Pilot ${pilotId} not found in any team data`);
     return {
       id: pilotId,
       name: `Unknown Pilot ${pilotId}`,
       callsign: `UNK-${pilotId}`,
-      team: "ally", // 기본값은 아군으로 설정
+      team: "ally", // 기본값
       initial: "U",
     };
   },
