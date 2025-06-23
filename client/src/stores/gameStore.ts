@@ -173,8 +173,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       // 기본 적군 정보
       return {
         id: pilotId,
-        name: `Enemy ${String.fromCharCode(65 + (pilotId - 101))}`,
-        callsign: `E-${pilotId}`,
+        name: `적군 파일럿 ${String.fromCharCode(65 + (pilotId - 101))}`,
+        callsign: `ENEMY-${String.fromCharCode(65 + (pilotId - 101))}`,
         team: "enemy",
         initial: String.fromCharCode(65 + (pilotId - 101)),
       };

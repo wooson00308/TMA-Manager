@@ -190,9 +190,9 @@ export function BanPickScene() {
 
       // 적군 파일럿-메카 매칭 로직 (메카 타입과 파일럿 특성에 따라 매칭)
       const enemyPilots = [
-        { id: 101, name: "Raven", specialty: ["Veteran", "Aggressive"] },
-        { id: 102, name: "Wolf", specialty: ["Ace", "Analytical"] },
-        { id: 103, name: "Blaze", specialty: ["Genius", "Aggressive"] }
+        { id: 101, name: "레이븐 스카이", specialty: ["Veteran", "Aggressive"] },
+        { id: 102, name: "아이언 울프", specialty: ["Ace", "Analytical"] },
+        { id: 103, name: "블레이즈 피닉스", specialty: ["Genius", "Aggressive"] }
       ];
       const enemyMechs = banPickState.selectedMechs.enemy;
       
