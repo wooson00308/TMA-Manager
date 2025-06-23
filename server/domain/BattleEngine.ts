@@ -238,7 +238,7 @@ export class BattleEngine {
       battleState.turn = turn;
 
       battleState.participants.forEach((participant) => {
-        if (participant.status === "active") {
+        if (participant.status !== "destroyed") {
           const decision = this.aiSystem.makeSimpleDecision(
             participant,
             battleState,
@@ -303,14 +303,14 @@ export class BattleEngine {
   }
 
   private isBattleComplete(state: BattleState) {
-    const team1Active = state.participants.filter((p) => p.team === "team1" && p.status === "active").length;
-    const team2Active = state.participants.filter((p) => p.team === "team2" && p.status === "active").length;
+    const team1Active = state.participants.filter((p) => p.team === "team1" && p.status !== "destroyed").length;
+    const team2Active = state.participants.filter((p) => p.team === "team2" && p.status !== "destroyed").length;
     return team1Active === 0 || team2Active === 0;
   }
 
   private determineWinner(state: BattleState): "team1" | "team2" | "draw" {
-    const t1 = state.participants.filter((p) => p.team === "team1" && p.status === "active").length;
-    const t2 = state.participants.filter((p) => p.team === "team2" && p.status === "active").length;
+    const t1 = state.participants.filter((p) => p.team === "team1" && p.status !== "destroyed").length;
+    const t2 = state.participants.filter((p) => p.team === "team2" && p.status !== "destroyed").length;
     if (t1 > t2) return "team1";
     if (t2 > t1) return "team2";
     return "draw";
