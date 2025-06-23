@@ -503,7 +503,9 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             {(battle.participants || [])
               .filter(p => p.team === 'team2')
               .map(participant => {
+                console.log(`Enemy participant:`, participant);
                 const pilot = getPilotInfoWithBattle(participant.pilotId, battle.participants);
+                console.log(`Enemy pilot info:`, pilot);
                 return (
                   <div key={participant.pilotId} className="bg-red-900/30 border border-red-400/40 rounded-lg p-3">
                     <div className="flex items-center space-x-2 mb-2">

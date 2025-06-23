@@ -247,9 +247,10 @@ export function MatchPrepScene() {
       const formation2 = {
         teamId: 2,
         pilots: matchState.pickedMechs.enemy.slice(0, 3).map((mech, index) => ({
-          pilotId: 100 + index,
+          // Enemy pilot IDs start at 101 to align with gameStore enemy data mapping
+          pilotId: 101 + index,
           mechId: mech.id,
-          pilot: { id: 100 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
+          pilot: { id: 101 + index, name: `Enemy Pilot ${index + 1}`, callsign: `적기${index + 1}` },
           mech
         }))
       };
