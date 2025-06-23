@@ -7,7 +7,7 @@ import { wsManager } from '@/lib/websocket';
 
 export function BattleScene() {
   const { setScene } = useGameStore();
-  const { currentBattle, isConnected, battleHistory, addBattleLog, setBattle } = useBattleStore();
+  const { currentBattle, isConnected, addBattleLog, setBattle } = useBattleStore();
   
   const [battleStatus, setBattleStatus] = useState<'preparing' | 'active' | 'completed'>('preparing');
   const [winner, setWinner] = useState<string | null>(null);
@@ -178,7 +178,7 @@ export function BattleScene() {
         {/* Battle Simulation */}
         <div className="col-span-2">
           {currentBattle ? (
-            <BattleSimulation battle={currentBattle} />
+            <BattleSimulation />
           ) : (
             <div className="cyber-border bg-slate-800 p-4 flex items-center justify-center h-full">
               <div className="text-gray-400 text-center">
@@ -193,7 +193,7 @@ export function BattleScene() {
         <div className="cyber-border bg-slate-800 p-4">
           <h3 className="text-pink-400 font-semibold mb-3">COMM LOG</h3>
           <div className="space-y-2 text-xs overflow-auto h-64">
-            {battleHistory.length === 0 ? (
+            {currentBattle?.log.length === 0 ? (
               <div className="text-gray-500 text-center py-8">
                 <div className="mb-2">
                   <i className="fas fa-radio text-2xl"></i>
@@ -201,7 +201,7 @@ export function BattleScene() {
                 <div>Awaiting communication...</div>
               </div>
             ) : (
-              battleHistory.slice(-15).map((log, index) => (
+              (currentBattle?.log || []).slice(-15).map((log, index) => (
                 <div key={index} className={`${getLogTypeColor(log.type, log.speaker)}`}>
                   <span className="text-gray-400">
                     [{new Date(log.timestamp).toLocaleTimeString()}]

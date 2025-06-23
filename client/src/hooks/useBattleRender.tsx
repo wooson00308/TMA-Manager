@@ -49,7 +49,7 @@ export interface PilotInfo {
 
 interface UseBattleRenderParams {
   canvasRef: React.RefObject<HTMLCanvasElement>;
-  battle: BattleState;
+  battle: BattleState | null;
   animatingUnits: Set<number>;
   attackEffects: AttackEffect[];
   setAttackEffects: React.Dispatch<React.SetStateAction<AttackEffect[]>>;

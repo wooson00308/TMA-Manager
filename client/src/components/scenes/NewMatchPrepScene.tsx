@@ -411,7 +411,7 @@ export function NewMatchPrepScene() {
   };
 
   if (currentPhase === 'battle' && currentBattle) {
-    return <BattleSimulation battle={currentBattle} />;
+    return <BattleSimulation />;
   }
 
   return (

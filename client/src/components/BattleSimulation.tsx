@@ -8,11 +8,7 @@ import { useGameLoopWorker } from "@/hooks/useGameLoopWorker";
 import type { BattleState, Pilot } from '@shared/schema';
 import type { AttackEffect, PilotInfo, TerrainFeature } from '@shared/domain/types';
 
-interface BattleSimulationProps {
-  battle: BattleState;
-}
-
-export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element {
+export function BattleSimulation(): JSX.Element {
   const [currentTick, setCurrentTick] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
   const [countdown, setCountdown] = useState(3);
@@ -23,7 +19,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
-  const { addBattleLog } = useBattleStore();
+  const { currentBattle, addBattleLog, setBattle } = useBattleStore();
   const terrainFeatures = useGameStore(state => state.terrainFeatures);
   const getPilotInfo = useGameStore(state => state.getPilotInfo);
   const getPilotInfoWithBattle = useGameStore(state => state.getPilotInfoWithBattle);
@@ -50,16 +46,16 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
   // Canvas 애니메이션 렌더링 -> migrated to useBattleRender hook
   useBattleRender({
     canvasRef,
-    battle,
+    battle: currentBattle,
     animatingUnits,
     attackEffects,
     setAttackEffects,
     terrainFeatures,
-    getPilotInfo: (pilotId: number) => getPilotInfoWithBattle(pilotId, battle.participants),
+    getPilotInfo: (pilotId: number) => getPilotInfoWithBattle(pilotId, currentBattle?.participants),
   });
 
   // Phase B: leverage Web Worker for game loop when simulation is active
-  useGameLoopWorker(battle, isSimulating && !isCountingDown);
+  useGameLoopWorker(currentBattle, isSimulating && !isCountingDown);
 
   // Timer logic for battle time tracking
   useEffect(() => {
@@ -80,17 +76,17 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
   // Stop simulation locally when battle ends to prevent further unit actions.
   useEffect(() => {
-    if (battle.phase === "completed") {
+    if (currentBattle?.phase === "completed") {
       setIsSimulating(false);
     }
-  }, [battle.phase]);
+  }, [currentBattle?.phase]);
 
   // Trigger attack effects when new combat events occur
   useEffect(() => {
-    if (!battle.log || battle.log.length === 0) return;
+    if (!currentBattle?.log || currentBattle.log.length === 0) return;
     
-    const newLogs = battle.log.slice(lastLogCount);
-    setLastLogCount(battle.log.length);
+    const newLogs = currentBattle.log.slice(lastLogCount);
+    setLastLogCount(currentBattle.log.length);
     
     newLogs.forEach((log) => {
       console.log('Battle log entry:', log); // Debug log
@@ -99,7 +95,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
       if (log.type === 'attack' || log.message.includes('공격') || log.message.includes('피해') || log.message.includes('데미지')) {
         
         // Try to find participants involved in the action
-        const participants = battle.participants || [];
+        const participants = currentBattle.participants || [];
         let attacker: any = null;
         let target: any = null;
         
@@ -213,14 +209,14 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
         }
       }
     });
-  }, [battle.log, lastLogCount, battle.participants, getPilotInfoWithBattle]);
+  }, [currentBattle?.log, lastLogCount, getPilotInfoWithBattle, currentBattle?.participants]);
 
   // Auto-scroll combat log to the bottom whenever a new entry is added.
   useEffect(() => {
     if (logContainerRef.current) {
       logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
     }
-  }, [battle.log]);
+  }, [currentBattle?.log]);
 
   const startSimulation = () => {
     setCurrentTick(0);
@@ -229,10 +225,10 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
 
   // Test animation function
   const testAnimation = () => {
-    if (!battle.participants || battle.participants.length < 2) return;
+    if (!currentBattle?.participants || currentBattle.participants.length < 2) return;
     
-    const attacker = battle.participants[0];
-    const target = battle.participants[battle.participants.length - 1];
+    const attacker = currentBattle.participants[0];
+    const target = currentBattle.participants[currentBattle.participants.length - 1];
     
     console.log('Test animation - Attacker:', attacker.pilotId, 'Target:', target.pilotId);
     
@@ -262,7 +258,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
     }, 1500);
   };
 
-  if (!battle) {
+  if (!currentBattle) {
     return (
       <div className="cyber-border p-6 bg-slate-800">
         <div className="text-center text-gray-400">
@@ -280,14 +276,14 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           {/* Team 1 Score */}
           <div className="flex items-center space-x-4 bg-blue-900/30 border border-blue-400/50 rounded px-4 py-2">
             <div className="text-2xl font-bold text-blue-400">
-              {(battle.participants || []).filter(p => p.team === 'team1' && p.hp > 0).length}
+              {(currentBattle.participants || []).filter(p => p.team === 'team1' && p.hp > 0).length}
             </div>
             <div className="text-sm text-blue-300">아군</div>
           </div>
 
           {/* Center Battle Info */}
           <div className="flex items-center space-x-6">
-            {battle.phase !== 'completed' && !isSimulating && !isCountingDown && (
+            {currentBattle.phase !== 'completed' && !isSimulating && !isCountingDown && (
               <button
                 onClick={startSimulation}
                 className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
@@ -313,7 +309,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             )}
 
             {/* Animation Test Button */}
-            {battle.participants && battle.participants.length >= 2 && (
+            {currentBattle.participants && currentBattle.participants.length >= 2 && (
               <button
                 onClick={testAnimation}
                 className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-bold transition-colors"
@@ -327,7 +323,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
           <div className="flex items-center space-x-4 bg-red-900/30 border border-red-400/50 rounded px-4 py-2">
             <div className="text-sm text-red-300">적군</div>
             <div className="text-2xl font-bold text-red-400">
-              {(battle.participants || []).filter(p => p.team === 'team2' && p.hp > 0).length}
+              {(currentBattle.participants || []).filter(p => p.team === 'team2' && p.hp > 0).length}
             </div>
           </div>
         </div>
@@ -341,14 +337,15 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             <h3 className="text-blue-300 font-bold text-center">아군 부대</h3>
           </div>
           <div className="flex-1 p-2 space-y-2 overflow-y-auto custom-scrollbar">
-            {(battle.participants || [])
+            {(currentBattle.participants || [])
               .filter(p => p.team === 'team1')
               .map(participant => {
-                const pilot = getPilotInfoWithBattle(participant.pilotId, battle.participants);
+                const pilot = getPilotInfoWithBattle(participant.pilotId, currentBattle.participants);
+                const isDestroyed = participant.status === 'destroyed';
                 return (
-                  <div key={participant.pilotId} className="bg-blue-900/30 border border-blue-400/40 rounded-lg p-3">
+                  <div key={participant.pilotId} className={`bg-blue-900/30 border border-blue-400/40 rounded-lg p-3 transition-opacity ${isDestroyed ? 'opacity-50' : ''}`}>
                     <div className="flex items-center space-x-2 mb-2">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${isDestroyed ? 'bg-gray-600' : 'bg-blue-500'}`}>
                         {pilot.initial}
                       </div>
                       <div>
@@ -364,6 +361,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full transition-all ${
+                            isDestroyed ? 'bg-gray-500' :
                             participant.hp > 70 ? 'bg-green-500' :
                             participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}
@@ -418,11 +416,11 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                 <div className="flex justify-between">
                   <span className="text-gray-300">페이즈:</span>
                   <span className={`font-bold ${
-                    battle.phase === 'active' ? 'text-green-400' :
-                    battle.phase === 'completed' ? 'text-red-400' :
+                    currentBattle.phase === 'active' ? 'text-green-400' :
+                    currentBattle.phase === 'completed' ? 'text-red-400' :
                     'text-yellow-400'
                   }`}>
-                    {battle.phase?.toUpperCase() || 'PREPARING'}
+                    {currentBattle.phase?.toUpperCase() || 'PREPARING'}
                   </span>
                 </div>
               </div>
@@ -459,12 +457,12 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
               ref={logContainerRef}
               className="h-20 overflow-y-auto custom-scrollbar space-y-1"
             >
-              {(battle.log || []).length === 0 ? (
+              {(currentBattle.log || []).length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-500">
                   <div className="text-sm">전투 기록 대기 중...</div>
                 </div>
               ) : (
-                (battle.log || []).slice(-10).map((logEntry, index) => (
+                (currentBattle.log || []).slice(-10).map((logEntry, index) => (
                   <div key={index} className="text-xs flex items-start space-x-2 p-1">
                     <span className="font-mono text-gray-500 flex-shrink-0">
                       {new Date(logEntry.timestamp).toLocaleTimeString()}
@@ -500,16 +498,15 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
             <h3 className="text-red-300 font-bold text-center">적군 부대</h3>
           </div>
           <div className="flex-1 p-2 space-y-2 overflow-y-auto custom-scrollbar">
-            {(battle.participants || [])
+            {(currentBattle.participants || [])
               .filter(p => p.team === 'team2')
               .map(participant => {
-                console.log(`Enemy participant:`, participant);
-                const pilot = getPilotInfoWithBattle(participant.pilotId, battle.participants);
-                console.log(`Enemy pilot info:`, pilot);
+                const pilot = getPilotInfoWithBattle(participant.pilotId, currentBattle.participants);
+                const isDestroyed = participant.status === 'destroyed';
                 return (
-                  <div key={participant.pilotId} className="bg-red-900/30 border border-red-400/40 rounded-lg p-3">
+                  <div key={participant.pilotId} className={`bg-red-900/30 border border-red-400/40 rounded-lg p-3 transition-opacity ${isDestroyed ? 'opacity-50' : ''}`}>
                     <div className="flex items-center space-x-2 mb-2">
-                      <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${isDestroyed ? 'bg-gray-600' : 'bg-red-500'}`}>
                         {pilot.initial}
                       </div>
                       <div>
@@ -525,6 +522,7 @@ export function BattleSimulation({ battle }: BattleSimulationProps): JSX.Element
                       <div className="w-full bg-gray-700 rounded-full h-2">
                         <div
                           className={`h-2 rounded-full transition-all ${
+                            isDestroyed ? 'bg-gray-500' :
                             participant.hp > 70 ? 'bg-green-500' :
                             participant.hp > 30 ? 'bg-yellow-500' : 'bg-red-500'
                           }`}

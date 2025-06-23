@@ -4,15 +4,9 @@ import { type BattleState } from '@shared/schema';
 interface BattleStoreState {
   currentBattle: BattleState | null;
   isConnected: boolean;
-  battleHistory: Array<{
-    timestamp: number;
-    type: string;
-    message: string;
-    speaker?: string;
-  }>;
   
   // Actions
-  setBattle: (battle: BattleState | null) => void;
+  setBattle: (battle: BattleState | null | ((prev: BattleState | null) => BattleState | null)) => void;
   setConnected: (connected: boolean) => void;
   addBattleLog: (log: any) => void;
   clearBattleHistory: () => void;
@@ -21,12 +15,27 @@ interface BattleStoreState {
 export const useBattleStore = create<BattleStoreState>((set) => ({
   currentBattle: null,
   isConnected: false,
-  battleHistory: [],
 
-  setBattle: (battle) => set({ currentBattle: battle }),
-  setConnected: (connected) => set({ isConnected: connected }),
-  addBattleLog: (log) => set((state) => ({
-    battleHistory: [...state.battleHistory, log].slice(-50) // Keep last 50 logs
+  setBattle: (updater) => set((state) => ({ 
+    currentBattle: typeof updater === 'function' ? updater(state.currentBattle) : updater 
   })),
-  clearBattleHistory: () => set({ battleHistory: [] }),
+  setConnected: (connected) => set({ isConnected: connected }),
+  addBattleLog: (log) => set((state) => {
+    if (!state.currentBattle) return {};
+    return {
+      currentBattle: {
+        ...state.currentBattle,
+        log: [...state.currentBattle.log, log].slice(-50)
+      }
+    };
+  }),
+  clearBattleHistory: () => set(state => {
+    if (!state.currentBattle) return {};
+    return {
+      currentBattle: {
+        ...state.currentBattle,
+        log: []
+      }
+    }
+  }),
 }));
