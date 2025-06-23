@@ -3,6 +3,7 @@ import { PilotService } from "../services/PilotService";
 import { calculateRetreatPosition as sharedCalculateRetreatPosition, calculateScoutPosition as sharedCalculateScoutPosition, calculateTacticalPosition as sharedCalculateTacticalPosition, selectBestTarget as sharedSelectBestTarget } from "@shared/ai/utils";
 import { makeAIDecision } from "@shared/ai/decision";
 import type { IStorage } from "../storage";
+import type { TacticalFormation, TacticalEffect } from "@shared/domain/types";
 
 interface AIDecision {
   type: "MOVE" | "ATTACK" | "COMMUNICATE" | "DEFEND" | "SUPPORT" | "SCOUT" | "RETREAT" | "SPECIAL";
@@ -171,5 +172,90 @@ export class AISystem {
       default:
         return {};
     }
+  }
+
+  // 적군 전술 선택 AI
+  selectEnemyTactics(playerFormation: TacticalFormation, enemyMechs: any[], enemyPilots: any[]): TacticalFormation {
+    const formations: TacticalFormation[] = [
+      {
+        name: 'balanced',
+        effects: [
+          { stat: 'firepower', modifier: 0 },
+          { stat: 'speed', modifier: 0 },
+          { stat: 'armor', modifier: 0 }
+        ]
+      },
+      {
+        name: 'aggressive',
+        effects: [
+          { stat: 'firepower', modifier: 15 },
+          { stat: 'speed', modifier: 10 },
+          { stat: 'armor', modifier: -5 }
+        ]
+      },
+      {
+        name: 'defensive',
+        effects: [
+          { stat: 'armor', modifier: 20 },
+          { stat: 'reaction', modifier: 10 },
+          { stat: 'firepower', modifier: -10 }
+        ]
+      },
+      {
+        name: 'mobile',
+        effects: [
+          { stat: 'speed', modifier: 25 },
+          { stat: 'reaction', modifier: 15 },
+          { stat: 'armor', modifier: -15 }
+        ]
+      }
+    ];
+
+    // 플레이어 전술에 대한 카운터 선택
+    const counterStrategy = this.getCounterStrategy(playerFormation.name);
+    
+    // 팀 구성에 맞는 전술 선택
+    const teamComposition = this.analyzeTeamComposition(enemyMechs, enemyPilots);
+    
+    // 최종 전술 결정 (카운터 60%, 팀 구성 40% 가중치)
+    const selectedFormation = formations.find(f => 
+      f.name === counterStrategy || f.name === teamComposition
+    ) || formations[0];
+
+    console.log(`AI selected formation: ${selectedFormation.name} as counter to player's ${playerFormation.name}`);
+    
+    return selectedFormation;
+  }
+
+  private getCounterStrategy(playerFormation: string): 'balanced' | 'aggressive' | 'defensive' | 'mobile' {
+    const counters: Record<string, 'balanced' | 'aggressive' | 'defensive' | 'mobile'> = {
+      'aggressive': 'defensive',  // 공격적이면 방어로 대응
+      'defensive': 'mobile',      // 방어적이면 기동으로 대응  
+      'mobile': 'aggressive',     // 기동적이면 공격으로 대응
+      'balanced': 'aggressive'    // 균형이면 공격으로 압박
+    };
+    
+    return counters[playerFormation] || 'balanced';
+  }
+
+  private analyzeTeamComposition(mechs: any[], pilots: any[]): 'balanced' | 'aggressive' | 'defensive' | 'mobile' {
+    // 메카 타입별 분석
+    const mechTypes = mechs.reduce((acc, mech) => {
+      acc[mech.type] = (acc[mech.type] || 0) + 1;
+      return acc;
+    }, {});
+
+    // 파일럿 특성 분석
+    const pilotTraits = pilots.flatMap(p => p.traits || []);
+    const aggressiveCount = pilotTraits.filter(t => t.includes('Aggressive')).length;
+    const defensiveCount = pilotTraits.filter(t => t.includes('Defensive')).length;
+    
+    // 결정 로직
+    if (mechTypes.Knight >= 2) return 'defensive';
+    if (mechTypes.River >= 2) return 'mobile';
+    if (mechTypes.Arbiter >= 2) return 'aggressive';
+    if (aggressiveCount > defensiveCount) return 'aggressive';
+    
+    return 'balanced';
   }
 } 

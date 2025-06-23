@@ -108,4 +108,25 @@ export type ReconData = {
     traits: string[];
     winRate: number;
   }>;
-}; 
+};
+
+export interface TacticalFormation {
+  name: 'balanced' | 'aggressive' | 'defensive' | 'mobile';
+  effects: TacticalEffect[];
+}
+
+export interface TacticalEffect {
+  stat: 'firepower' | 'speed' | 'armor' | 'range' | 'accuracy' | 'reaction';
+  modifier: number; // percentage modifier (e.g., 15 = +15%, -10 = -10%)
+}
+
+export interface TeamLoadout {
+  pilots: Array<{
+    pilotId: number;
+    mechId: number;
+    pilot: any;
+    mech: any;
+  }>;
+  formation: TacticalFormation;
+  teamId: number;
+} 
