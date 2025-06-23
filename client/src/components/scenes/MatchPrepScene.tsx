@@ -283,6 +283,11 @@ export function MatchPrepScene() {
             team: 'team1' as const,
             position: { x: 2 + i * 2, y: 6 },
             hp: 100,
+            maxHp: 100,
+            armor: (p.mech as any).armor ?? 50,
+            speed: (p.mech as any).speed ?? 50,
+            firepower: (p.mech as any).firepower ?? 50,
+            range: (p.mech as any).range ?? 50,
             status: 'active' as const,
           })),
           ...formation2.pilots.map((p, i) => ({
@@ -291,6 +296,11 @@ export function MatchPrepScene() {
             team: 'team2' as const,
             position: { x: 10 + i * 2, y: 6 },
             hp: 100,
+            maxHp: 100,
+            armor: (p.mech as any).armor ?? 50,
+            speed: (p.mech as any).speed ?? 50,
+            firepower: (p.mech as any).firepower ?? 50,
+            range: (p.mech as any).range ?? 50,
             status: 'active' as const,
           }))
         ],
