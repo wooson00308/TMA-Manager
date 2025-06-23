@@ -8,7 +8,6 @@ import { ReconScene } from './scenes/ReconScene';
 import { BanPickScene } from './scenes/BanPickScene';
 import { BattleScene } from './scenes/BattleScene';
 import { AnalysisScene } from './scenes/AnalysisScene';
-import { MatchPrepScene } from './scenes/MatchPrepScene';
 import { NewMatchPrepScene } from './scenes/NewMatchPrepScene';
 import { StatusPanel } from './ui/StatusPanel';
 

@@ -1,5 +1,5 @@
 import type { BattleState, Pilot } from "@shared/schema";
-import type { TerrainFeature, PilotInfo, BattleParticipant, TacticalFormation, TacticalEffect } from "@shared/domain/types";
+import type { TerrainFeature, PilotInfo, BattleParticipant, TacticalFormation, TacticalEffect, BattleEvent } from "@shared/domain/types";
 import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosition, selectBestTarget } from "@shared/ai/utils";
 import { makeAIDecision } from "@shared/ai/decision";
 
@@ -230,6 +230,16 @@ export function processGameTick(
 ): BattleState {
   const nextParticipants = battleState.participants.map(p => ({ ...p }));
   const newLog = [...battleState.log];
+  const newEvents: BattleEvent[] = [...(battleState.events || [])];
+
+  // Turn start event
+  newEvents.push({
+    type: "TURN_START",
+    timestamp: Date.now(),
+    data: {
+      turn: battleState.turn
+    }
+  });
 
   const actions = battleState.participants
     .filter(p => p.status === 'active')
@@ -249,8 +259,22 @@ export function processGameTick(
     switch (action.type) {
       case 'MOVE':
         if (action.newPosition) {
+          const oldPosition = { ...actor.position };
           actor.position = action.newPosition;
           newLog.push({ timestamp: Date.now(), type: 'movement', message: action.dialogue || "...", speaker: action.pilotName });
+          
+          // Movement event
+          newEvents.push({
+            type: "UNIT_MOVED",
+            timestamp: Date.now(),
+            data: {
+              unitId: actor.pilotId,
+              unitName: action.pilotName || `Unit ${actor.pilotId}`,
+              from: oldPosition,
+              to: action.newPosition,
+              movementType: "normal"
+            }
+          });
         }
         break;
       case 'ATTACK':
@@ -266,10 +290,49 @@ export function processGameTick(
             
             if (Math.random() < hitChance) {
               const damage = Math.max(5, attackerFirepower - targetArmor + Math.random() * 20);
+              const oldHp = target.hp;
               target.hp = Math.max(0, target.hp - Math.floor(damage));
+              
+              // Attack event
+              newEvents.push({
+                type: "UNIT_ATTACK",
+                timestamp: Date.now(),
+                data: {
+                  attackerId: actor.pilotId,
+                  attackerName: action.pilotName || `Unit ${actor.pilotId}`,
+                  targetId: target.pilotId,
+                  targetName: getPilotInfo(pilots, target.pilotId, target).name,
+                  damage: Math.floor(damage),
+                  weaponType: "primary",
+                  hitResult: "hit"
+                }
+              });
+              
+              // Damage event
+              newEvents.push({
+                type: "UNIT_DAMAGED",
+                timestamp: Date.now(),
+                data: {
+                  unitId: target.pilotId,
+                  unitName: getPilotInfo(pilots, target.pilotId, target).name,
+                  damage: Math.floor(damage),
+                  remainingHp: target.hp,
+                  damageSource: actor.pilotId
+                }
+              });
               
               if (target.hp === 0) {
                 target.status = 'destroyed';
+                // Destroy event
+                newEvents.push({
+                  type: "UNIT_DESTROYED",
+                  timestamp: Date.now(),
+                  data: {
+                    unitId: target.pilotId,
+                    unitName: getPilotInfo(pilots, target.pilotId, target).name,
+                    destroyedBy: actor.pilotId
+                  }
+                });
               } else if (target.hp < (target.maxHp || 100) * 0.3) {
                 target.status = 'damaged';
               }
@@ -281,6 +344,21 @@ export function processGameTick(
                 speaker: action.pilotName
               });
             } else {
+              // Attack event with miss
+              newEvents.push({
+                type: "UNIT_ATTACK",
+                timestamp: Date.now(),
+                data: {
+                  attackerId: actor.pilotId,
+                  attackerName: action.pilotName || `Unit ${actor.pilotId}`,
+                  targetId: target.pilotId,
+                  targetName: getPilotInfo(pilots, target.pilotId, target).name,
+                  damage: 0,
+                  weaponType: "primary",
+                  hitResult: "miss"
+                }
+              });
+              
               newLog.push({
                 timestamp: Date.now(),
                 type: 'attack',
@@ -302,10 +380,20 @@ export function processGameTick(
     }
   });
 
+  // Turn end event
+  newEvents.push({
+    type: "TURN_END",
+    timestamp: Date.now(),
+    data: {
+      turn: battleState.turn
+    }
+  });
+
   const newState = {
     ...battleState,
     participants: nextParticipants,
     log: newLog,
+    events: newEvents
   };
 
   const victory = checkVictoryCondition(newState.participants);
@@ -315,6 +403,16 @@ export function processGameTick(
       timestamp: Date.now(),
       type: 'system',
       message: victory === 'victory' ? '승리!' : '패배...'
+    });
+    
+    // Battle end event
+    newEvents.push({
+      type: "BATTLE_END",
+      timestamp: Date.now(),
+      data: {
+        result: victory,
+        turn: newState.turn
+      }
     });
   }
   

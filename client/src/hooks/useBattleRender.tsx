@@ -52,7 +52,7 @@ interface UseBattleRenderParams {
   battle: BattleState | null;
   animatingUnits: Set<number>;
   attackEffects: AttackEffect[];
-  setAttackEffects: React.Dispatch<React.SetStateAction<AttackEffect[]>>;
+  setAttackEffects?: React.Dispatch<React.SetStateAction<AttackEffect[]>>;
   terrainFeatures: TerrainFeature[];
   getPilotInfo: (pilotId: number) => PilotInfo;
   hitEffects?: HitEffect[];
@@ -473,7 +473,9 @@ export function useBattleRender({
       });
 
       // Clean up finished effects
-      setAttackEffects((prev) => prev.filter((e) => currentTime - e.startTime < 800));
+      if (setAttackEffects) {
+        setAttackEffects((prev) => prev.filter((e) => currentTime - e.startTime < 800));
+      }
       
       // Muzzle flash effects when attacks start
       attackEffects.forEach((effect) => {
