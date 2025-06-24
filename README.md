@@ -59,7 +59,7 @@ npm run dev
 
 서버와 클라이언트가 동시에 실행됩니다:
 - 🌐 **Frontend**: http://localhost:5173
-- 🔧 **Backend**: http://localhost:3000
+- 🔧 **Backend**: http://localhost:3001
 
 ## 🎮 게임 플레이
 
