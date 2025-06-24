@@ -1,51 +1,12 @@
 import React, { useEffect, useRef } from "react";
 import type { BattleState } from "@shared/schema";
-
-/**
- * Lightweight domain types duplicated for now.  These will be migrated to
- * shared/domain during later refactor phases.
- */
-export interface AttackEffect {
-  id: string;
-  from: { x: number; y: number };
-  to: { x: number; y: number };
-  startTime: number;
-  type: "laser" | "missile" | "beam";
-  damage?: number;
-  targetHit?: boolean;
-}
-
-export interface HitEffect {
-  id: string;
-  x: number;
-  y: number;
-  startTime: number;
-  type: "explosion" | "sparks" | "shield";
-  damage: number;
-}
-
-export interface MuzzleFlash {
-  id: string;
-  x: number;
-  y: number;
-  startTime: number;
-  angle: number;
-}
-
-export interface TerrainFeature {
-  x: number;
-  y: number;
-  type: "cover" | "obstacle" | "elevation" | "hazard";
-  effect: string;
-}
-
-export interface PilotInfo {
-  id: number;
-  name: string;
-  callsign: string;
-  team: "ally" | "enemy";
-  initial: string;
-}
+import type { 
+  AttackEffect, 
+  HitEffect, 
+  MuzzleFlash, 
+  TerrainFeature, 
+  PilotInfo 
+} from "@shared/domain/types";
 
 interface UseBattleRenderParams {
   canvasRef: React.RefObject<HTMLCanvasElement>;

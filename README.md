@@ -6,7 +6,6 @@
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-43853D?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
 [![WebSocket](https://img.shields.io/badge/WebSocket-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 ## 🌟 개요
 
@@ -47,18 +46,12 @@ Trinity Mecha Academy는 사이버펑크 세계관의 메카 전투 시뮬레이
 ### 설치 및 실행
 
 ```bash
-# 저장소 클론 (실제 레포 주소로 변경 필요)
-git clone https://github.com/wooson00308/TMA-Manager.git
+# 저장소 클론
+git clone https://github.com/your-repo/TMA-Manager.git
 cd TMA-Manager
 
 # 의존성 설치
 npm install
-
-# 환경 변수 설정 (아래 환경 변수 섹션 참조)
-cp .env.example .env
-
-# 데이터베이스 초기화
-npm run db:setup
 
 # 개발 서버 시작
 npm run dev
@@ -67,37 +60,6 @@ npm run dev
 서버와 클라이언트가 동시에 실행됩니다:
 - 🌐 **Frontend**: http://localhost:5173
 - 🔧 **Backend**: http://localhost:3000
-
-## 🔐 환경 변수
-
-프로젝트 실행을 위해 필요한 환경 변수들을 설정해주세요.
-
-```bash
-# .env.example을 복사하여 .env 파일 생성
-cp .env.example .env
-```
-
-**필수 환경 변수:**
-```env
-# 서버 설정
-PORT=3001
-HOST=localhost
-
-# 데이터베이스
-DATABASE_URL=./database.sqlite
-
-# WebSocket 설정
-WS_PORT=3002
-
-# 개발 모드 설정
-NODE_ENV=development
-
-# 게임 설정
-MAX_PILOTS_PER_TEAM=8
-BATTLE_TURN_DURATION=2000
-```
-
-> **참고:** `.env.example` 파일을 생성하여 기본 설정값을 제공할 예정입니다.
 
 ## 🎮 게임 플레이
 
@@ -130,23 +92,16 @@ TMA-Manager/
 │   │   ├── logic/          # 게임 로직
 │   │   ├── workers/        # Web Workers
 │   │   └── presentation/   # 렌더링 로직
-│   ├── index.html
-│   └── package.json
 ├── server/                 # Express 백엔드
-│   ├── domain/             # 비즈니스 로직
+│   ├── domain/            # 비즈니스 로직
 │   │   ├── BattleEngine.ts # 전투 엔진
 │   │   └── AISystem.ts     # AI 시스템
-│   ├── application/        # 애플리케이션 서비스
-│   ├── services/           # 도메인 서비스
-│   ├── __tests__/          # 테스트 파일
-│   └── index.ts            # 서버 진입점
-├── shared/                 # 공유 타입 정의
-│   ├── domain/             # 도메인 타입
-│   └── ai/                 # AI 관련 타입
-├── docs/                   # 프로젝트 문서
-├── .gitignore
-├── package.json
-└── README.md
+│   ├── application/       # 애플리케이션 서비스
+│   ├── services/          # 도메인 서비스
+│   └── __tests__/         # 테스트 파일
+└── shared/                # 공유 타입 정의
+    ├── domain/
+    └── ai/
 ```
 
 ## 🎯 핵심 기능
@@ -211,46 +166,11 @@ npm run test:e2e
 
 ## 🤝 기여하기
 
-프로젝트에 기여해주셔서 감사합니다! 다음 가이드라인을 따라주세요.
-
-### 개발 환경 설정
 1. Fork the Project
-2. Clone your fork (`git clone https://github.com/YOUR_USERNAME/TMA-Manager.git`)
-3. Create your Feature Branch (`git checkout -b feature/amazing-feature`)
-4. Install dependencies (`npm install`)
-
-### 코딩 컨벤션
-- **TypeScript** 사용 및 타입 안전성 유지
-- **ESLint** + **Prettier** 규칙 준수
-- **함수형 컴포넌트** 및 **React Hooks** 사용
-- **Clean Architecture** 패턴 유지
-
-### 커밋 컨벤션
-```bash
-# 예시
-feat: 새로운 파일럿 스카우팅 시스템 추가
-fix: 전투 시뮬레이션 버그 수정
-docs: README 업데이트
-test: 배틀 엔진 테스트 추가
-refactor: AI 시스템 리팩토링
-```
-
-### 테스트
-- 새로운 기능에 대한 테스트 작성 필수
-- `npm test` 통과 확인
-- 커버리지 80% 이상 유지
-
-### Pull Request
-1. 변경 사항을 명확히 설명
-2. 관련 이슈 번호 참조 (`Closes #123`)
-3. 스크린샷 또는 GIF 첨부 (UI 변경 시)
-4. 테스트 결과 확인
-
-### 브랜치 전략
-- `main`: 안정 버전
-- `develop`: 개발 버전
-- `feature/*`: 새로운 기능
-- `fix/*`: 버그 수정
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📝 라이선스
 
@@ -268,6 +188,6 @@ refactor: AI 시스템 리팩토링
 
 **🚀 Trinity Mecha Academy에서 최강의 파일럿 팀을 만들어보세요! 🚀**
 
-[🎮 플레이하기 (로컬 실행 시)](http://localhost:5173) • [📖 문서](./docs) • [🐛 버그 신고](../../issues)
+[🎮 플레이하기](http://localhost:5173) • [📖 문서](./docs) • [🐛 버그 신고](../../issues)
 
 </div> 

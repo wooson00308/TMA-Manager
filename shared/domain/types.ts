@@ -93,11 +93,30 @@ export interface TerrainFeature {
 }
 
 export interface AttackEffect {
-  id:string;
+  id: string;
   from: { x: number; y: number };
   to: { x: number; y: number };
   startTime: number;
   type: "laser" | "missile" | "beam";
+  damage?: number;
+  targetHit?: boolean;
+}
+
+export interface HitEffect {
+  id: string;
+  x: number;
+  y: number;
+  startTime: number;
+  type: "explosion" | "sparks" | "shield";
+  damage: number;
+}
+
+export interface MuzzleFlash {
+  id: string;
+  x: number;
+  y: number;
+  startTime: number;
+  angle: number;
 }
 
 // Recon data passed from scouting analysis to match-prep scene
