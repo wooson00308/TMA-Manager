@@ -1,5 +1,5 @@
 # 🤖 Trinity Mecha Academy Manager
-
+![image](https://github.com/user-attachments/assets/d498052c-6ab0-4d88-8448-99c7e0fbc8a2)
 > **사이버펑크 메카 전투 시뮬레이션 & 팀 관리 게임**
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
