@@ -54,8 +54,21 @@ interface GameState {
     enemy: Mech[];
   };
 
+  // 매칭 시스템
+  matchNotification: {
+    isVisible: boolean;
+    opponent: string;
+    difficulty: string;
+    reward: string;
+  } | null;
+
+  matchmakingStatus: 'idle' | 'searching' | 'matched';
+  _searchTimeoutId?: number;
+
   // Actions
   setScene: (scene: GameScene) => void;
+  startMatchSearch: () => void;
+  cancelMatchSearch: () => void;
   initializeGameData: () => Promise<void>;
   setPlayerTeam: (team: Team) => void;
   setPilots: (pilots: Pilot[]) => void;
@@ -71,6 +84,10 @@ interface GameState {
 
   // 전투 상태를 고려한 파일럿 정보 가져오기
   getPilotInfoWithBattle: (pilotId: number, battleParticipants?: any[]) => PilotInfo;
+
+  // 매칭 시스템 액션
+  showMatchNotification: (opponent: string, difficulty: string, reward: string) => void;
+  hideMatchNotification: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -89,6 +106,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     player: [],
     enemy: [],
   },
+  matchNotification: null,
+  matchmakingStatus: 'idle',
 
   setScene: (scene: GameScene) => set({ currentScene: scene }),
 
@@ -219,5 +238,55 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
     
     return basicInfo;
+  },
+
+  // 매칭 시스템 액션
+  showMatchNotification: (opponent: string, difficulty: string, reward: string) => {
+    set((state) => ({
+      matchNotification: {
+        isVisible: true,
+        opponent,
+        difficulty,
+        reward,
+      },
+      matchmakingStatus: 'matched',
+      _searchTimeoutId: undefined,
+    }));
+  },
+
+  hideMatchNotification: () => {
+    set({ matchNotification: null, matchmakingStatus: 'idle' });
+  },
+
+  startMatchSearch: () => {
+    // 이미 검색 중이면 무시
+    if (get().matchmakingStatus !== 'idle') return;
+
+    // 난수 3~6초 후 매치 성사
+    const delay = Math.floor(Math.random() * 3000) + 3000;
+
+    const timeoutId = window.setTimeout(() => {
+      const opponents = ['스틸 레이븐스', '보이드 헌터스', '네온 스파르탄', '크림슨 랜스', '아이언 윙스'];
+      const difficulties = ['하급', '중급', '상급'];
+      const rewards = ['3,500 크레딧', '5,000 크레딧', '7,500 크레딧'];
+
+      const opponent = opponents[Math.floor(Math.random() * opponents.length)];
+      const difficulty = difficulties[Math.floor(Math.random() * difficulties.length)];
+      const reward = rewards[Math.floor(Math.random() * rewards.length)];
+
+      // show notification will set status to 'matched'
+      get().showMatchNotification(opponent, difficulty, reward);
+    }, delay);
+
+    set({ matchmakingStatus: 'searching', _searchTimeoutId: timeoutId });
+  },
+
+  cancelMatchSearch: () => {
+    const { _searchTimeoutId, matchmakingStatus } = get();
+    if (matchmakingStatus !== 'searching') return;
+    if (_searchTimeoutId) {
+      clearTimeout(_searchTimeoutId);
+    }
+    set({ matchmakingStatus: 'idle', _searchTimeoutId: undefined });
   },
 }));

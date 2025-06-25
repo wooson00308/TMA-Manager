@@ -28,7 +28,7 @@ interface ChampionSelectState {
 }
 
 export function NewMatchPrepScene() {
-  const { pilots, mechs, enemyTeams } = useGameStore();
+  const { pilots, mechs, enemyTeams, playerTeam } = useGameStore();
   const { currentBattle, setBattle, setConnected } = useBattleStore();
   
   const [currentPhase, setCurrentPhase] = useState<MatchPhase>('lineup');
@@ -116,6 +116,18 @@ export function NewMatchPrepScene() {
       icon: '💨'
     }
   ];
+
+  // 팀 이름 동적 생성
+  const playerTeamName = playerTeam?.name || 'Trinity Squad';
+  const enemyTeamName = selectedEnemyTeam?.name || 'Steel Ravens';
+
+  // 헤더 타이틀 매핑
+  const phaseTitleMap: Record<MatchPhase, string> = {
+    lineup: '준비 페이즈',
+    champion_select: '밴픽 페이즈',
+    pre_battle: '격납고 페이즈',
+    battle: '매치 브리핑',
+  };
 
   // 라인업 단계: 파일럿 선택
   const handleSelectPilot = (pilot: Pilot) => {
@@ -390,9 +402,15 @@ export function NewMatchPrepScene() {
     const actionText = currentSequence.action === 'ban' ? '밴' : '픽';
     const teamText = currentSequence.team === 'player' ? '아군' : '적군';
     
+    const phaseLabel = currentSequence.action === 'ban' ? '밴 단계' : '픽 단계';
+    const turnLabel = currentSequence.team === 'player' ? '플레이어 턴' : 'AI 턴';
+
+    const countsSummary = `아군 밴 ${championSelect.playerBans.length}/2 픽 ${championSelect.selectedMechs.player.length}/3 • ` +
+                         `적군 밴 ${championSelect.enemyBans.length}/2 픽 ${championSelect.selectedMechs.enemy.length}/3`;
+
     return {
       phase: `${currentSequence.action}_${currentSequence.team}`,
-      description: `${teamText} ${currentSequence.description}`
+      description: `${countsSummary} • ${phaseLabel} • ${turnLabel}`
     };
   };
 
@@ -410,26 +428,65 @@ export function NewMatchPrepScene() {
     }
   };
 
+  // 뱃지 형태의 밴/픽 요약 표시
+  const renderCountsBadges = () => (
+    <div className="flex items-center flex-wrap gap-1 text-[11px] font-medium">
+      <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-700">🟦 밴 {championSelect.playerBans.length}/2</span>
+      <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-700">🟦 픽 {championSelect.selectedMechs.player.length}/3</span>
+      <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-700">🟥 밴 {championSelect.enemyBans.length}/2</span>
+      <span className="px-2 py-0.5 rounded bg-rose-100 text-rose-700">🟥 픽 {championSelect.selectedMechs.enemy.length}/3</span>
+    </div>
+  );
+
   if (currentPhase === 'battle' && currentBattle) {
     return <BattleSimulation />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-800 to-black text-white">
-      {/* 상단 헤더 */}
-      <div className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur-sm border-b border-cyan-400/30 p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-cyan-400">경기 준비</h1>
-            <div className="flex items-center space-x-4">
-              {currentPhase === 'champion_select' && (
-                <div className="bg-slate-700 px-4 py-2 rounded-lg border border-cyan-400/30">
-                  <div className="text-sm text-gray-300">{getCurrentSequenceInfo().description}</div>
-                  <div className="text-xs text-cyan-400 mt-1">
-                    {championSelect.turnCount}/10 턴
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-indigo-50 to-white">
+      {/* Scene Header */}
+      <div className="sticky top-0 z-50 bg-white/90 backdrop-blur-lg border-b border-sky-200 shadow-sm">
+        <div className="max-w-7xl mx-auto p-4">
+          <div className="relative bg-gradient-to-r from-orange-500/10 via-amber-500/5 to-yellow-500/10 backdrop-blur-lg border border-orange-200/30 rounded-2xl p-6 shadow-lg overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-orange-100/20 to-amber-100/10 backdrop-blur-sm"></div>
+            <div className="relative z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-amber-500 rounded-xl flex items-center justify-center shadow-md">
+                    <i className="fas fa-rocket text-white text-xl"></i>
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-orbitron font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                      {phaseTitleMap[currentPhase]}
+                    </h1>
+                    <div className="flex items-center space-x-2 text-orange-600/80 text-sm font-medium">
+                      <i className="fas fa-chess-board text-xs"></i>
+                      <span>통합 전투 준비 시스템</span>
+                    </div>
                   </div>
                 </div>
-              )}
+                <div className="flex items-center space-x-4">
+                  {currentPhase === 'champion_select' && (
+                    <div className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-lg border border-orange-200 shadow-sm text-xs text-slate-700 font-medium">
+                      {(() => {
+                        const seq = championSelectSequence[championSelect.turnCount-1];
+                        if(!seq) return '선택 완료';
+                        return `${seq.action==='ban'?'밴':'픽'} 단계 • ${seq.team==='player'?'플레이어':'AI'} 턴 (${championSelect.turnCount}/10)`;
+                      })()}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex space-x-2 mt-3">
+                <div className="px-3 py-1 bg-orange-100/50 text-orange-700 rounded-full text-xs font-medium border border-orange-200/50">
+                  <i className="fas fa-rocket mr-1"></i>
+                  매치 준비 모드
+                </div>
+                <div className="px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-200/50">
+                  <i className="fas fa-check-circle mr-1"></i>
+                  TRINITAS 연결됨
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -440,13 +497,13 @@ export function NewMatchPrepScene() {
         {currentPhase === 'lineup' && (
           <div className="space-y-8">
             {/* 통합 파일럿 선택 */}
-            <div className="tfm-panel rounded-xl p-6 phase-transition">
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl border border-sky-200 shadow-lg p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-cyan-400 flex items-center">
+                <h2 className="text-xl font-bold text-sky-600 flex items-center">
                   <span className="mr-3">👥</span>
                   선발 라인업 ({teamLineup.pilots.length}/3)
                 </h2>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-slate-600">
                   {(availablePilots as Pilot[])?.length || 0}명 사용 가능
                 </div>
               </div>
@@ -462,41 +519,41 @@ export function NewMatchPrepScene() {
                       key={pilot.id}
                       onClick={() => isSelected ? handleRemovePilot(pilot.id) : handleSelectPilot(pilot)}
                       disabled={!isSelected && teamLineup.pilots.length >= 3}
-                      className={`p-4 rounded-lg border-2 champion-card text-left relative ${
+                      className={`p-4 rounded-lg border-2 text-left relative transition-all ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-500/20'
+                          ? 'border-sky-400 bg-sky-100/50 shadow-md'
                           : canSelect
-                          ? 'border-gray-600 bg-slate-700 hover:border-cyan-400/50 hover:bg-slate-600'
-                          : 'border-gray-600 bg-gray-800/50 opacity-50 cursor-not-allowed'
+                          ? 'border-slate-200 bg-white/60 hover:border-sky-300 hover:bg-sky-50/50 hover:shadow-md'
+                          : 'border-slate-200 bg-slate-100/50 opacity-50 cursor-not-allowed'
                       }`}
                     >
                       {/* 선택 상태 오버레이 */}
                       {isSelected && (
-                        <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                        <div className="absolute top-2 right-2 bg-sky-500 text-white text-xs px-2 py-1 rounded shadow">
                           #{selectedIndex + 1}
                         </div>
                       )}
                       
                       <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-cyan-400/20 rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 bg-sky-100 rounded-full flex items-center justify-center">
                           <span className="text-xl">👤</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-white truncate">{pilot.name}</div>
-                          <div className="text-sm text-cyan-400">"{pilot.callsign}"</div>
-                          <div className="text-xs text-gray-400 mb-2">{pilot.dormitory}</div>
+                          <div className="font-bold text-slate-800 truncate">{pilot.name}</div>
+                          <div className="text-sm text-sky-600">"{pilot.callsign}"</div>
+                          <div className="text-xs text-slate-500 mb-2">{pilot.dormitory}</div>
                           
                           <div className="grid grid-cols-2 gap-1 text-xs">
-                            <div className="bg-yellow-500/20 px-2 py-1 rounded">
+                            <div className="bg-amber-100 text-amber-700 px-2 py-1 rounded">
                               ⭐ {pilot.rating}
                             </div>
-                            <div className="bg-red-500/20 px-2 py-1 rounded">
+                            <div className="bg-red-100 text-red-700 px-2 py-1 rounded">
                               ⚡ {pilot.reaction}
                             </div>
-                            <div className="bg-blue-500/20 px-2 py-1 rounded">
+                            <div className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
                               🎯 {pilot.accuracy}
                             </div>
-                            <div className="bg-green-500/20 px-2 py-1 rounded">
+                            <div className="bg-emerald-100 text-emerald-700 px-2 py-1 rounded">
                               🧠 {pilot.tactical}
                             </div>
                           </div>
@@ -504,7 +561,7 @@ export function NewMatchPrepScene() {
                           {pilot.traits.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-2">
                               {pilot.traits.slice(0, 2).map((trait, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-slate-600 text-xs rounded">
+                                <span key={idx} className="px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded">
                                   {trait}
                                 </span>
                               ))}
@@ -519,8 +576,8 @@ export function NewMatchPrepScene() {
             </div>
 
             {/* 편성 전술 선택 */}
-            <div className="tfm-panel rounded-xl p-6 phase-transition">
-              <h2 className="text-xl font-bold text-cyan-400 mb-6 flex items-center">
+            <div className="bg-white/80 backdrop-blur-lg rounded-xl border border-sky-200 shadow-lg p-6">
+              <h2 className="text-xl font-bold text-sky-600 mb-6 flex items-center">
                 <span className="mr-3">⚔️</span>
                 편성 전술
               </h2>
@@ -530,19 +587,19 @@ export function NewMatchPrepScene() {
                   <button
                     key={formation.id}
                     onClick={() => handleFormationChange(formation.id as any)}
-                    className={`p-4 rounded-lg border-2 transition-all formation-indicator champion-card ${
+                    className={`p-4 rounded-lg border-2 transition-all ${
                       teamLineup.formation === formation.id
-                        ? 'border-cyan-400 bg-cyan-400/10'
-                        : 'border-gray-600 bg-slate-700 hover:border-cyan-400/50'
+                        ? 'border-sky-400 bg-sky-100/50 shadow-md'
+                        : 'border-slate-200 bg-white/60 hover:border-sky-300 hover:bg-sky-50/50'
                     }`}
                   >
                     <div className="text-center">
                       <div className="text-3xl mb-2">{formation.icon}</div>
-                      <div className="font-bold text-white mb-1">{formation.name}</div>
-                      <div className="text-sm text-gray-400 mb-3">{formation.description}</div>
+                      <div className="font-bold text-slate-800 mb-1">{formation.name}</div>
+                      <div className="text-sm text-slate-600 mb-3">{formation.description}</div>
                       <div className="space-y-1">
                         {formation.effects.map((effect, idx) => (
-                          <div key={idx} className="text-xs text-cyan-300 bg-slate-600/50 px-2 py-1 rounded">
+                          <div key={idx} className="text-xs text-sky-700 bg-sky-100/60 px-2 py-1 rounded">
                             {effect}
                           </div>
                         ))}
@@ -555,12 +612,13 @@ export function NewMatchPrepScene() {
 
             {/* 다음 단계 버튼 */}
             {teamLineup.pilots.length === 3 && (
-              <div className="flex justify-end">
+              <div className="fixed bottom-8 right-8 z-50 animate-in fade-in-0.5">
                 <CyberButton
                   onClick={() => setCurrentPhase('champion_select')}
-                  className="px-8 py-3 bg-cyan-600 hover:bg-cyan-500"
+                  className="px-8 py-4 shadow-xl"
+                  variant="primary"
                 >
-                  챔피언 선택 단계로 →
+                  밴픽 단계로 →
                 </CyberButton>
               </div>
             )}
@@ -570,36 +628,17 @@ export function NewMatchPrepScene() {
         {/* 챔피언 선택 단계 */}
         {currentPhase === 'champion_select' && (
           <div className="space-y-6">
-            {/* 밴/픽 현황 요약 */}
-            <div className="tfm-panel rounded-xl p-4 phase-transition">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-6">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-blue-400">🟦 Trinity Squad</span>
-                    <span className="text-sm text-gray-400">밴: {championSelect.playerBans.length}/2, 픽: {championSelect.selectedMechs.player.length}/3</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-red-400">🟥 Steel Ravens</span>
-                    <span className="text-sm text-gray-400">밴: {championSelect.enemyBans.length}/2, 픽: {championSelect.selectedMechs.enemy.length}/3</span>
-                  </div>
-                </div>
-                <div className="text-sm text-cyan-400">
-                  {getCurrentSequenceInfo().description}
-                </div>
-              </div>
-            </div>
-
             {/* 통합 메크 선택 그리드 */}
             {championSelect.turnCount <= 10 && (
-              <div className="tfm-panel rounded-xl p-6 phase-transition">
+              <div className="bg-white/80 backdrop-blur-lg rounded-xl border border-sky-200 shadow-lg p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-300">
-                    챔피언 선택
+                  <h3 className="text-lg font-bold text-slate-700">
+                    메카 선택
                   </h3>
                   <div className="flex items-center space-x-4">
                     {/* 타입 필터 */}
                     <div className="flex items-center space-x-3">
-                      <span className="text-sm text-gray-400">필터:</span>
+                      <span className="text-sm text-slate-600">필터:</span>
                       <div className="flex space-x-1">
                         {[
                           { value: 'all', label: '전체', icon: '🌟' },
@@ -613,8 +652,8 @@ export function NewMatchPrepScene() {
                             onClick={() => setMechFilter(filter.value as any)}
                             className={`px-3 py-1 rounded text-xs font-medium transition-all ${
                               mechFilter === filter.value
-                                ? 'bg-cyan-500 text-white'
-                                : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+                                ? 'bg-sky-500 text-white shadow-sm'
+                                : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                             }`}
                           >
                             {filter.icon} {filter.label}
@@ -623,7 +662,7 @@ export function NewMatchPrepScene() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-3">
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm text-slate-600">
                         {(() => {
                           const filteredMechs = (availableMechs as Mech[]).filter((mech: Mech) => {
                             if (mechFilter === 'all') return true;
@@ -635,13 +674,7 @@ export function NewMatchPrepScene() {
                           return `${filteredMechs.length}기 표시 중`;
                         })()}
                       </div>
-                      <div className="text-sm text-cyan-400">
-                        {(() => {
-                          const currentSequence = championSelectSequence[championSelect.turnCount - 1];
-                          const isPlayerTurn = currentSequence?.team === 'player';
-                          return isPlayerTurn ? '플레이어 턴' : 'AI 턴';
-                        })()}
-                      </div>
+                      {renderCountsBadges()}
                     </div>
                   </div>
                 </div>
@@ -674,20 +707,20 @@ export function NewMatchPrepScene() {
                     let statusOverlay = '';
                     
                     if (isPlayerBanned || isEnemyBanned) {
-                      cardStyle = 'border-gray-500 bg-gray-800/80 opacity-50';
+                      cardStyle = 'border-slate-400 bg-slate-200/80 opacity-50';
                       statusOverlay = '🚫 밴됨';
                     } else if (isPlayerPicked) {
-                      cardStyle = 'border-blue-500 bg-blue-500/20';
+                      cardStyle = 'border-sky-400 bg-sky-100/50 shadow-md';
                       statusOverlay = '✓ 아군';
                     } else if (isEnemyPicked) {
-                      cardStyle = 'border-red-500 bg-red-500/20';
+                      cardStyle = 'border-rose-400 bg-rose-100/50 shadow-md';
                       statusOverlay = '✓ 적군';
                     } else if (isClickable) {
                       cardStyle = isBanTurn 
-                        ? 'border-white/80 bg-white/5 hover:border-red-400 hover:bg-red-900/20' 
-                        : 'border-white/80 bg-white/5 hover:border-cyan-400 hover:bg-cyan-400/10';
+                        ? 'border-slate-300 bg-white/80 hover:border-rose-400 hover:bg-rose-50/50 hover:shadow-md' 
+                        : 'border-slate-300 bg-white/80 hover:border-sky-400 hover:bg-sky-50/50 hover:shadow-md';
                     } else {
-                      cardStyle = 'border-gray-600 bg-gray-800/50 opacity-50 cursor-not-allowed';
+                      cardStyle = 'border-slate-200 bg-slate-100/50 opacity-50 cursor-not-allowed';
                     }
                     
                     return (
@@ -697,11 +730,11 @@ export function NewMatchPrepScene() {
                         onMouseEnter={() => setShowMechDetails(mech)}
                         onMouseLeave={() => setShowMechDetails(null)}
                         disabled={!isClickable}
-                        className={`aspect-[3/4] rounded-lg border-2 p-3 champion-card relative ${cardStyle}`}
+                        className={`aspect-[3/4] rounded-lg border-2 p-3 relative transition-all ${cardStyle}`}
                       >
                         {/* 상태 오버레이 */}
                         {statusOverlay && (
-                          <div className="absolute top-1 left-1 right-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded text-center">
+                          <div className="absolute top-1 left-1 right-1 bg-slate-800/80 text-white text-xs px-1 py-0.5 rounded text-center">
                             {statusOverlay}
                           </div>
                         )}
@@ -709,23 +742,23 @@ export function NewMatchPrepScene() {
                         <div className="text-center h-full flex flex-col justify-between">
                           <div>
                             <div className="text-2xl mb-1">{getMechRoleIcon(mech.type)}</div>
-                            <div className="font-bold text-white text-sm truncate">{mech.name}</div>
-                            <div className="text-xs text-gray-400">{mech.type}</div>
+                            <div className="font-bold text-slate-800 text-sm truncate">{mech.name}</div>
+                            <div className="text-xs text-slate-600">{mech.type}</div>
                           </div>
                           
                           <div className="space-y-1">
-                            <div className="text-lg font-bold text-yellow-400">{getMechRating(mech)}</div>
+                            <div className="text-lg font-bold text-amber-600">{getMechRating(mech)}</div>
                             <div className="grid grid-cols-2 gap-1 text-xs">
-                              <div className="bg-red-500/20 px-1 py-0.5 rounded">
+                              <div className="bg-red-100 text-red-700 px-1 py-0.5 rounded">
                                 ⚔️ {mech.firepower}
                               </div>
-                              <div className="bg-blue-500/20 px-1 py-0.5 rounded">
+                              <div className="bg-blue-100 text-blue-700 px-1 py-0.5 rounded">
                                 🛡️ {mech.armor}
                               </div>
-                              <div className="bg-green-500/20 px-1 py-0.5 rounded">
+                              <div className="bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded">
                                 💚 {mech.hp}
                               </div>
-                              <div className="bg-yellow-500/20 px-1 py-0.5 rounded">
+                              <div className="bg-amber-100 text-amber-700 px-1 py-0.5 rounded">
                                 ⚡ {mech.speed}
                               </div>
                             </div>
@@ -742,29 +775,29 @@ export function NewMatchPrepScene() {
             {championSelect.selectedMechs.player.length === 3 && 
              championSelect.selectedMechs.enemy.length === 3 && 
              championSelect.turnCount > 10 && (
-              <div className="bg-slate-800/50 rounded-xl border border-cyan-400/20 p-6">
-                <h3 className="text-lg font-bold text-cyan-400 mb-4">파일럿-메크 배정</h3>
+              <div className="bg-white/80 backdrop-blur-lg rounded-xl border border-sky-200 shadow-lg p-6">
+                <h3 className="text-lg font-bold text-sky-600 mb-4">파일럿-메크 배정</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {teamLineup.pilots.map((pilot, index) => (
-                    <div key={pilot.id} className="bg-slate-700 rounded-lg p-4">
+                    <div key={pilot.id} className="bg-white/60 backdrop-blur-sm rounded-lg border border-slate-200 p-4">
                       <div className="text-center mb-3">
-                        <div className="font-bold text-cyan-400">{pilot.name}</div>
-                        <div className="text-sm text-gray-400">"{pilot.callsign}"</div>
+                        <div className="font-bold text-sky-600">{pilot.name}</div>
+                        <div className="text-sm text-slate-600">"{pilot.callsign}"</div>
                       </div>
                       
                       <div className="space-y-2">
-                        <div className="text-sm text-gray-300">배정된 메크:</div>
+                        <div className="text-sm text-slate-700 font-medium">배정된 메크:</div>
                         {championSelect.assignments[pilot.id] ? (
-                          <div className="bg-slate-600 p-3 rounded border border-cyan-400/30">
+                          <div className="bg-sky-100/50 p-3 rounded border border-sky-200">
                             <div className="text-center">
                               <div className="text-xl">{getMechRoleIcon(championSelect.assignments[pilot.id]!.type)}</div>
-                              <div className="font-bold text-white">{championSelect.assignments[pilot.id]!.name}</div>
-                              <div className="text-sm text-yellow-400">레이팅: {getMechRating(championSelect.assignments[pilot.id]!)}</div>
+                              <div className="font-bold text-slate-800">{championSelect.assignments[pilot.id]!.name}</div>
+                              <div className="text-sm text-amber-600">레이팅: {getMechRating(championSelect.assignments[pilot.id]!)}</div>
                             </div>
                           </div>
                         ) : (
-                          <div className="text-center text-gray-500 py-4 border-2 border-dashed border-gray-600 rounded">
+                          <div className="text-center text-slate-500 py-4 border-2 border-dashed border-slate-300 rounded">
                             미배정
                           </div>
                         )}
@@ -776,12 +809,12 @@ export function NewMatchPrepScene() {
                               <button
                                 key={mech.id}
                                 onClick={() => handleAssignMech(pilot.id, mech)}
-                                className="w-full p-2 bg-slate-600 hover:bg-slate-500 rounded border border-gray-500 hover:border-cyan-400/50 transition-colors text-left"
+                                className="w-full p-2 bg-white/80 hover:bg-sky-50/50 rounded border border-slate-300 hover:border-sky-400 transition-colors text-left"
                               >
                                 <div className="flex items-center space-x-2">
                                   <span>{getMechRoleIcon(mech.type)}</span>
-                                  <span className="text-sm">{mech.name}</span>
-                                  <span className="text-xs text-yellow-400 ml-auto">{getMechRating(mech)}</span>
+                                  <span className="text-sm text-slate-700">{mech.name}</span>
+                                  <span className="text-xs text-amber-600 ml-auto">{getMechRating(mech)}</span>
                                 </div>
                               </button>
                             ))}
@@ -796,7 +829,8 @@ export function NewMatchPrepScene() {
                   <div className="flex justify-end mt-6">
                     <CyberButton
                       onClick={handleStartBattle}
-                      className="px-8 py-3 bg-green-600 hover:bg-green-500"
+                      className="px-8 py-3"
+                      variant="primary"
                     >
                       전투 시작! 🚀
                     </CyberButton>
@@ -810,45 +844,45 @@ export function NewMatchPrepScene() {
 
       {/* 메크 상세 정보 툴팁 */}
       {showMechDetails && (
-        <div className="fixed bottom-4 right-4 bg-slate-800 border border-cyan-400/30 rounded-lg p-4 max-w-sm z-50">
+        <div className="fixed bottom-4 right-4 bg-white/90 backdrop-blur-lg border border-sky-200 rounded-lg shadow-xl p-4 max-w-sm z-50">
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <span className="text-2xl">{getMechRoleIcon(showMechDetails.type)}</span>
               <div>
-                <div className="font-bold text-white">{showMechDetails.name}</div>
-                <div className="text-sm text-gray-400">{showMechDetails.type} - {showMechDetails.variant}</div>
+                <div className="font-bold text-slate-800">{showMechDetails.name}</div>
+                <div className="text-sm text-slate-600">{showMechDetails.type} - {showMechDetails.variant}</div>
               </div>
             </div>
             
             <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="bg-red-500/20 p-2 rounded">
-                <div className="text-red-300">화력</div>
+              <div className="bg-red-100 text-red-700 p-2 rounded">
+                <div className="text-red-600 font-medium">화력</div>
                 <div className="font-bold">{showMechDetails.firepower}</div>
               </div>
-              <div className="bg-blue-500/20 p-2 rounded">
-                <div className="text-blue-300">방어력</div>
+              <div className="bg-blue-100 text-blue-700 p-2 rounded">
+                <div className="text-blue-600 font-medium">방어력</div>
                 <div className="font-bold">{showMechDetails.armor}</div>
               </div>
-              <div className="bg-green-500/20 p-2 rounded">
-                <div className="text-green-300">체력</div>
+              <div className="bg-emerald-100 text-emerald-700 p-2 rounded">
+                <div className="text-emerald-600 font-medium">체력</div>
                 <div className="font-bold">{showMechDetails.hp}</div>
               </div>
-              <div className="bg-yellow-500/20 p-2 rounded">
-                <div className="text-yellow-300">속도</div>
+              <div className="bg-amber-100 text-amber-700 p-2 rounded">
+                <div className="text-amber-600 font-medium">속도</div>
                 <div className="font-bold">{showMechDetails.speed}</div>
               </div>
-              <div className="bg-purple-500/20 p-2 rounded col-span-2">
-                <div className="text-purple-300">사거리</div>
+              <div className="bg-purple-100 text-purple-700 p-2 rounded col-span-2">
+                <div className="text-purple-600 font-medium">사거리</div>
                 <div className="font-bold">{showMechDetails.range}</div>
               </div>
             </div>
             
             {showMechDetails.specialAbilities && showMechDetails.specialAbilities.length > 0 && (
               <div>
-                <div className="text-sm text-cyan-300 mb-1">특수 능력</div>
+                <div className="text-sm text-sky-600 font-medium mb-1">특수 능력</div>
                 <div className="space-y-1">
                   {showMechDetails.specialAbilities.map((ability, idx) => (
-                    <div key={idx} className="text-xs bg-slate-700 px-2 py-1 rounded">
+                    <div key={idx} className="text-xs bg-slate-200 text-slate-700 px-2 py-1 rounded">
                       {ability}
                     </div>
                   ))}

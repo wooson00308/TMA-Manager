@@ -308,16 +308,42 @@ export function BanPickScene() {
 
   return (
     <div className="scene-transition">
-      <div className="mb-6">
-        <h2 className="text-2xl font-orbitron font-bold text-green-400 mb-2">밴픽 전략</h2>
-        <p className="text-gray-400">기체 제한 및 조합 구성</p>
+      {/* Scene Header */}
+      <div className="relative mb-8 bg-gradient-to-r from-purple-500/10 via-indigo-500/5 to-blue-500/10 backdrop-blur-lg border border-purple-200/30 rounded-2xl p-6 shadow-lg overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-100/20 to-indigo-100/10 backdrop-blur-sm"></div>
+        <div className="relative z-10">
+          <div className="flex items-center space-x-4 mb-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-xl flex items-center justify-center shadow-md">
+              <i className="fas fa-chess text-white text-xl"></i>
+            </div>
+            <div>
+              <h1 className="text-3xl font-orbitron font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                밴픽 전략
+              </h1>
+              <div className="flex items-center space-x-2 text-purple-600/80 text-sm font-medium">
+                <i className="fas fa-robot text-xs"></i>
+                <span>기체 제한 및 조합 구성</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <div className="px-3 py-1 bg-purple-100/50 text-purple-700 rounded-full text-xs font-medium border border-purple-200/50">
+              <i className="fas fa-chess-board mr-1"></i>
+              전략 선택 모드
+            </div>
+            <div className="px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-200/50">
+              <i className="fas fa-check-circle mr-1"></i>
+              TRINITAS 연결됨
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Phase Progress */}
-      <div className="cyber-border p-4 bg-slate-800 mb-6">
-        <h3 className="text-pink-400 font-semibold mb-3">현재 단계</h3>
+      <div className="bg-white/80 backdrop-blur-lg border border-sky-200/50 rounded-xl p-4 shadow-md mb-6">
+        <h3 className="text-sky-600 font-semibold mb-3">현재 단계</h3>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-lg font-medium">
+          <span className="text-lg font-medium text-slate-800">
             {phaseNames[banPickState.phase]}
           </span>
           <span className={`px-3 py-1 rounded text-sm ${
@@ -328,13 +354,13 @@ export function BanPickScene() {
         </div>
         
         {!isComplete && (
-          <div className="text-sm text-gray-400">
+          <div className="text-sm text-slate-800">
             {isBanPhase ? '제한할 기체를 선택하세요' : '선택할 기체를 고르세요'}
           </div>
         )}
         
         {/* 디버그 정보 */}
-        <div className="text-xs text-gray-500 mt-2">
+        <div className="text-xs text-slate-700 mt-2">
           플레이어: {banPickState.selectedMechs.player.length}/3 | 
           적팀: {banPickState.selectedMechs.enemy.length}/3 | 
           Phase: {banPickState.phase} | 
@@ -345,43 +371,45 @@ export function BanPickScene() {
       {/* Ban/Pick Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Player Side */}
-        <div className="cyber-border p-4 bg-green-900/20 border-green-400/50">
-          <h3 className="text-green-400 font-semibold mb-3">트리니티 스쿼드</h3>
+        <div className="bg-white/80 backdrop-blur-lg border border-sky-200/50 rounded-xl p-4 shadow-md">
+          <h3 className="text-emerald-600 font-semibold mb-3">트리니티 스쿼드</h3>
           
           <div className="mb-4">
-            <h4 className="text-sm text-gray-400 mb-2">밴된 기체:</h4>
+            <h4 className="text-sm text-slate-800 font-medium mb-2">밴된 기체:</h4>
             <div className="space-y-2">
               {banPickState.bannedMechs
                 .filter((_, index) => index % 2 === 1) // 플레이어 밴 (홀수 인덱스)
                 .map((mech, index) => (
                 <div key={mech.id} className="flex items-center space-x-2 text-sm">
-                  <span className="text-red-400">✕</span>
-                  <span className="text-gray-300">{mech.name}</span>
+                  <span className="text-red-500">✕</span>
+                  <span className="text-slate-800 font-medium">{mech.name}</span>
                 </div>
               ))}
               {banPickState.selectedMechs.player.length < 2 && banPickState.bannedMechs.length < 4 && (
-                <div className="text-gray-500 text-sm">대기 중...</div>
+                <div className="text-slate-700 text-sm">대기 중...</div>
               )}
             </div>
           </div>
           
           <div>
-            <h4 className="text-sm text-gray-400 mb-2">선택된 기체:</h4>
+            <h4 className="text-sm text-slate-800 font-medium mb-2">선택된 기체:</h4>
             <div className="space-y-2">
               {banPickState.selectedMechs.player.map((mech, index) => (
-                <div key={mech.id} className="cyber-border p-3 bg-green-800/30">
+                <div key={mech.id} className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">{mech.name}</span>
-                    <span className="text-xs text-gray-400">{mech.type}</span>
+                    <span className="font-semibold text-slate-800">{mech.name}</span>
+                    <span className="text-xs text-slate-700 bg-slate-100 px-2 py-1 rounded">{mech.type}</span>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    화력: {mech.firepower} | 속도: {mech.speed} | 장갑: {mech.armor}
+                  <div className="text-xs text-slate-700 mt-1">
+                    화력: <span className="text-orange-600 font-medium">{mech.firepower}</span> | 
+                    속도: <span className="text-blue-600 font-medium">{mech.speed}</span> | 
+                    장갑: <span className="text-green-600 font-medium">{mech.armor}</span>
                   </div>
                 </div>
               ))}
               {Array.from({ length: 3 - banPickState.selectedMechs.player.length }).map((_, index) => (
-                <div key={index} className="cyber-border p-3 bg-gray-800/50 border-dashed">
-                  <div className="text-gray-500 text-center">슬롯 {banPickState.selectedMechs.player.length + index + 1}</div>
+                <div key={index} className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-3">
+                  <div className="text-slate-600 text-center font-medium">슬롯 {banPickState.selectedMechs.player.length + index + 1}</div>
                 </div>
               ))}
             </div>
@@ -389,43 +417,45 @@ export function BanPickScene() {
         </div>
 
         {/* Enemy Side */}
-        <div className="cyber-border p-4 bg-red-900/20 border-red-400/50">
-          <h3 className="text-red-400 font-semibold mb-3">{banPickState.enemyTeamName}</h3>
+        <div className="bg-white/80 backdrop-blur-lg border border-sky-200/50 rounded-xl p-4 shadow-md">
+          <h3 className="text-rose-600 font-semibold mb-3">{banPickState.enemyTeamName}</h3>
           
           <div className="mb-4">
-            <h4 className="text-sm text-gray-400 mb-2">밴된 기체:</h4>
+            <h4 className="text-sm text-slate-800 font-medium mb-2">밴된 기체:</h4>
             <div className="space-y-2">
               {banPickState.bannedMechs
                 .filter((_, index) => index % 2 === 0) // 적팀 밴 (짝수 인덱스)
                 .map((mech, index) => (
                 <div key={mech.id} className="flex items-center space-x-2 text-sm">
-                  <span className="text-red-400">✕</span>
-                  <span className="text-gray-300">{mech.name}</span>
+                  <span className="text-red-500">✕</span>
+                  <span className="text-slate-800 font-medium">{mech.name}</span>
                 </div>
               ))}
               {banPickState.selectedMechs.enemy.length < 2 && banPickState.bannedMechs.length < 4 && (
-                <div className="text-gray-500 text-sm">대기 중...</div>
+                <div className="text-slate-700 text-sm">대기 중...</div>
               )}
             </div>
           </div>
           
           <div>
-            <h4 className="text-sm text-gray-400 mb-2">선택된 기체:</h4>
+            <h4 className="text-sm text-slate-800 font-medium mb-2">선택된 기체:</h4>
             <div className="space-y-2">
               {banPickState.selectedMechs.enemy.map((mech, index) => (
-                <div key={mech.id} className="cyber-border p-3 bg-red-800/30">
+                <div key={mech.id} className="bg-rose-50 border border-rose-200 rounded-lg p-3">
                   <div className="flex justify-between items-center">
-                    <span className="font-medium">{mech.name}</span>
-                    <span className="text-xs text-gray-400">{mech.type}</span>
+                    <span className="font-semibold text-slate-800">{mech.name}</span>
+                    <span className="text-xs text-slate-700 bg-slate-100 px-2 py-1 rounded">{mech.type}</span>
                   </div>
-                  <div className="text-xs text-gray-400">
-                    화력: {mech.firepower} | 속도: {mech.speed} | 장갑: {mech.armor}
+                  <div className="text-xs text-slate-700 mt-1">
+                    화력: <span className="text-orange-600 font-medium">{mech.firepower}</span> | 
+                    속도: <span className="text-blue-600 font-medium">{mech.speed}</span> | 
+                    장갑: <span className="text-green-600 font-medium">{mech.armor}</span>
                   </div>
                 </div>
               ))}
               {Array.from({ length: 3 - banPickState.selectedMechs.enemy.length }).map((_, index) => (
-                <div key={index} className="cyber-border p-3 bg-gray-800/50 border-dashed">
-                  <div className="text-gray-500 text-center">슬롯 {banPickState.selectedMechs.enemy.length + index + 1}</div>
+                <div key={index} className="bg-slate-50 border-2 border-dashed border-slate-300 rounded-lg p-3">
+                  <div className="text-slate-600 text-center font-medium">슬롯 {banPickState.selectedMechs.enemy.length + index + 1}</div>
                 </div>
               ))}
             </div>
@@ -435,29 +465,32 @@ export function BanPickScene() {
 
       {/* Available Mechs */}
       {!isComplete && isPlayerTurn && (
-        <div className="cyber-border p-4 bg-slate-800 mb-6">
-          <h3 className="text-pink-400 font-semibold mb-3">
+        <div className="bg-white/80 backdrop-blur-lg border border-sky-200/50 rounded-xl p-4 shadow-md mb-6">
+          <h3 className="text-sky-600 font-semibold mb-3">
             {isBanPhase ? '밴할 기체 선택' : '픽할 기체 선택'}
           </h3>
-          <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+          <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-400 scrollbar-track-slate-200">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {getAvailableMechs().map((mech) => (
               <button
                 key={mech.id}
                 onClick={() => handleMechAction(mech)}
-                className="cyber-border p-3 bg-slate-700 hover:bg-slate-600 transition-all"
+                className="bg-slate-50 hover:bg-sky-50 border border-slate-200 hover:border-sky-300 rounded-lg p-3 transition-all shadow-sm hover:shadow-md"
               >
-                <div className="text-sm font-medium mb-1">{mech.name}</div>
-                <div className="text-xs text-gray-400 mb-2">{mech.type} - {mech.variant}</div>
+                <div className="text-sm font-semibold mb-1 text-slate-800">{mech.name}</div>
+                <div className="text-xs text-slate-700 mb-2 bg-slate-100 px-2 py-1 rounded">{mech.type} - {mech.variant}</div>
                 <div className="text-xs space-y-1">
                   <div className="flex justify-between">
-                    <span>화력:</span> <span className="text-orange-400">{mech.firepower}</span>
+                    <span className="text-slate-700">화력:</span> 
+                    <span className="text-orange-600 font-semibold">{mech.firepower}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>속도:</span> <span className="text-blue-400">{mech.speed}</span>
+                    <span className="text-slate-700">속도:</span> 
+                    <span className="text-blue-600 font-semibold">{mech.speed}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>장갑:</span> <span className="text-green-400">{mech.armor}</span>
+                    <span className="text-slate-700">장갑:</span> 
+                    <span className="text-green-600 font-semibold">{mech.armor}</span>
                   </div>
                 </div>
               </button>

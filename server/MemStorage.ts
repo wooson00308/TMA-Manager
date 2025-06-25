@@ -87,8 +87,8 @@ export class MemStorage implements IStorage {
         losses: 7,
         trainingUntil: null,
         trainingType: null,
-        fatigue: 25,
-        morale: 90,
+        fatigue: 0,
+        morale: 0,
       },
       {
         id: 2,
@@ -101,7 +101,7 @@ export class MemStorage implements IStorage {
         tactical: 85,
         teamwork: 82,
         traits: ["VETERAN", "ANALYTICAL", "KNIGHT"],
-        isActive: true,
+        isActive: false,
         experience: 850,
         wins: 25,
         losses: 5,
@@ -128,8 +128,8 @@ export class MemStorage implements IStorage {
         losses: 9,
         trainingUntil: null,
         trainingType: null,
-        fatigue: 35,
-        morale: 85,
+        fatigue: 0,
+        morale: 0,
       },
       {
         id: 4,
@@ -142,7 +142,7 @@ export class MemStorage implements IStorage {
         tactical: 90,
         teamwork: 88,
         traits: ["VETERAN", "CAUTIOUS", "RIVER"],
-        isActive: true,
+        isActive: false,
         experience: 900,
         wins: 22,
         losses: 6,
@@ -163,7 +163,7 @@ export class MemStorage implements IStorage {
         tactical: 92,
         teamwork: 70,
         traits: ["GENIUS", "ANALYTICAL", "ARBITER"],
-        isActive: true,
+        isActive: false,
         experience: 800,
         wins: 21,
         losses: 4,
@@ -189,8 +189,8 @@ export class MemStorage implements IStorage {
         losses: 4,
         trainingUntil: null,
         trainingType: null,
-        fatigue: 40,
-        morale: 75,
+        fatigue: 0,
+        morale: 0,
       },
 
       // Enemy Team Pilots (Steel Phoenixes)
@@ -205,7 +205,7 @@ export class MemStorage implements IStorage {
         tactical: 79,
         teamwork: 71,
         traits: ["VETERAN", "AGGRESSIVE", "STEEL"],
-        isActive: true,
+        isActive: false,
         experience: 720,
         wins: 20,
         losses: 8,
@@ -225,7 +225,7 @@ export class MemStorage implements IStorage {
         tactical: 88,
         teamwork: 76,
         traits: ["ACE", "ANALYTICAL", "STEEL"],
-        isActive: true,
+        isActive: false,
         experience: 680,
         wins: 19,
         losses: 6,
@@ -245,7 +245,7 @@ export class MemStorage implements IStorage {
         tactical: 85,
         teamwork: 80,
         traits: ["GENIUS", "AGGRESSIVE", "STEEL"],
-        isActive: true,
+        isActive: false,
         experience: 800,
         wins: 22,
         losses: 4,
@@ -458,7 +458,7 @@ export class MemStorage implements IStorage {
         id: 1,
         teamId: 1,
         pilot1Id: 1, // 사샤 볼코프
-        pilot2Id: 2, // 헬레나 파아라  
+        pilot2Id: 6, // 멘테  
         pilot3Id: 3, // 아즈마
         mech1Id: 9,  // Kn-센츄리온
         mech2Id: 10, // Kn-에퀴테스

@@ -175,6 +175,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Spend credits to reroll recruitable pilots immediately
+  app.post("/api/pilots/recruitable/reroll", async (req, res) => {
+    try {
+      const PLAYER_TEAM_ID = 1; // TODO: derive from auth/session
+      const REROLL_COST = 1000;
+
+      const currentTeam = await storage.getTeam(PLAYER_TEAM_ID);
+      if (!currentTeam) {
+        return res.status(404).json({ error: "Team not found" });
+      }
+
+      if (currentTeam.credits < REROLL_COST) {
+        return res.status(400).json({ error: "Insufficient credits" });
+      }
+
+      // Deduct credits
+      await storage.spendCredits(PLAYER_TEAM_ID, REROLL_COST);
+
+      // Generate new recruitable list (reuse logic from GET)
+      const allPilots = await storage.getAllPilots();
+      const inactivePilots = allPilots.filter(pilot => !pilot.isActive);
+
+      const maxPilots = Math.min(4, inactivePilots.length);
+      const selectedCount = Math.max(3, maxPilots);
+      const shuffled = inactivePilots.sort(() => 0.5 - Math.random());
+      const recruitablePilots = shuffled.slice(0, selectedCount).map(pilot => ({
+        ...pilot,
+        cost: Math.floor(pilot.rating * 50) + 2000,
+        background: `${pilot.dormitory} 기숙사 출신의 실력자`,
+        specialAbility: pilot.traits.includes('ACE') ? '에이스 파일럿 특성' : 
+                      pilot.traits.includes('VETERAN') ? '베테랑 경험' :
+                      pilot.traits.includes('GENIUS') ? '천재적 재능' :
+                      pilot.traits.includes('ROOKIE') ? '신예 파일럿' :
+                      '균형잡힌 능력'
+      }));
+
+      const updatedTeam = await storage.getTeam(PLAYER_TEAM_ID);
+
+      res.json({ recruitablePilots, credits: updatedTeam?.credits ?? 0 });
+    } catch (error) {
+      console.error("Failed to reroll recruitable pilots", error);
+      res.status(500).json({ error: "Failed to reroll" });
+    }
+  });
+
   // Rest pilot
   app.post('/api/pilots/:id/rest', async (req, res) => {
     try {

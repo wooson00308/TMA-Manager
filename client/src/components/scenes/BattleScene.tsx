@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameStore } from '@/stores/gameStore';
 import { useBattleStore } from '@/stores/battleStore';
 import { BattleSimulation } from '@/components/BattleSimulation';
@@ -11,6 +11,8 @@ export function BattleScene() {
   
   const [battleStatus, setBattleStatus] = useState<'preparing' | 'active' | 'completed'>('preparing');
   const [winner, setWinner] = useState<string | null>(null);
+  const [returnCountdown, setReturnCountdown] = useState<number | null>(null);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Set up WebSocket listeners for battle updates
@@ -72,6 +74,48 @@ export function BattleScene() {
     };
   }, [currentBattle, addBattleLog, setBattle]);
 
+  // Auto-return countdown once battle is completed
+  useEffect(() => {
+    if (battleStatus === 'completed') {
+      setReturnCountdown(10);
+      countdownRef.current = setInterval(() => {
+        setReturnCountdown(prev => {
+          if (prev && prev > 1) {
+            return prev - 1;
+          }
+          // Countdown finished -> return to hub
+          if (countdownRef.current) clearInterval(countdownRef.current);
+          setScene('hub');
+          return null;
+        });
+      }, 1000);
+    } else {
+      // Cleanup if leaving completed state prematurely
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+    }
+    // Cleanup on unmount
+    return () => {
+      if (countdownRef.current) {
+        clearInterval(countdownRef.current);
+        countdownRef.current = null;
+      }
+    };
+  }, [battleStatus, setScene]);
+
+  // Detect completion from local simulation (no websocket)
+  useEffect(() => {
+    if (currentBattle && currentBattle.phase === 'completed' && battleStatus !== 'completed') {
+      setBattleStatus('completed');
+      // Determine winner locally
+      const allyAlive = currentBattle.participants.filter(p => p.team === 'team1' && p.status !== 'destroyed').length;
+      const enemyAlive = currentBattle.participants.filter(p => p.team === 'team2' && p.status !== 'destroyed').length;
+      setWinner(allyAlive > enemyAlive ? 'team1' : 'team2');
+    }
+  }, [currentBattle?.phase, battleStatus]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'text-green-400';
@@ -102,6 +146,10 @@ export function BattleScene() {
   };
 
   const handleReturnToHub = () => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
     setScene('hub');
   };
 
@@ -111,9 +159,35 @@ export function BattleScene() {
 
   return (
     <div className="scene-transition">
-      <div className="mb-4">
-        <h2 className="text-2xl font-orbitron font-bold text-green-400 mb-2">BATTLE SIMULATION</h2>
-        <p className="text-gray-400">Real-time combat observation and tactical analysis</p>
+      {/* Scene Header */}
+      <div className="relative mb-8 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-yellow-500/10 backdrop-blur-lg border border-red-200/30 rounded-2xl p-6 shadow-lg overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-red-100/20 to-orange-100/10 backdrop-blur-sm"></div>
+        <div className="relative z-10">
+          <div className="flex items-center space-x-4 mb-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-500 rounded-xl flex items-center justify-center shadow-md">
+              <i className="fas fa-crosshairs text-white text-xl"></i>
+            </div>
+            <div>
+              <h1 className="text-3xl font-orbitron font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
+                BATTLE SIMULATION
+              </h1>
+              <div className="flex items-center space-x-2 text-red-600/80 text-sm font-medium">
+                <i className="fas fa-satellite text-xs"></i>
+                <span>Real-time combat observation and tactical analysis</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <div className="px-3 py-1 bg-red-100/50 text-red-700 rounded-full text-xs font-medium border border-red-200/50">
+              <i className="fas fa-crosshairs mr-1"></i>
+              전투 시뮬레이션
+            </div>
+            <div className="px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-200/50">
+              <i className="fas fa-check-circle mr-1"></i>
+              TRINITAS 연결됨
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Connection Status */}
@@ -143,7 +217,7 @@ export function BattleScene() {
             <div className="flex items-center space-x-3">
               <div className={`text-lg font-bold ${
                 battleStatus === 'active' ? 'text-green-400' : 
-                battleStatus === 'completed' ? 'text-yellow-400' : 'text-gray-400'
+                battleStatus === 'completed' ? 'text-yellow-400' : 'text-slate-600'
               }`}>
                 {battleStatus === 'preparing' && 'PREPARATION PHASE'}
                 {battleStatus === 'active' && 'COMBAT ACTIVE'}
@@ -157,7 +231,7 @@ export function BattleScene() {
               )}
             </div>
             {currentBattle && (
-              <div className="text-sm text-gray-400 mt-1">
+              <div className="text-sm text-slate-600 mt-1">
                 Turn {currentBattle.turn} • Phase: {currentBattle.phase}
               </div>
             )}
@@ -194,7 +268,7 @@ export function BattleScene() {
           <h3 className="text-pink-400 font-semibold mb-3">COMM LOG</h3>
           <div className="space-y-2 text-xs overflow-auto h-64">
             {currentBattle?.log.length === 0 ? (
-              <div className="text-gray-500 text-center py-8">
+              <div className="text-slate-700 text-center py-8">
                 <div className="mb-2">
                   <i className="fas fa-radio text-2xl"></i>
                 </div>
@@ -203,7 +277,7 @@ export function BattleScene() {
             ) : (
               (currentBattle?.log || []).slice(-15).map((log, index) => (
                 <div key={index} className={`${getLogTypeColor(log.type, log.speaker)}`}>
-                  <span className="text-gray-400">
+                  <span className="text-slate-600">
                     [{new Date(log.timestamp).toLocaleTimeString()}]
                   </span>
                   {log.speaker && (
@@ -230,7 +304,7 @@ export function BattleScene() {
                     <div className="text-green-400 font-semibold">
                       PILOT-{index + 1}
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-slate-600">
                       Position: {participant.position.x}-{participant.position.y}
                     </div>
                   </div>
@@ -241,7 +315,7 @@ export function BattleScene() {
                 
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">Hull Integrity:</span>
+                    <span className="text-slate-600">Hull Integrity:</span>
                     <span className={`font-semibold ${
                       hpPercent > 70 ? 'text-green-400' :
                       hpPercent > 30 ? 'text-yellow-400' : 'text-red-400'
@@ -279,6 +353,11 @@ export function BattleScene() {
                 {winner === 'team1' ? 'VICTORY ACHIEVED' : 'MISSION FAILED'}
               </div>
             )}
+            {returnCountdown !== null && (
+              <div className="text-xs text-slate-500 mt-1">
+                {returnCountdown}초 후 대시보드로 자동 이동
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -287,7 +366,7 @@ export function BattleScene() {
                 <div className="text-pink-400 font-semibold mb-1">
                   <i className="fas fa-chart-line mr-2"></i>VIEW ANALYSIS
                 </div>
-                <div className="text-xs text-gray-400">Detailed battle report</div>
+                <div className="text-xs text-slate-600">Detailed battle report</div>
               </div>
             </CyberButton>
 
@@ -296,7 +375,7 @@ export function BattleScene() {
                 <div className="text-pink-400 font-semibold mb-1">
                   <i className="fas fa-home mr-2"></i>RETURN TO HUB
                 </div>
-                <div className="text-xs text-gray-400">Command center</div>
+                <div className="text-xs text-slate-600">Command center</div>
               </div>
             </CyberButton>
           </div>
@@ -310,7 +389,7 @@ export function BattleScene() {
             <h3 className="text-lg font-orbitron font-semibold text-green-400 mb-2">
               AWAITING DEPLOYMENT
             </h3>
-            <p className="text-gray-400 mb-4">
+            <p className="text-slate-600 mb-4">
               Complete formation setup and proceed through ban/pick phase to begin battle
             </p>
             
@@ -320,7 +399,7 @@ export function BattleScene() {
                   <div className="text-pink-400 font-semibold mb-1">
                     <i className="fas fa-cogs mr-2"></i>FORMATION
                   </div>
-                  <div className="text-xs text-gray-400">Configure team setup</div>
+                  <div className="text-xs text-slate-600">Configure team setup</div>
                 </div>
               </CyberButton>
 
@@ -329,7 +408,7 @@ export function BattleScene() {
                   <div className="text-pink-400 font-semibold mb-1">
                     <i className="fas fa-chess mr-2"></i>BAN/PICK
                   </div>
-                  <div className="text-xs text-gray-400">Strategic selection</div>
+                  <div className="text-xs text-slate-600">Strategic selection</div>
                 </div>
               </CyberButton>
             </div>

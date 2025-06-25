@@ -151,39 +151,65 @@ export function FormationScene() {
 
   return (
     <div className="scene-transition">
-      <div className="mb-6">
-        <h2 className="text-2xl font-orbitron font-bold text-green-400 mb-2">편성 관리</h2>
-        <p className="text-gray-400">파일럿-기체 조합 및 전술 설정</p>
+      {/* Scene Header */}
+      <div className="relative mb-8 bg-gradient-to-r from-emerald-500/10 via-green-500/5 to-teal-500/10 backdrop-blur-lg border border-emerald-200/30 rounded-2xl p-6 shadow-lg overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-100/20 to-green-100/10 backdrop-blur-sm"></div>
+        <div className="relative z-10">
+          <div className="flex items-center space-x-4 mb-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl flex items-center justify-center shadow-md">
+              <i className="fas fa-cogs text-white text-xl"></i>
+            </div>
+            <div>
+              <h1 className="text-3xl font-orbitron font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
+                편성 관리
+              </h1>
+              <div className="flex items-center space-x-2 text-emerald-600/80 text-sm font-medium">
+                <i className="fas fa-chess-board text-xs"></i>
+                <span>파일럿-기체 조합 및 전술 설정</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex space-x-2">
+            <div className="px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-200/50">
+              <i className="fas fa-users mr-1"></i>
+              편성 시스템
+            </div>
+            <div className="px-3 py-1 bg-emerald-100/50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-200/50">
+              <i className="fas fa-check-circle mr-1"></i>
+              TRINITAS 연결됨
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tab Navigation */}
       <div className="flex space-x-4 mb-6">
         <button
           onClick={() => setActiveTab('formation')}
-          className={`px-4 py-2 rounded ${
+          className={`px-4 py-2 rounded-lg transition-all ${
             activeTab === 'formation'
-              ? 'bg-green-600 text-white'
-              : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+              ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg'
+              : 'bg-white/70 text-slate-600 hover:bg-sky-50 border border-sky-200'
           }`}
         >
           편성 구성
         </button>
         <button
           onClick={() => setActiveTab('tactics')}
-          className={`px-4 py-2 rounded ${
+          className={`px-4 py-2 rounded-lg transition-all ${
             activeTab === 'tactics'
-              ? 'bg-green-600 text-white'
-              : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+              ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg'
+              : 'bg-white/70 text-slate-600 hover:bg-sky-50 border border-sky-200'
           }`}
         >
           전술 설정
         </button>
         <button
           onClick={() => setActiveTab('preview')}
-          className={`px-4 py-2 rounded ${
+          className={`px-4 py-2 rounded-lg transition-all ${
             activeTab === 'preview'
-              ? 'bg-green-600 text-white'
-              : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+              ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg'
+              : 'bg-white/70 text-slate-600 hover:bg-sky-50 border border-sky-200'
           }`}
         >
           미리보기
@@ -204,7 +230,7 @@ export function FormationScene() {
                       <h4 className={`font-semibold ${getRoleColor(slot.role)}`}>
                         {slot.role} ({index + 1}번 슬롯)
                       </h4>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-slate-600">
                         {getRoleDescription(slot.role)}
                       </p>
                     </div>
@@ -213,7 +239,7 @@ export function FormationScene() {
                         <div className="text-lg font-bold text-green-400">
                           {getCompatibilityScore(slot.pilot, slot.mech, slot.role)}%
                         </div>
-                        <div className="text-xs text-gray-400">호환성</div>
+                        <div className="text-xs text-slate-600">호환성</div>
                       </div>
                     )}
                   </div>
@@ -225,11 +251,11 @@ export function FormationScene() {
                       {slot.pilot ? (
                         <div>
                           <div className="font-medium text-white">{slot.pilot.name}</div>
-                          <div className="text-xs text-gray-400">"{slot.pilot.callsign}"</div>
+                          <div className="text-xs text-slate-600">"{slot.pilot.callsign}"</div>
                           <div className="text-sm text-green-400">{(slot.pilot as any).rating}</div>
                         </div>
                       ) : (
-                        <div className="text-center text-gray-500">파일럿 없음</div>
+                        <div className="text-center text-slate-600">파일럿 없음</div>
                       )}
                     </div>
                     
@@ -239,13 +265,13 @@ export function FormationScene() {
                       {slot.mech ? (
                         <div>
                           <div className="font-medium text-white">{slot.mech.name}</div>
-                          <div className="text-xs text-gray-400">{slot.mech.type}</div>
+                          <div className="text-xs text-slate-600">{slot.mech.type} - {slot.mech.variant}</div>
                           <div className="text-xs">
                             F:{slot.mech.firepower} S:{slot.mech.speed} A:{slot.mech.armor}
                           </div>
                         </div>
                       ) : (
-                        <div className="text-center text-gray-500">기체 없음</div>
+                        <div className="text-center text-slate-600">기체 없음</div>
                       )}
                     </div>
                   </div>
@@ -298,11 +324,11 @@ export function FormationScene() {
                       <div className="flex justify-between items-center mb-2">
                         <div>
                           <div className="font-medium text-white">{pilot.name}</div>
-                          <div className="text-sm text-gray-400">"{pilot.callsign}"</div>
+                          <div className="text-sm text-slate-600">"{pilot.callsign}"</div>
                         </div>
                         <div className="text-right">
                           <div className="text-lg font-bold text-green-400">{(pilot as any).rating}</div>
-                          <div className="text-xs text-gray-400">전투력</div>
+                          <div className="text-xs text-slate-600">전투력</div>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -327,7 +353,7 @@ export function FormationScene() {
                       <div className="flex justify-between items-center mb-2">
                         <div>
                           <div className="font-medium text-white">{mech.name}</div>
-                          <div className="text-sm text-gray-400">{mech.type} - {mech.variant}</div>
+                          <div className="text-sm text-slate-600">{mech.type} - {mech.variant}</div>
                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-2 text-xs">
@@ -341,7 +367,7 @@ export function FormationScene() {
               </div>
             ) : (
               <div className="cyber-border p-8 bg-slate-800 text-center">
-                <p className="text-gray-400">편성 슬롯을 선택하여 파일럿이나 기체를 배정하세요.</p>
+                <p className="text-slate-600">편성 슬롯을 선택하여 파일럿이나 기체를 배정하세요.</p>
               </div>
             )}
           </div>
@@ -353,7 +379,7 @@ export function FormationScene() {
         <div>
           <div className="mb-6">
             <h3 className="text-pink-400 font-semibold mb-2">전술 설정</h3>
-            <p className="text-sm text-gray-400">전투에서 사용할 전술을 선택하세요.</p>
+            <p className="text-sm text-slate-600">전투에서 사용할 전술을 선택하세요.</p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -374,7 +400,7 @@ export function FormationScene() {
                   <span className="text-2xl mr-3">{setting.icon}</span>
                   <div>
                     <h4 className="font-semibold text-white">{setting.description}</h4>
-                    <p className="text-sm text-gray-400">{setting.name}</p>
+                    <p className="text-sm text-slate-600">{setting.name}</p>
                   </div>
                 </div>
                 <div className="space-y-1">
@@ -395,7 +421,7 @@ export function FormationScene() {
         <div>
           <div className="mb-6">
             <h3 className="text-pink-400 font-semibold mb-2">편성 미리보기</h3>
-            <p className="text-sm text-gray-400">현재 편성의 종합 분석 결과입니다.</p>
+            <p className="text-sm text-slate-600">현재 편성의 종합 분석 결과입니다.</p>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -403,17 +429,17 @@ export function FormationScene() {
               <h4 className="text-green-400 font-semibold mb-3">종합 능력치</h4>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">총 전투력:</span>
+                  <span className="text-slate-600">총 전투력:</span>
                   <span className="text-green-400 font-bold">{Math.round(calculateTeamPower())}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">편성 완성도:</span>
+                  <span className="text-slate-600">편성 완성도:</span>
                   <span className={`font-bold ${isFormationComplete() ? 'text-green-400' : 'text-red-400'}`}>
                     {isFormationComplete() ? '완료' : '미완료'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-400">선택된 전술:</span>
+                  <span className="text-slate-600">선택된 전술:</span>
                   <span className="text-yellow-400">
                     {tacticalSettings.find(s => s.name === tacticalSetting)?.description}
                   </span>
@@ -438,7 +464,7 @@ export function FormationScene() {
           {isFormationComplete() && (
             <div className="mt-6 cyber-border p-4 bg-gradient-to-r from-green-900/20 to-blue-900/20 border-green-400/50">
               <h4 className="text-green-400 font-semibold mb-2">편성 준비 완료</h4>
-              <p className="text-gray-300 mb-4">모든 슬롯이 배정되었습니다. 전투를 시작할 수 있습니다.</p>
+              <p className="text-slate-600 mb-4">모든 슬롯이 배정되었습니다. 전투를 시작할 수 있습니다.</p>
             </div>
           )}
         </div>
