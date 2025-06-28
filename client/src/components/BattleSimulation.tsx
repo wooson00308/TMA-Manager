@@ -5,6 +5,7 @@ import { calculateRetreatPosition, calculateScoutPosition, calculateTacticalPosi
 import CanvasRenderer from "@/presentation/CanvasRenderer";
 import { useBattleRender } from "@/hooks/useBattleRender";
 import { useGameLoopWorker } from "@/hooks/useGameLoopWorker";
+import { CyberButton } from "@/components/ui/CyberButton";
 import type { BattleState, Pilot } from '@shared/schema';
 import type { AttackEffect, PilotInfo, TerrainFeature } from '@shared/domain/types';
 
@@ -219,32 +220,34 @@ export function BattleSimulation(): JSX.Element {
   }, [currentBattle?.log]);
 
   const startSimulation = () => {
-    setCurrentTick(0);
     setIsSimulating(true);
+    setIsCountingDown(false);
+    addBattleLog({
+      type: 'system',
+      message: '전투가 시작되었습니다!',
+      timestamp: Date.now()
+    });
   };
 
-  // Test animation function
   const testAnimation = () => {
     if (!currentBattle?.participants || currentBattle.participants.length < 2) return;
     
-    const attacker = currentBattle.participants[0];
-    const target = currentBattle.participants[currentBattle.participants.length - 1];
+    const participants = currentBattle.participants;
+    const attacker = participants[0];
+    const target = participants[1];
     
-    console.log('Test animation - Attacker:', attacker.pilotId, 'Target:', target.pilotId);
-    
-    const testEffect: AttackEffect = {
-      id: `test-${Date.now()}`,
+    const attackEffect: AttackEffect = {
+      id: `test-attack-${Date.now()}`,
       from: attacker.position,
       to: target.position,
       startTime: Date.now(),
-      type: "missile"
+      type: "laser"
     };
     
-    setAttackEffects(prev => [...prev, testEffect]);
+    setAttackEffects(prev => [...prev, attackEffect]);
     setAnimatingUnits(prev => {
       const newSet = new Set(prev);
       newSet.add(attacker.pilotId);
-      console.log('Test animation - Adding unit to animation:', attacker.pilotId);
       return newSet;
     });
     
@@ -252,122 +255,188 @@ export function BattleSimulation(): JSX.Element {
       setAnimatingUnits(prev => {
         const newSet = new Set(prev);
         newSet.delete(attacker.pilotId);
-        console.log('Test animation - Removing unit from animation:', attacker.pilotId);
         return newSet;
       });
-    }, 1500);
+    }, 1000);
   };
 
   if (!currentBattle) {
     return (
-      <div className="cyber-border p-6 bg-slate-800">
-        <div className="text-center text-gray-400">
-          전투 데이터를 불러오는 중...
+      <div className="scene-transition">
+        <div className="bg-white/80 backdrop-blur-lg border border-red-200/50 rounded-2xl p-8 shadow-lg text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-red-400 to-orange-500 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <div className="animate-spin w-8 h-8 border-2 border-white border-t-transparent rounded-full"></div>
+          </div>
+          <div className="text-slate-600 font-medium">전투 데이터를 불러오는 중...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900 flex flex-col overflow-hidden">
-      {/* Top Status Bar - RTS Style */}
-      <div className="bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 border-b-2 border-cyan-400/50 p-2">
-        <div className="flex items-center justify-between">
-          {/* Team 1 Score */}
-          <div className="flex items-center space-x-4 bg-blue-900/30 border border-blue-400/50 rounded px-4 py-2">
-            <div className="text-2xl font-bold text-blue-400">
-              {(currentBattle.participants || []).filter(p => p.team === 'team1' && p.hp > 0).length}
-            </div>
-            <div className="text-sm text-blue-300">아군</div>
-          </div>
-
-          {/* Center Battle Info */}
-          <div className="flex items-center space-x-6">
-            {currentBattle.phase !== 'completed' && !isSimulating && !isCountingDown && (
-              <button
-                onClick={startSimulation}
-                className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg"
-              >
-                전투 시작
-              </button>
-            )}
-            
-            {isCountingDown && (
-              <div className="flex items-center space-x-3 bg-red-900/30 border border-red-400/50 rounded px-4 py-2">
-                <div className="text-3xl font-bold text-red-400 animate-pulse tabular-nums">
-                  {countdown > 0 ? countdown : "START!"}
+    <div className="scene-transition h-full flex flex-col overflow-hidden">
+      {/* Battle Status Header */}
+      <div className="relative mb-6 bg-gradient-to-r from-red-500/10 via-orange-500/5 to-yellow-500/10 backdrop-blur-lg border border-red-200/30 rounded-2xl p-6 shadow-lg overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-red-100/20 to-orange-100/10 backdrop-blur-sm"></div>
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            {/* Team 1 Score */}
+            <div className="bg-white/80 backdrop-blur-lg border border-blue-200/50 rounded-xl p-4 shadow-md">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-shield-alt text-white text-sm"></i>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {(currentBattle.participants || []).filter(p => p.team === 'team1' && p.hp > 0).length}
+                  </div>
+                  <div className="text-sm text-blue-500 font-medium">아군 생존</div>
                 </div>
               </div>
-            )}
+            </div>
 
-            {isSimulating && (
-              <div className="flex items-center space-x-2 bg-green-900/30 border border-green-400/50 rounded px-4 py-2">
-                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                <span className="text-green-400 font-bold">LIVE</span>
-                <span className="text-white font-mono">{currentTick}초</span>
+            {/* Center Battle Controls */}
+            <div className="flex items-center space-x-4">
+              {currentBattle.phase !== 'completed' && !isSimulating && !isCountingDown && (
+                <CyberButton onClick={startSimulation} variant="primary">
+                  <div className="flex items-center space-x-2">
+                    <i className="fas fa-play"></i>
+                    <span>전투 시작</span>
+                  </div>
+                </CyberButton>
+              )}
+              
+              {isCountingDown && (
+                <div className="bg-white/90 backdrop-blur-lg border border-red-200/50 rounded-xl p-4 shadow-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="text-3xl font-bold text-red-500 animate-pulse tabular-nums">
+                      {countdown > 0 ? countdown : "START!"}
+                    </div>
+                    <div className="text-sm text-slate-600">
+                      {countdown > 0 ? '초 후 시작' : '전투 개시!'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {isSimulating && (
+                <div className="bg-white/90 backdrop-blur-lg border border-green-200/50 rounded-xl p-4 shadow-lg">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-green-600 font-bold">LIVE</span>
+                    <span className="text-slate-700 font-mono text-sm">{currentTick}초</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Animation Test Button */}
+              {currentBattle.participants && currentBattle.participants.length >= 2 && (
+                <CyberButton onClick={testAnimation} variant="secondary">
+                  <div className="flex items-center space-x-2">
+                    <i className="fas fa-vial"></i>
+                    <span>테스트</span>
+                  </div>
+                </CyberButton>
+              )}
+            </div>
+
+            {/* Team 2 Score */}
+            <div className="bg-white/80 backdrop-blur-lg border border-red-200/50 rounded-xl p-4 shadow-md">
+              <div className="flex items-center space-x-3">
+                <div>
+                  <div className="text-2xl font-bold text-red-600">
+                    {(currentBattle.participants || []).filter(p => p.team === 'team2' && p.hp > 0).length}
+                  </div>
+                  <div className="text-sm text-red-500 font-medium">적군 생존</div>
+                </div>
+                <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-500 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-crosshairs text-white text-sm"></i>
+                </div>
               </div>
-            )}
-
-            {/* Animation Test Button */}
-            {currentBattle.participants && currentBattle.participants.length >= 2 && (
-              <button
-                onClick={testAnimation}
-                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-bold transition-colors"
-              >
-                애니메이션 테스트
-              </button>
-            )}
+            </div>
           </div>
 
-          {/* Team 2 Score */}
-          <div className="flex items-center space-x-4 bg-red-900/30 border border-red-400/50 rounded px-4 py-2">
-            <div className="text-sm text-red-300">적군</div>
-            <div className="text-2xl font-bold text-red-400">
-              {(currentBattle.participants || []).filter(p => p.team === 'team2' && p.hp > 0).length}
+          {/* Battle Phase Indicator */}
+          <div className="flex items-center justify-center space-x-4">
+            <div className="flex items-center space-x-2 px-4 py-2 bg-white/70 backdrop-blur-sm rounded-full border border-orange-200/50">
+              <div className={`w-3 h-3 rounded-full ${
+                currentBattle.phase === 'active' ? 'bg-green-500 animate-pulse' :
+                currentBattle.phase === 'completed' ? 'bg-red-500' :
+                'bg-yellow-500'
+              }`}></div>
+              <span className="text-sm font-medium text-slate-700">
+                페이즈: {currentBattle.phase?.toUpperCase() || 'PREPARING'}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2 px-4 py-2 bg-white/70 backdrop-blur-sm rounded-full border border-orange-200/50">
+              <i className="fas fa-clock text-orange-500 text-sm"></i>
+              <span className="text-sm font-medium text-slate-700">
+                경과시간: {currentTick}초
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Battle Area */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Player Panel */}
-        <div className="w-64 bg-gradient-to-b from-blue-900/20 to-blue-800/20 border-r-2 border-blue-400/30 flex flex-col">
-          <div className="bg-blue-900/50 border-b border-blue-400/30 p-3">
-            <h3 className="text-blue-300 font-bold text-center">아군 부대</h3>
+      <div className="flex-1 flex gap-6 overflow-hidden">
+        {/* Left Allied Panel */}
+        <div className="w-72 bg-white/80 backdrop-blur-lg border border-blue-200/50 rounded-2xl shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-blue-500/10 to-blue-600/5 border-b border-blue-200/30 p-4">
+            <h3 className="text-blue-600 font-bold text-center flex items-center justify-center space-x-2">
+              <i className="fas fa-shield-alt"></i>
+              <span>아군 부대</span>
+            </h3>
           </div>
-          <div className="flex-1 p-2 space-y-2 overflow-y-auto custom-scrollbar">
+          <div className="p-3 space-y-3 overflow-y-auto" style={{ height: 'calc(100% - 64px)' }}>
             {(currentBattle.participants || [])
               .filter(p => p.team === 'team1')
               .map(participant => {
                 const pilot = getPilotInfoWithBattle(participant.pilotId, currentBattle.participants);
                 const isDestroyed = participant.status === 'destroyed';
                 const hpPercent = participant.maxHp > 0 ? (participant.hp / participant.maxHp) * 100 : 0;
+                const isAnimating = animatingUnits.has(participant.pilotId);
+                
                 return (
-                  <div key={participant.pilotId} className={`bg-blue-900/30 border border-blue-400/40 rounded-lg p-3 transition-opacity ${isDestroyed ? 'opacity-50' : ''}`}>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${isDestroyed ? 'bg-gray-600' : 'bg-blue-500'}`}>
-                        {pilot.initial}
-                      </div>
-                      <div>
-                        <div className="text-blue-200 font-semibold text-sm">{pilot.name}</div>
-                        <div className="text-blue-300 text-xs">({participant.position.x}, {participant.position.y})</div>
+                  <div
+                    key={participant.pilotId}
+                    className={`p-3 rounded-xl border transition-all ${
+                      isDestroyed 
+                        ? 'bg-slate-100 border-slate-300 opacity-50' 
+                        : isAnimating
+                        ? 'bg-blue-100/80 border-blue-400 shadow-md ring-2 ring-blue-300 animate-pulse'
+                        : 'bg-blue-50/80 border-blue-200 hover:bg-blue-100/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold text-blue-700 text-sm">{pilot.name}</div>
+                      <div className="flex items-center space-x-1">
+                        <div className={`w-2 h-2 rounded-full ${
+                          participant.status === 'active' ? 'bg-green-500' :
+                          participant.status === 'damaged' ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}></div>
+                        <span className="text-xs text-slate-600">{participant.status}</span>
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-blue-300">HP</span>
-                        <span className="text-white font-bold">{Math.round(hpPercent)}%</span>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="flex justify-between text-xs text-slate-600 mb-1">
+                          <span>HP</span>
+                          <span>{participant.hp}/{participant.maxHp}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all ${
+                              hpPercent > 70 ? 'bg-green-500' :
+                              hpPercent > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${hpPercent}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all ${
-                            isDestroyed ? 'bg-gray-500' :
-                            hpPercent > 70 ? 'bg-green-500' :
-                            hpPercent > 30 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${hpPercent}%` }}
-                        ></div>
+                      <div className="text-xs text-slate-500">
+                        위치: ({participant.position.x}, {participant.position.y})
                       </div>
                     </div>
                   </div>
@@ -376,28 +445,35 @@ export function BattleSimulation(): JSX.Element {
           </div>
         </div>
 
-        {/* Center Battlefield */}
-        <div className="flex-1 flex flex-col">
-          <div className="relative flex-1 bg-gradient-to-br from-amber-900/20 via-orange-800/20 to-red-900/20 flex items-center justify-center">
+        {/* Center Battle Canvas */}
+        <div className="flex-1 flex flex-col bg-white/80 backdrop-blur-lg border border-orange-200/50 rounded-2xl shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-orange-500/10 to-red-500/5 border-b border-orange-200/30 p-4">
+            <h3 className="text-orange-600 font-bold text-center flex items-center justify-center space-x-2">
+              <i className="fas fa-crosshairs"></i>
+              <span>전투 구역</span>
+            </h3>
+          </div>
+          
+          <div className="flex-1 relative p-6 flex items-center justify-center">
             <CanvasRenderer
               ref={canvasRef}
               width={640}
               height={480}
-              className="border border-gray-600/50 rounded-lg shadow-2xl"
+              className="border border-orange-300/50 rounded-xl shadow-lg bg-gradient-to-br from-amber-50 to-orange-50"
             />
 
             {/* Countdown Overlay */}
             {isCountingDown && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-                <div className="text-center bg-gray-900/90 rounded-2xl p-12 border-2 border-cyan-400/50">
-                  <div className="text-9xl font-bold text-cyan-400 animate-pulse mb-6 tabular-nums">
+              <div className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm rounded-xl">
+                <div className="text-center bg-white/95 backdrop-blur-lg rounded-3xl p-12 border-2 border-orange-300/50 shadow-2xl">
+                  <div className="text-8xl font-bold text-orange-500 animate-bounce mb-6 tabular-nums">
                     {countdown > 0 ? countdown : "START!"}
                   </div>
-                  <div className="text-2xl text-white font-bold">전투 시작 준비 중...</div>
-                  <div className="mt-6 flex justify-center">
-                    <div className="w-48 h-2 bg-gray-600 rounded-full">
+                  <div className="text-2xl text-slate-700 font-bold mb-4">전투 시작 준비 중...</div>
+                  <div className="flex justify-center">
+                    <div className="w-48 h-3 bg-orange-200 rounded-full overflow-hidden">
                       <div 
-                        className="h-2 bg-cyan-400 rounded-full transition-all duration-1000"
+                        className="h-3 bg-gradient-to-r from-orange-400 to-red-500 rounded-full transition-all duration-1000"
                         style={{ width: `${((3 - countdown) / 3) * 100}%` }}
                       ></div>
                     </div>
@@ -405,87 +481,51 @@ export function BattleSimulation(): JSX.Element {
                 </div>
               </div>
             )}
-
-            {/* Battle Stats HUD - positioned relative to canvas */}
-            <div className="absolute top-6 left-6 bg-black/80 backdrop-blur-sm rounded-lg p-4 border border-cyan-400/50 z-10">
-              <div className="text-cyan-400 font-bold mb-2">전투 상황</div>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-300">경과시간:</span>
-                  <span className="text-white font-mono">{currentTick}초</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">페이즈:</span>
-                  <span className={`font-bold ${
-                    currentBattle.phase === 'active' ? 'text-green-400' :
-                    currentBattle.phase === 'completed' ? 'text-red-400' :
-                    'text-yellow-400'
-                  }`}>
-                    {currentBattle.phase?.toUpperCase() || 'PREPARING'}
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
 
-          {/* Bottom Battle Log */}
-          <div className="h-32 bg-black/50 border-t-2 border-gray-600/50 p-3">
-            <div className="flex items-center justify-between mb-2">
+          {/* Battle Log Panel */}
+          <div className="bg-gradient-to-r from-slate-500/5 to-gray-500/5 border-t border-slate-200/50 p-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                <h4 className="text-gray-200 font-bold text-sm">전투 기록</h4>
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <h4 className="text-slate-700 font-bold text-sm">전투 기록</h4>
               </div>
               <div className="flex items-center space-x-4 text-xs">
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-green-500 rounded-sm"></div>
-                  <span className="text-green-300">엄폐물: 방어+20%</span>
+                  <span className="text-green-600">엄폐물</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-purple-500" style={{clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)'}}></div>
-                  <span className="text-purple-300">고지대: 공격+20%</span>
+                  <span className="text-purple-600">고지대</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <div className="w-2 h-2 bg-red-500"></div>
-                  <span className="text-red-300">장애물: 차단</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                  <span className="text-yellow-300">독성: -5HP</span>
+                  <span className="text-red-600">장애물</span>
                 </div>
               </div>
             </div>
-            <div
+            <div 
               ref={logContainerRef}
-              className="h-20 overflow-y-auto custom-scrollbar space-y-1"
+              className="bg-white/70 backdrop-blur-sm rounded-xl border border-slate-200/50 p-3 h-32 overflow-y-auto text-xs space-y-1"
             >
-              {(currentBattle.log || []).length === 0 ? (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  <div className="text-sm">전투 기록 대기 중...</div>
+              {currentBattle?.log.length === 0 ? (
+                <div className="text-slate-500 text-center py-8">
+                  <div className="mb-2">
+                    <i className="fas fa-radio text-2xl text-slate-400"></i>
+                  </div>
+                  <div>전투 기록을 대기 중...</div>
                 </div>
               ) : (
-                (currentBattle.log || []).slice(-10).map((logEntry, index) => (
-                  <div key={index} className="text-xs flex items-start space-x-2 p-1">
-                    <span className="font-mono text-gray-500 flex-shrink-0">
-                      {new Date(logEntry.timestamp).toLocaleTimeString()}
+                (currentBattle?.log || []).slice(-15).map((log, index) => (
+                  <div key={index} className="flex items-start space-x-2">
+                    <span className="text-slate-500 text-[10px] mt-0.5 tabular-nums">
+                      [{new Date(log.timestamp).toLocaleTimeString()}]
                     </span>
-                    {logEntry.speaker && (
-                      <span className="text-yellow-300 font-semibold flex-shrink-0">
-                        [{logEntry.speaker}]
-                      </span>
+                    {log.speaker && (
+                      <span className="font-semibold text-blue-600 text-[11px]">{log.speaker}:</span>
                     )}
-                    <span
-                      className={`${
-                        logEntry.type === "system"
-                          ? "text-cyan-300"
-                          : logEntry.type === "attack"
-                          ? "text-red-300"
-                          : logEntry.type === "movement"
-                          ? "text-blue-300"
-                          : "text-gray-300"
-                      }`}
-                    >
-                      {logEntry.message}
-                    </span>
+                    <span className="text-slate-700 text-[11px] flex-1">{log.message}</span>
                   </div>
                 ))
               )}
@@ -494,42 +534,62 @@ export function BattleSimulation(): JSX.Element {
         </div>
 
         {/* Right Enemy Panel */}
-        <div className="w-64 bg-gradient-to-b from-red-900/20 to-red-800/20 border-l-2 border-red-400/30 flex flex-col">
-          <div className="bg-red-900/50 border-b border-red-400/30 p-3">
-            <h3 className="text-red-300 font-bold text-center">적군 부대</h3>
+        <div className="w-72 bg-white/80 backdrop-blur-lg border border-red-200/50 rounded-2xl shadow-lg overflow-hidden">
+          <div className="bg-gradient-to-r from-red-500/10 to-red-600/5 border-b border-red-200/30 p-4">
+            <h3 className="text-red-600 font-bold text-center flex items-center justify-center space-x-2">
+              <i className="fas fa-crosshairs"></i>
+              <span>적군 부대</span>
+            </h3>
           </div>
-          <div className="flex-1 p-2 space-y-2 overflow-y-auto custom-scrollbar">
+          <div className="p-3 space-y-3 overflow-y-auto" style={{ height: 'calc(100% - 64px)' }}>
             {(currentBattle.participants || [])
               .filter(p => p.team === 'team2')
               .map(participant => {
                 const pilot = getPilotInfoWithBattle(participant.pilotId, currentBattle.participants);
                 const isDestroyed = participant.status === 'destroyed';
                 const hpPercent = participant.maxHp > 0 ? (participant.hp / participant.maxHp) * 100 : 0;
+                const isAnimating = animatingUnits.has(participant.pilotId);
+                
                 return (
-                  <div key={participant.pilotId} className={`bg-red-900/30 border border-red-400/40 rounded-lg p-3 transition-opacity ${isDestroyed ? 'opacity-50' : ''}`}>
-                    <div className="flex items-center space-x-2 mb-2">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${isDestroyed ? 'bg-gray-600' : 'bg-red-500'}`}>
-                        {pilot.initial}
-                      </div>
-                      <div>
-                        <div className="text-red-200 font-semibold text-sm">{pilot.name}</div>
-                        <div className="text-red-300 text-xs">({participant.position.x}, {participant.position.y})</div>
+                  <div
+                    key={participant.pilotId}
+                    className={`p-3 rounded-xl border transition-all ${
+                      isDestroyed 
+                        ? 'bg-slate-100 border-slate-300 opacity-50' 
+                        : isAnimating
+                        ? 'bg-red-100/80 border-red-400 shadow-md ring-2 ring-red-300 animate-pulse'
+                        : 'bg-red-50/80 border-red-200 hover:bg-red-100/80'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold text-red-700 text-sm">{pilot.name}</div>
+                      <div className="flex items-center space-x-1">
+                        <div className={`w-2 h-2 rounded-full ${
+                          participant.status === 'active' ? 'bg-green-500' :
+                          participant.status === 'damaged' ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}></div>
+                        <span className="text-xs text-slate-600">{participant.status}</span>
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-red-300">HP</span>
-                        <span className="text-white font-bold">{Math.round(hpPercent)}%</span>
+                    <div className="space-y-2">
+                      <div>
+                        <div className="flex justify-between text-xs text-slate-600 mb-1">
+                          <span>HP</span>
+                          <span>{participant.hp}/{participant.maxHp}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all ${
+                              hpPercent > 70 ? 'bg-green-500' :
+                              hpPercent > 30 ? 'bg-yellow-500' : 'bg-red-500'
+                            }`}
+                            style={{ width: `${hpPercent}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full transition-all ${
-                            isDestroyed ? 'bg-gray-500' :
-                            hpPercent > 70 ? 'bg-green-500' :
-                            hpPercent > 30 ? 'bg-yellow-500' : 'bg-red-500'
-                          }`}
-                          style={{ width: `${hpPercent}%` }}
-                        ></div>
+                      <div className="text-xs text-slate-500">
+                        위치: ({participant.position.x}, {participant.position.y})
                       </div>
                     </div>
                   </div>
