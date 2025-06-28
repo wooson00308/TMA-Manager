@@ -33,6 +33,20 @@ const TFM_TERRAIN_FEATURES: TerrainFeature[] = [
   { x: 10, y: 2, type: "cover", effect: "방어력 +20%" },
 ];
 
+// 전투에서 플레이어 팀 ID를 판단하는 헬퍼 함수
+function getPlayerTeamFromBattle(battleParticipants: any[], playerPilots: Pilot[]): 'team1' | 'team2' {
+  // 플레이어가 소유한 파일럿들 중 전투에 참가한 파일럿 찾기
+  for (const participant of battleParticipants) {
+    const isPlayerPilot = playerPilots.some(pilot => pilot.id === participant.pilotId);
+    if (isPlayerPilot) {
+      return participant.team;
+    }
+  }
+  
+  // 기본값: team1 (기존 동작 유지)
+  return 'team1';
+}
+
 interface GameState {
   currentScene: GameScene;
   currentSeason: number;
@@ -224,15 +238,19 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   // 전투 상태를 고려한 파일럿 정보 가져오기
   getPilotInfoWithBattle: (pilotId: number, battleParticipants?: any[]) => {
+    const { pilots } = get();
     const basicInfo = get().getPilotInfo(pilotId);
     
     // 전투 참가자 정보가 있으면 실제 팀 정보 사용
     if (battleParticipants) {
       const participant = battleParticipants.find(p => p.pilotId === pilotId);
       if (participant) {
+        // 플레이어 팀 판단: pilots 배열에 있는 파일럿들이 속한 팀을 플레이어 팀으로 간주
+        const playerTeamId = getPlayerTeamFromBattle(battleParticipants, pilots);
+        
         return {
           ...basicInfo,
-          team: participant.team === 'team1' ? 'ally' : 'enemy'
+          team: participant.team === playerTeamId ? 'ally' : 'enemy'
         };
       }
     }

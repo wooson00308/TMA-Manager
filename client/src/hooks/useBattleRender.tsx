@@ -14,11 +14,12 @@ import { useUnitsRenderer } from "./useUnitsRenderer";
 interface UseBattleRenderParams {
   canvasRef: React.RefObject<HTMLCanvasElement>;
   battle: BattleState | null;
-  animatingUnits: Set<number>;
+  animatingUnits: Set<string>;
   attackEffects: AttackEffect[];
   setAttackEffects: React.Dispatch<React.SetStateAction<AttackEffect[]>>;
   terrainFeatures: TerrainFeature[];
   getPilotInfo: (pilotId: number) => PilotInfo;
+  playerTeamId?: 'team1' | 'team2';
   hitEffects?: HitEffect[];
   setHitEffects?: React.Dispatch<React.SetStateAction<HitEffect[]>>;
   muzzleFlashes?: MuzzleFlash[];
@@ -37,6 +38,7 @@ export function useBattleRender({
   setAttackEffects,
   terrainFeatures,
   getPilotInfo,
+  playerTeamId = 'team1',
 }: UseBattleRenderParams) {
   const animationFrameRef = useRef<number>();
 
@@ -58,6 +60,7 @@ export function useBattleRender({
     battle,
     animatingUnits,
     getPilotInfo,
+    playerTeamId,
   });
 
   const resizeCanvas = React.useCallback(() => {

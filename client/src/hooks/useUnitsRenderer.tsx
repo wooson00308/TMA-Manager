@@ -4,8 +4,9 @@ import type { BattleParticipant, PilotInfo } from "@shared/domain/types";
 
 interface UseUnitsRendererParams {
   battle: BattleState | null;
-  animatingUnits: Set<number>;
+  animatingUnits: Set<string>;
   getPilotInfo: (pilotId: number) => PilotInfo;
+  playerTeamId?: 'team1' | 'team2';
 }
 
 interface UnitsRenderResult {
@@ -20,6 +21,7 @@ export function useUnitsRenderer({
   battle,
   animatingUnits,
   getPilotInfo,
+  playerTeamId = 'team1',
 }: UseUnitsRendererParams): UnitsRenderResult {
 
   const renderUnitsToCanvas = useCallback((
@@ -33,17 +35,18 @@ export function useUnitsRenderer({
       const pilot = getPilotInfo(participant.pilotId);
       const x = participant.position.x * 40 + 20;
       const y = participant.position.y * 40 + 20;
+      const isAlly = participant.team === playerTeamId;
+      const unitKey = `${participant.pilotId}-${participant.team}`;
 
       // Enhanced unit animations
-      if (animatingUnits.has(participant.pilotId)) {
+      if (animatingUnits.has(unitKey)) {
         const pulseProgress = ((timestamp - animationStartTime) % 1000) / 1000;
         const pulseRadius = 20 + Math.sin(pulseProgress * Math.PI * 2) * 5;
         
         // Action pulse ring
-        ctx.strokeStyle =
-          pilot.team === "ally"
-            ? `rgba(59, 130, 246, ${0.8 - pulseProgress * 0.6})`
-            : `rgba(239, 68, 68, ${0.8 - pulseProgress * 0.6})`;
+        ctx.strokeStyle = isAlly
+          ? `rgba(59, 130, 246, ${0.8 - pulseProgress * 0.6})`
+          : `rgba(239, 68, 68, ${0.8 - pulseProgress * 0.6})`;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(x, y, pulseRadius, 0, 2 * Math.PI);
@@ -51,7 +54,7 @@ export function useUnitsRenderer({
         
         // Charging energy effect
         const energyIntensity = Math.sin(pulseProgress * Math.PI * 4) * 0.5 + 0.5;
-        ctx.fillStyle = pilot.team === "ally" 
+        ctx.fillStyle = isAlly
           ? `rgba(59, 130, 246, ${energyIntensity * 0.3})`
           : `rgba(239, 68, 68, ${energyIntensity * 0.3})`;
         ctx.beginPath();
@@ -84,7 +87,7 @@ export function useUnitsRenderer({
 
       // Hex-shaped mech marker
       const baseSize = participant.status === "destroyed" ? 12 : 16;
-      ctx.fillStyle = pilot.team === "ally" ? "#3B82F6" : "#EF4444";
+      ctx.fillStyle = isAlly ? "#3B82F6" : "#EF4444";
       if (participant.status === "destroyed") {
         ctx.fillStyle = "#6B7280";
       }
@@ -134,7 +137,7 @@ export function useUnitsRenderer({
       ctx.fillText(pilot.initial, x, y + 5);
 
       // Pilot name (bottom text)
-      ctx.fillStyle = pilot.team === "ally" ? "#93C5FD" : "#FCA5A5";
+      ctx.fillStyle = isAlly ? "#93C5FD" : "#FCA5A5";
       ctx.font = "8px monospace";
       ctx.fillText(pilot.name, x, y + 35);
 

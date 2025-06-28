@@ -240,12 +240,13 @@ export function processGameTick(
       const action = determineAIAction(participant, battleState, pilots, pilotInfo, terrainFeatures);
       return {
         ...action,
-        pilotId: participant.pilotId, 
+        pilotId: participant.pilotId,
+        team: participant.team,
       };
     });
 
   actions.forEach(action => {
-    const actor = nextParticipants.find(p => p.pilotId === action.pilotId);
+    const actor = nextParticipants.find(p => p.pilotId === action.pilotId && p.team === (action as any).team);
     if (!actor) return;
     
     switch (action.type) {

@@ -9,23 +9,140 @@ import { CyberButton } from "@/components/ui/CyberButton";
 import type { BattleState, Pilot } from '@shared/schema';
 import type { AttackEffect, PilotInfo, TerrainFeature } from '@shared/domain/types';
 
+// 말풍선 타입 정의
+interface BattleBubble {
+  id: string;
+  message: string;
+  x: number;
+  y: number;
+  type: 'system' | 'attack' | 'movement' | 'damage' | 'communication';
+  speaker?: string;
+  timestamp: number;
+  duration?: number;
+  pilotId?: number; // 스택 계산용
+}
+
 export function BattleSimulation(): JSX.Element {
   const [currentTick, setCurrentTick] = useState(0);
   const [isSimulating, setIsSimulating] = useState(false);
   const [countdown, setCountdown] = useState(3);
   const [isCountingDown, setIsCountingDown] = useState(true);
-  const [animatingUnits, setAnimatingUnits] = useState<Set<number>>(new Set());
+  const [animatingUnits, setAnimatingUnits] = useState<Set<string>>(new Set());
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
   const [lastLogCount, setLastLogCount] = useState(0);
+  const [battleBubbles, setBattleBubbles] = useState<BattleBubble[]>([]);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const { currentBattle, addBattleLog, setBattle } = useBattleStore();
   const terrainFeatures = useGameStore(state => state.terrainFeatures);
   const getPilotInfo = useGameStore(state => state.getPilotInfo);
   const getPilotInfoWithBattle = useGameStore(state => state.getPilotInfoWithBattle);
+  const pilots = useGameStore(state => state.pilots);
 
-  // 3초 카운트다운 및 자동 시작 로직
+  // 플레이어 팀 ID 동적 계산
+  const getPlayerTeamId = (): 'team1' | 'team2' => {
+    if (!currentBattle?.participants || !pilots) return 'team1';
+    
+    for (const participant of currentBattle.participants) {
+      const isPlayerPilot = pilots.some(pilot => pilot.id === participant.pilotId);
+      if (isPlayerPilot) {
+        return participant.team;
+      }
+    }
+    return 'team1'; // 기본값
+  };
+
+  const playerTeamId = getPlayerTeamId();
+  const enemyTeamId = playerTeamId === 'team1' ? 'team2' : 'team1';
+
+  // Canvas 크기와 스케일 상수 (실제 렌더러와 동일하게 맞춤)
+  const CANVAS_WIDTH = 640;
+  const CANVAS_HEIGHT = 480;
+  const GRID_SIZE = 40; // 게임 좌표 한 칸당 픽셀 수 (useUnitsRenderer와 동일)
+
+  // 게임 좌표를 DOM 좌표로 변환 (실제 유닛 렌더링과 동일한 로직)
+  const gameToCanvasCoords = (gameX: number, gameY: number) => {
+    const canvasX = gameX * GRID_SIZE + 20; // +20 오프셋으로 중앙 정렬
+    const canvasY = gameY * GRID_SIZE + 20;
+    return { x: canvasX, y: canvasY };
+  };
+
+  // 말풍선 생성 함수
+  const createBattleBubble = (
+    message: string, 
+    gameX: number, 
+    gameY: number, 
+    type: BattleBubble['type'], 
+    speaker?: string,
+    duration: number = 1800,
+    pilotId?: number
+  ) => {
+    const { x, y } = gameToCanvasCoords(gameX, gameY);
+    const bubble: BattleBubble = {
+      id: `bubble-${Date.now()}-${Math.random()}`,
+      message,
+      x: x, // 유닛 중앙 (이미 오프셋 적용됨)
+      y: y - 40, // HP바보다 위쪽에 표시
+      type,
+      speaker,
+      timestamp: Date.now(),
+      duration,
+      pilotId
+    };
+    
+    setBattleBubbles(prev => {
+      // 같은 유닛 버블 스택 최대 3개 유지
+      const samePilotBubbles = prev.filter(b => b.pilotId === pilotId);
+      const trimmed = samePilotBubbles.length >= 3 ? prev.filter(b => b.pilotId !== pilotId).slice(1) : prev;
+      return [...trimmed, bubble];
+    });
+    
+    // 지정된 시간 후 자동 제거
+    setTimeout(() => {
+      setBattleBubbles(prev => prev.filter(b => b.id !== bubble.id));
+    }, duration);
+  };
+
+  // 로그 타입별 말풍선 스타일 결정
+  const getBubbleStyle = (type: BattleBubble['type']) => {
+    switch (type) {
+      case 'attack':
+        return {
+          bg: 'bg-red-500/90',
+          text: 'text-white',
+          icon: '⚔️'
+        };
+      case 'damage':
+        return {
+          bg: 'bg-orange-500/90',
+          text: 'text-white',
+          icon: '💥'
+        };
+      case 'movement':
+        return {
+          bg: 'bg-blue-500/90',
+          text: 'text-white',
+          icon: '🏃'
+        };
+      case 'communication':
+        return {
+          bg: 'bg-green-500/90',
+          text: 'text-white',
+          icon: '💬'
+        };
+      case 'system':
+      default:
+        return {
+          bg: 'bg-slate-600/90',
+          text: 'text-white',
+          icon: '📡'
+        };
+    }
+  };
+
+  // 기존 3초 카운트다운 및 자동 시작 로직
   useEffect(() => {
     if (isCountingDown && countdown > 0) {
       const timer = setTimeout(() => {
@@ -53,6 +170,7 @@ export function BattleSimulation(): JSX.Element {
     setAttackEffects,
     terrainFeatures,
     getPilotInfo: (pilotId: number) => getPilotInfoWithBattle(pilotId, currentBattle?.participants),
+    playerTeamId,
   });
 
   // Phase B: leverage Web Worker for game loop when simulation is active
@@ -82,7 +200,7 @@ export function BattleSimulation(): JSX.Element {
     }
   }, [currentBattle?.phase]);
 
-  // Trigger attack effects when new combat events occur
+  // 새로운 로그 처리 - 말풍선 생성 로직 추가
   useEffect(() => {
     if (!currentBattle?.log || currentBattle.log.length === 0) return;
     
@@ -90,29 +208,94 @@ export function BattleSimulation(): JSX.Element {
     setLastLogCount(currentBattle.log.length);
     
     newLogs.forEach((log) => {
-      console.log('Battle log entry:', log); // Debug log
+      console.log('Processing log for bubble:', log);
       
-      // Look for any combat action (attack, movement, damage)
-      if (log.type === 'attack' || log.message.includes('공격') || log.message.includes('피해') || log.message.includes('데미지')) {
+      const participants = currentBattle.participants || [];
+      let targetParticipant: any = null;
+      let bubbleType: BattleBubble['type'] = 'system';
+      
+      // 로그 타입 결정
+      if (log.type === 'attack' || log.message.includes('공격') || log.message.includes('사격')) {
+        bubbleType = 'attack';
+      } else if (log.message.includes('피해') || log.message.includes('데미지') || log.message.includes('파괴')) {
+        bubbleType = 'damage';
+      } else if (log.message.includes('이동') || log.message.includes('후퇴') || log.message.includes('전진')) {
+        bubbleType = 'movement';
+      } else if (log.speaker && log.speaker !== '시스템') {
+        bubbleType = 'communication';
+      }
+      
+      // 말풍선을 표시할 유닛 찾기 - participant별로 직접 확인
+      if (log.speaker && log.speaker !== '시스템') {
+        // 발화자가 있는 경우 해당 유닛 찾기
+        for (const participant of participants) {
+          const pilot = getPilotInfo(participant.pilotId);
+          if (pilot.name === log.speaker || pilot.callsign === log.speaker) {
+            // 추가 검증: 로그 맥락에 맞는 participant인지 확인
+            targetParticipant = participant;
+            break;
+          }
+        }
+      }
+      
+      // 발화자를 찾지 못한 경우 메시지에서 유닛 이름 추출
+      if (!targetParticipant) {
+        for (const participant of participants) {
+          const pilot = getPilotInfo(participant.pilotId);
+          if (log.message.includes(pilot.name) || log.message.includes(pilot.callsign)) {
+            targetParticipant = participant;
+            break;
+          }
+        }
+      }
+      
+      // 유닛을 찾은 경우 해당 위치에 말풍선 생성
+      if (targetParticipant) {
+        const shortMessage = log.message.length > 30 
+          ? log.message.substring(0, 27) + '...' 
+          : log.message;
         
-        // Try to find participants involved in the action
-        const participants = currentBattle.participants || [];
+        createBattleBubble(
+          shortMessage,
+          targetParticipant.position.x,
+          targetParticipant.position.y,
+          bubbleType,
+          log.speaker,
+          1800,
+          targetParticipant.pilotId
+        );
+      } else {
+        // 유닛을 찾지 못한 경우 중앙 상단에 시스템 메시지로 표시
+        createBattleBubble(
+          log.message,
+          CANVAS_WIDTH / GRID_SIZE / 2,
+          2,
+          'system'
+        );
+      }
+      
+      // 기존 공격 이펙트 로직도 유지
+      if (log.type === 'attack' || log.message.includes('공격') || log.message.includes('피해') || log.message.includes('데미지')) {
         let attacker: any = null;
         let target: any = null;
         
-        // 로그에 speaker가 있으면 그것을 우선 사용
         if (log.speaker) {
-          attacker = participants.find(p => {
-            const pilotInfo = getPilotInfoWithBattle(p.pilotId, participants);
-            return pilotInfo.name === log.speaker || pilotInfo.callsign === log.speaker;
-          });
+          // 공격자 찾기 - participant별로 직접 확인
+          for (const participant of participants) {
+            if (participant.status === 'destroyed') continue; // Skip destroyed units
+            const pilot = getPilotInfo(participant.pilotId);
+            if (pilot.name === log.speaker || pilot.callsign === log.speaker) {
+              attacker = participant;
+              break;
+            }
+          }
         }
         
-        // speaker가 없거나 찾지 못했으면 메시지에서 파일럿 이름 찾기
         if (!attacker) {
           for (const participant of participants) {
-            const pilotInfo = getPilotInfoWithBattle(participant.pilotId, participants);
-            if (log.message.includes(pilotInfo.name) || log.message.includes(pilotInfo.callsign)) {
+            if (participant.status === 'destroyed') continue; // Skip destroyed units
+            const pilot = getPilotInfo(participant.pilotId);
+            if (log.message.includes(pilot.name) || log.message.includes(pilot.callsign)) {
               if (!attacker && (log.message.includes('공격') || log.message.includes('사격'))) {
                 attacker = participant;
                 break;
@@ -121,26 +304,32 @@ export function BattleSimulation(): JSX.Element {
           }
         }
         
-        // Find target - look for "~에게" or "~를" patterns
         const targetPatterns = [/(\S+)에게/, /(\S+)를/, /(\S+)이/, /(\S+)가/];
         for (const pattern of targetPatterns) {
           const match = log.message.match(pattern);
           if (match) {
             const targetName = match[1];
-            target = participants.find(p => {
-              const info = getPilotInfoWithBattle(p.pilotId, participants);
-              return info.name.includes(targetName) || info.callsign.includes(targetName);
-            });
+            // 대상 찾기 - participant별로 직접 확인
+            for (const participant of participants) {
+              if (participant.status === 'destroyed') continue; // Skip destroyed units
+              const pilot = getPilotInfo(participant.pilotId);
+              if (pilot.name.includes(targetName) || pilot.callsign.includes(targetName)) {
+                // 공격자와 같은 팀이 아닌 경우만 대상으로 설정
+                if (!attacker || participant.team !== attacker.team) {
+                  target = participant;
+                  break;
+                }
+              }
+            }
             if (target) break;
           }
         }
         
-        // 타겟을 찾지 못했으면 공격자와 다른 팀에서 가장 가까운 적 선택
         if (attacker && !target) {
-          const enemyTeam = attacker.team === 'team1' ? 'team2' : 'team1';
-          const enemies = participants.filter(p => p.team === enemyTeam && p.status === 'active');
+          const attackerTeam = attacker.team;
+          const targetTeam = attackerTeam === playerTeamId ? enemyTeamId : playerTeamId;
+          const enemies = participants.filter(p => p.team === targetTeam && p.status === 'active');
           if (enemies.length > 0) {
-            // 가장 가까운 적 선택
             target = enemies.reduce((closest, enemy) => {
               const attackerPos = attacker.position;
               const enemyPos = enemy.position;
@@ -154,7 +343,6 @@ export function BattleSimulation(): JSX.Element {
           }
         }
         
-        // If we still don't have both, use random participants for demo
         if (!attacker && participants.length > 0) {
           attacker = participants[0];
         }
@@ -163,14 +351,6 @@ export function BattleSimulation(): JSX.Element {
         }
         
         if (attacker && target && attacker !== target) {
-          console.log('Creating attack effect:', { 
-            attacker: getPilotInfoWithBattle(attacker.pilotId, participants).name, 
-            target: getPilotInfoWithBattle(target.pilotId, participants).name,
-            attackerPilotId: attacker.pilotId,
-            targetPilotId: target.pilotId
-          });
-          
-          // Determine weapon type from message
           let weaponType: "laser" | "missile" | "beam" = "laser";
           if (log.message.includes('미사일') || log.message.includes('로켓') || log.message.includes('폭발')) {
             weaponType = "missile";
@@ -178,7 +358,6 @@ export function BattleSimulation(): JSX.Element {
             weaponType = "beam";
           }
           
-          // Create attack effect
           const attackEffect: AttackEffect = {
             id: `attack-${Date.now()}-${Math.random()}`,
             from: attacker.position,
@@ -187,30 +366,27 @@ export function BattleSimulation(): JSX.Element {
             type: weaponType
           };
           
-          setAttackEffects(prev => {
-            console.log('Adding attack effect:', attackEffect);
-            return [...prev, attackEffect];
-          });
-          
-          // Animate attacking unit - pilotId를 정확히 사용
-          setAnimatingUnits(prev => {
-            const newSet = new Set(prev);
-            newSet.add(attacker.pilotId);
-            console.log('Animating unit:', attacker.pilotId, 'Current animating units:', Array.from(newSet));
-            return newSet;
-          });
-          setTimeout(() => {
+          setAttackEffects(prev => [...prev, attackEffect]);
+          // Add animation only for alive attacker
+          if (attacker.status !== 'destroyed') {
             setAnimatingUnits(prev => {
               const newSet = new Set(prev);
-              newSet.delete(attacker.pilotId);
-              console.log('Stopped animating unit:', attacker.pilotId, 'Remaining animating units:', Array.from(newSet));
+              newSet.add(`${attacker.pilotId}-${attacker.team}`);
               return newSet;
             });
-          }, 1500);
+
+            setTimeout(() => {
+              setAnimatingUnits(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(`${attacker.pilotId}-${attacker.team}`);
+                return newSet;
+              });
+            }, 1000);
+          }
         }
       }
     });
-  }, [currentBattle?.log, lastLogCount, getPilotInfoWithBattle, currentBattle?.participants]);
+  }, [currentBattle?.log, lastLogCount, getPilotInfoWithBattle]);
 
   // Auto-scroll combat log to the bottom whenever a new entry is added.
   useEffect(() => {
@@ -247,14 +423,14 @@ export function BattleSimulation(): JSX.Element {
     setAttackEffects(prev => [...prev, attackEffect]);
     setAnimatingUnits(prev => {
       const newSet = new Set(prev);
-      newSet.add(attacker.pilotId);
+      newSet.add(`${attacker.pilotId}-${attacker.team}`);
       return newSet;
     });
     
     setTimeout(() => {
       setAnimatingUnits(prev => {
         const newSet = new Set(prev);
-        newSet.delete(attacker.pilotId);
+        newSet.delete(`${attacker.pilotId}-${attacker.team}`);
         return newSet;
       });
     }, 1000);
@@ -288,7 +464,7 @@ export function BattleSimulation(): JSX.Element {
                 </div>
                 <div>
                   <div className="text-2xl font-bold text-blue-600">
-                    {(currentBattle.participants || []).filter(p => p.team === 'team1' && p.hp > 0).length}
+                    {(currentBattle.participants || []).filter(p => p.team === playerTeamId && p.hp > 0).length}
                   </div>
                   <div className="text-sm text-blue-500 font-medium">아군 생존</div>
                 </div>
@@ -345,7 +521,7 @@ export function BattleSimulation(): JSX.Element {
               <div className="flex items-center space-x-3">
                 <div>
                   <div className="text-2xl font-bold text-red-600">
-                    {(currentBattle.participants || []).filter(p => p.team === 'team2' && p.hp > 0).length}
+                    {(currentBattle.participants || []).filter(p => p.team === enemyTeamId && p.hp > 0).length}
                   </div>
                   <div className="text-sm text-red-500 font-medium">적군 생존</div>
                 </div>
@@ -390,12 +566,12 @@ export function BattleSimulation(): JSX.Element {
           </div>
           <div className="p-3 space-y-3 overflow-y-auto" style={{ height: 'calc(100% - 64px)' }}>
             {(currentBattle.participants || [])
-              .filter(p => p.team === 'team1')
+              .filter(p => p.team === playerTeamId)
               .map(participant => {
                 const pilot = getPilotInfoWithBattle(participant.pilotId, currentBattle.participants);
                 const isDestroyed = participant.status === 'destroyed';
                 const hpPercent = participant.maxHp > 0 ? (participant.hp / participant.maxHp) * 100 : 0;
-                const isAnimating = animatingUnits.has(participant.pilotId);
+                const isAnimating = animatingUnits.has(`${participant.pilotId}-${participant.team}`);
                 
                 return (
                   <div
@@ -455,12 +631,66 @@ export function BattleSimulation(): JSX.Element {
           </div>
           
           <div className="flex-1 relative p-6 flex items-center justify-center">
+            {/* Canvas */}
             <CanvasRenderer
               ref={canvasRef}
               width={640}
               height={480}
               className="border border-orange-300/50 rounded-xl shadow-lg bg-gradient-to-br from-amber-50 to-orange-50"
             />
+
+            {/* 실시간 말풍선 오버레이 */}
+            <div 
+              ref={overlayRef}
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                width: CANVAS_WIDTH,
+                height: CANVAS_HEIGHT,
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
+              {battleBubbles.map((bubble) => {
+                const style = getBubbleStyle(bubble.type);
+                const age = Date.now() - bubble.timestamp;
+                const opacity = Math.max(0, 1 - (age / (bubble.duration || 1800)));
+                
+                // 스택 인덱스 계산 (같은 유닛 기준 오래된 → 위쪽)
+                const sameBubbles = battleBubbles
+                  .filter(b => b.pilotId === bubble.pilotId)
+                  .sort((a, b) => a.timestamp - b.timestamp);
+                const stackIndex = sameBubbles.findIndex(b => b.id === bubble.id);
+
+                const clampedX = Math.min(Math.max(bubble.x, 16), CANVAS_WIDTH - 16);
+                const clampedY = Math.min(Math.max(bubble.y - stackIndex * 16, 16), CANVAS_HEIGHT - 16);
+
+                return (
+                  <div
+                    key={bubble.id}
+                    className={`absolute ${style.bg} ${style.text} max-w-[140px] px-2 py-1 rounded-lg shadow-md text-[10px] leading-snug backdrop-blur-sm border border-white/20 pointer-events-none z-10`}
+                    style={{
+                      left: `${clampedX}px`,
+                      top: `${clampedY}px`,
+                      opacity,
+                      transform: `translate(-50%, -100%) scale(${Math.min(1, opacity * 1.5)})`,
+                      transition: 'opacity 0.15s ease-out, transform 0.15s ease-out'
+                    }}
+                  >
+                    <div className="flex items-center space-x-1">
+                      <span className="text-[9px]">{style.icon}</span>
+                      <span className="flex-1 break-words">
+                        {bubble.message}
+                      </span>
+                    </div>
+                    {/* 말풍선 꼬리 */}
+                    <div 
+                      className={`absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent ${style.bg.replace('/90', '')}`}
+                    ></div>
+                  </div>
+                );
+              })}
+            </div>
 
             {/* Countdown Overlay */}
             {isCountingDown && (
@@ -543,12 +773,12 @@ export function BattleSimulation(): JSX.Element {
           </div>
           <div className="p-3 space-y-3 overflow-y-auto" style={{ height: 'calc(100% - 64px)' }}>
             {(currentBattle.participants || [])
-              .filter(p => p.team === 'team2')
+              .filter(p => p.team === enemyTeamId)
               .map(participant => {
                 const pilot = getPilotInfoWithBattle(participant.pilotId, currentBattle.participants);
                 const isDestroyed = participant.status === 'destroyed';
                 const hpPercent = participant.maxHp > 0 ? (participant.hp / participant.maxHp) * 100 : 0;
-                const isAnimating = animatingUnits.has(participant.pilotId);
+                const isAnimating = animatingUnits.has(`${participant.pilotId}-${participant.team}`);
                 
                 return (
                   <div
